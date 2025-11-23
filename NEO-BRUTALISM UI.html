@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEO-BRUTALISM UI /// CSS ONLY</title>
+    <!-- 引入 RemixIcon 图标库 (纯CSS方案) -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <style>
+        /* =========================================
+           0. 全局变量与重置 (THE SYSTEM)
+           ========================================= */
+        :root {
+            /* 配色方案 */
+            --bg-color: #ffffff;
+            --fg-color: #000000;
+            --accent-color: #ff5500; /* 唯一的橙色 */
+            --gray-light: #f0f0f0;
+
+            /* 尺寸系统 */
+            --border-width: 2px;
+            --border-radius: 0px; /* 拒绝圆角，拥抱直角 */
+            --shadow-distance: 4px;
+
+            /* 字体 */
+            --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            --font-mono: "Courier New", Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--fg-color);
+            font-family: var(--font-mono);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* 装饰性网格背景 */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(var(--fg-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--fg-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.03;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-sans);
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-top: 0;
+            letter-spacing: -0.5px;
+        }
+
+        code, pre {
+            font-family: var(--font-mono);
+        }
+
+        /* =========================================
+           1. 核心动画库 (ANIMATION CORE)
+           ========================================= */
+
+        /* 动画 1: 故障闪烁 (Glitch) */
+        @keyframes glitch-anim {
+            0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
+            20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
+            40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
+            60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
+            80% { clip-path: inset(10% 0 60% 0); transform: translate(-1px, 1px); }
+            100% { clip-path: inset(30% 0 70% 0); transform: translate(1px, -1px); }
+        }
+
+        /* 动画 2: 跑马灯 (Marquee) */
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* 动画 3: 扫描线 (Scanline) */
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* 动画 4: 脉冲边框 (Border Pulse) */
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(255, 85, 0, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 85, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 85, 0, 0); }
+        }
+
+        /* 动画 5: 这种悬停填充 (Hover Fill) - 见按钮部分 */
+
+        /* =========================================
+           2. 布局组件 (LAYOUT)
+           ========================================= */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header.hero {
+            border-bottom: var(--border-width) solid var(--fg-color);
+            padding: 60px 0;
+            margin-bottom: 60px;
+            position: relative;
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            line-height: 0.9;
+            position: relative;
+            display: inline-block;
+        }
+
+        .hero-title::after {
+            content: "_";
+            animation: blink 1s infinite;
+            color: var(--accent-color);
+        }
+
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            border-bottom: var(--border-width) solid var(--fg-color);
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            margin-top: 60px;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            background: var(--fg-color);
+            color: var(--bg-color);
+            padding: 5px 15px;
+            margin-right: 15px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        /* =========================================
+           3. 通用原子类 (UTILITIES)
+           ========================================= */
+        .nb-box {
+            border: var(--border-width) solid var(--fg-color);
+            background: var(--bg-color);
+            box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+        }
+
+        .nb-box:hover {
+             transform: translate(-2px, -2px);
+             box-shadow: calc(var(--shadow-distance) + 2px) calc(var(--shadow-distance) + 2px) 0 var(--accent-color);
+             transition: 0.2s ease;
+        }
+
+        .code-block {
+            background: var(--gray-light);
+            padding: 15px;
+            border: 1px solid var(--fg-color);
+            overflow-x: auto;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: "SOURCE CODE";
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--fg-color);
+            color: var(--bg-color);
+            font-size: 0.6rem;
+            padding: 2px 6px;
+        }
+
+        /* =========================================
+           4. 组件库 (COMPONENTS)
+           ========================================= */
+
+        /* --- BUTTONS --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            text-transform: uppercase;
+            text-decoration: none;
+            cursor: pointer;
+            border: var(--border-width) solid var(--fg-color);
+            background: var(--bg-color);
+            color: var(--fg-color);
+            box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            font-size: 1rem;
+        }
+
+        .btn:active {
+            transform: translate(var(--shadow-distance), var(--shadow-distance));
+            box-shadow: 0 0 0 var(--fg-color);
+        }
+
+        /* Button - Primary (Hover Slide Animation) */
+        .btn-primary::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--fg-color);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+        .btn-primary:hover {
+            color: var(--bg-color);
+        }
+        .btn-primary:hover::before {
+            left: 0;
+        }
+
+        /* Button - Accent */
+        .btn-accent {
+            background: var(--accent-color);
+            color: var(--bg-color); /* 白字 */
+            border-color: var(--fg-color);
+        }
+        .btn-accent:hover {
+            background: var(--fg-color);
+            color: var(--accent-color);
+        }
+
+        /* Button - Glitch */
+        .btn-glitch:hover {
+            animation: glitch-anim 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        /* --- INPUTS --- */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .nb-input {
+            width: 100%;
+            padding: 12px;
+            font-family: var(--font-mono);
+            border: var(--border-width) solid var(--fg-color);
+            background: var(--bg-color);
+            outline: none;
+            transition: 0.2s;
+            box-shadow: 2px 2px 0 transparent;
+        }
+
+        .nb-input:focus {
+            box-shadow: 4px 4px 0 var(--accent-color);
+            transform: translate(-2px, -2px);
+        }
+
+        /* Checkbox Styling */
+        .nb-checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .nb-checkbox {
+            opacity: 0;
+            position: absolute;
+        }
+
+        .checkmark {
+            width: 24px;
+            height: 24px;
+            border: var(--border-width) solid var(--fg-color);
+            margin-right: 10px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+
+        .nb-checkbox:checked + .checkmark {
+            background: var(--fg-color);
+            box-shadow: 2px 2px 0 var(--accent-color);
+        }
+
+        .nb-checkbox:checked + .checkmark::after {
+            content: "✓";
+            color: var(--bg-color);
+            font-weight: bold;
+        }
+
+        .nb-checkbox:focus + .checkmark {
+            border-color: var(--accent-color);
+        }
+
+        /* --- CARDS --- */
+        .card {
+            padding: 20px;
+            position: relative;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            border-bottom: 2px solid var(--fg-color);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-icon {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+        }
+
+        /* --- TABS (纯CSS实现) --- */
+        .tabs-wrapper {
+            position: relative;
+            margin-top: 20px;
+        }
+
+        /* 隐藏原生的 Radio */
+        .tab-radio {
+            display: none;
+        }
+
+        .tab-labels {
+            display: flex;
+            border-bottom: var(--border-width) solid var(--fg-color);
+        }
+
+        .tab-label {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: var(--border-width) solid transparent;
+            border-bottom: none;
+            font-weight: bold;
+            margin-bottom: -2px; /* 盖住底线 */
+            transition: 0.2s;
+            background: var(--bg-color);
+        }
+
+        .tab-label:hover {
+            color: var(--accent-color);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: var(--border-width) solid var(--fg-color);
+            border-top: none;
+            background: var(--bg-color);
+            box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+            animation: fade-in 0.3s ease;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 逻辑: 当Radio被选中时，对应Label变色，对应Content显示 */
+        #tab1:checked ~ .tab-labels label[for="tab1"],
+        #tab2:checked ~ .tab-labels label[for="tab2"],
+        #tab3:checked ~ .tab-labels label[for="tab3"] {
+            border-color: var(--fg-color);
+            background: var(--accent-color);
+            color: white;
+            box-shadow: 0 -2px 0 rgba(0,0,0,0.1);
+        }
+
+        #tab1:checked ~ .content-1,
+        #tab2:checked ~ .content-2,
+        #tab3:checked ~ .content-3 {
+            display: block;
+        }
+
+        /* --- ACCORDION (纯CSS实现) --- */
+        .accordion {
+            border: var(--border-width) solid var(--fg-color);
+            margin-bottom: 10px;
+            box-shadow: 4px 4px 0 var(--gray-light);
+        }
+
+        .acc-check {
+            display: none;
+        }
+
+        .acc-label {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            background: var(--bg-color);
+            cursor: pointer;
+            font-weight: bold;
+            border-bottom: 0px solid transparent;
+            transition: 0.3s;
+        }
+
+        .acc-label:hover {
+            background: var(--gray-light);
+        }
+
+        .acc-icon {
+            transition: transform 0.3s;
+        }
+
+        .acc-content {
+            max-height: 0;
+            overflow: hidden;
+            padding: 0 15px;
+            border-top: var(--border-width) solid var(--fg-color);
+            background: #fffaf0; /* 极淡的暖色背景 */
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        /* 逻辑 */
+        .acc-check:checked + .acc-label .acc-icon {
+            transform: rotate(180deg);
+            color: var(--accent-color);
+        }
+
+        .acc-check:checked + .acc-label {
+            background: var(--fg-color);
+            color: var(--bg-color);
+        }
+
+        .acc-check:checked ~ .acc-content {
+            max-height: 200px; /* 预估高度 */
+            padding: 15px;
+        }
+
+        /* --- MODAL (纯CSS实现) --- */
+        .modal-toggle {
+            display: none;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 85, 0, 0.9); /* 橙色半透明 */
+            z-index: 999;
+            display: none;
+            place-items: center;
+            backdrop-filter: grayscale(100%) contrast(1.2);
+        }
+
+        .modal-card {
+            background: var(--bg-color);
+            border: 3px solid var(--fg-color);
+            padding: 0;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 10px 10px 0 var(--fg-color);
+            animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes pop-in {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-header {
+            background: var(--fg-color);
+            color: var(--bg-color);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-close-btn {
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .modal-toggle:checked ~ .modal-overlay {
+            display: grid;
+        }
+
+        /* --- TOOLTIP --- */
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+
+        [data-tooltip]::before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: var(--fg-color);
+            color: var(--bg-color);
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.2s;
+            border: 1px solid var(--accent-color);
+            box-shadow: 2px 2px 0 var(--accent-color);
+            pointer-events: none;
+        }
+
+        [data-tooltip]:hover::before {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* --- LOADER --- */
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--fg-color);
+            border-top-color: var(--accent-color);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* =========================================
+           5. 页脚
+           ========================================= */
+        footer {
+            margin-top: 80px;
+            border-top: var(--border-width) solid var(--fg-color);
+            padding: 40px 0;
+            text-align: center;
+            background: var(--fg-color);
+            color: var(--bg-color);
+        }
+
+        /* 响应式简单处理 */
+        @media (max-width: 768px) {
+            .hero-title { font-size: 2.5rem; }
+            .grid-3 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 导航栏 -->
+    <nav style="border-bottom: 2px solid black; padding: 15px 0; position: sticky; top: 0; background: white; z-index: 100;">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
+            <div style="font-weight: 900; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
+                <i class="ri-code-box-line" style="color: var(--accent-color)"></i>
+                NEO-BRUTALISM_UI
+            </div>
+            <div style="display: flex; gap: 20px; font-size: 0.9rem;">
+                <a href="#buttons" class="btn" style="padding: 5px 10px; font-size: 0.8rem; border-width: 1px;">Components</a>
+                <a href="#migration" class="btn btn-accent" style="padding: 5px 10px; font-size: 0.8rem;">Docs</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header class="hero">
+            <h1 class="hero-title">BOLD. RAW.<br>CSS ONLY.</h1>
+            <p style="max-width: 600px; margin-top: 20px; font-size: 1.2rem;">
+                一套复古未来主义的UI组件库。零JavaScript依赖。
+                <br>
+                <span style="color: var(--accent-color); font-weight: bold;">///</span> 包含所有常用组件 <span style="color: var(--accent-color); font-weight: bold;">///</span> 复制即用
+            </p>
+            <div style="margin-top: 40px; display: flex; gap: 15px;">
+                <a href="#buttons" class="btn btn-primary">开始探索 -></a>
+                <label for="modal-1" class="btn btn-glitch">查看模态框演示</label>
+            </div>
+
+            <!-- 装饰性元素 -->
+            <div style="position: absolute; right: 0; top: 40px; border: 2px solid black; padding: 10px; transform: rotate(3deg); display: none; md:display: block;">
+                SYSTEM STATUS: ONLINE<br>
+                JS: DISABLED<br>
+                STYLE: 100%
+            </div>
+        </header>
+
+        <!-- SECTION: BUTTONS -->
+        <div id="buttons" class="section-header">
+            <div class="section-title">01. BUTTONS</div>
+            <div style="flex-grow: 1; border-bottom: 1px dashed #000;"></div>
+        </div>
+        <div class="grid-3">
+            <div class="nb-box card">
+                <div class="card-header">
+                    <span>VARIANTS</span>
+                    <i class="ri-cursor-line card-icon"></i>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 15px; align-items: flex-start;">
+                    <button class="btn">Default Button</button>
+                    <button class="btn btn-primary">Hover Slide</button>
+                    <button class="btn btn-accent">Accent Color</button>
+                    <button class="btn btn-glitch">Glitch Effect</button>
+                    <button class="btn" disabled style="opacity: 0.5; cursor: not-allowed;">Disabled</button>
+                </div>
+                <div class="code-block">
+&lt;button class="btn btn-primary"&gt;
+  Slide
+&lt;/button&gt;
+                </div>
+            </div>
+
+            <div class="nb-box card">
+                <div class="card-header">
+                    <span>LOADERS & ICONS</span>
+                    <i class="ri-loader-4-line card-icon"></i>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 20px; align-items: center; justify-content: center; height: 100%;">
+                    <div class="loader"></div>
+                    <button class="btn">
+                        <i class="ri-download-line" style="margin-right: 8px;"></i> Download
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: FORMS -->
+        <div id="forms" class="section-header">
+            <div class="section-title">02. INPUTS & FORMS</div>
+            <div style="flex-grow: 1; border-bottom: 1px dashed #000;"></div>
+        </div>
+        <div class="grid-3">
+            <div class="nb-box card">
+                <div class="card-header">TEXT INPUTS</div>
+                <div class="form-group">
+                    <label class="input-label">USERNAME</label>
+                    <input type="text" class="nb-input" placeholder="Enter identifier...">
+                </div>
+                <div class="form-group">
+                    <label class="input-label">PASSWORD</label>
+                    <input type="password" class="nb-input" value="123456">
+                </div>
+                <div class="code-block">
+&lt;input class="nb-input" /&gt;
+                </div>
+            </div>
+
+            <div class="nb-box card">
+                <div class="card-header">CONTROLS</div>
+                <div class="form-group">
+                    <label class="nb-checkbox-wrapper">
+                        <input type="checkbox" class="nb-checkbox" checked>
+                        <span class="checkmark"></span>
+                        <span>Terms Accepted</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="nb-checkbox-wrapper">
+                        <input type="checkbox" class="nb-checkbox">
+                        <span class="checkmark"></span>
+                        <span>Subscribe Newsletter</span>
+                    </label>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <span data-tooltip="Pure CSS Tooltip!">Hover Me For Info</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: NAVIGATION & TABS -->
+        <div id="layout" class="section-header">
+            <div class="section-title">03. INTERACTIVE (NO JS)</div>
+            <div style="flex-grow: 1; border-bottom: 1px dashed #000;"></div>
+        </div>
+
+        <!-- Tabs Demo -->
+        <div class="nb-box card" style="margin-bottom: 30px;">
+            <div class="card-header">
+                <span>CSS TABS SYSTEM</span>
+                <small style="font-size: 0.7rem;">USES RADIO HACK</small>
+            </div>
+
+            <div class="tabs-wrapper">
+                <!-- Hidden Radios -->
+                <input type="radio" name="tab" id="tab1" class="tab-radio" checked>
+                <input type="radio" name="tab" id="tab2" class="tab-radio">
+                <input type="radio" name="tab" id="tab3" class="tab-radio">
+
+                <!-- Labels -->
+                <div class="tab-labels">
+                    <label for="tab1" class="tab-label">SECTION_1</label>
+                    <label for="tab2" class="tab-label">SECTION_2</label>
+                    <label for="tab3" class="tab-label">SECTION_3</label>
+                </div>
+
+                <!-- Contents -->
+                <div class="tab-content content-1">
+                    <h3>SYSTEM READY</h3>
+                    <p>这是第一个标签页的内容。完全通过 CSS 选择器 (:checked ~ sibling) 控制显隐。</p>
+                </div>
+                <div class="tab-content content-2">
+                    <h3>DATA LOADED</h3>
+                    <p>图片、文字、布局都可以在这里正常放置。</p>
+                    <button class="btn btn-sm">Action</button>
+                </div>
+                <div class="tab-content content-3">
+                    <h3>SETTINGS</h3>
+                    <p>这里可以放置设置选项。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accordion Demo -->
+        <div class="grid-3">
+            <div class="nb-box card">
+                <div class="card-header">ACCORDION (CHECKBOX HACK)</div>
+
+                <div class="accordion">
+                    <input type="checkbox" id="acc1" class="acc-check">
+                    <label for="acc1" class="acc-label">
+                        <span>Is this pure CSS?</span>
+                        <i class="ri-arrow-down-s-line acc-icon"></i>
+                    </label>
+                    <div class="acc-content">
+                        <p style="margin: 15px 0;">是的，完全使用 Checkbox 的 :checked 状态来控制高度 (max-height) 的变化。</p>
+                    </div>
+                </div>
+
+                <div class="accordion">
+                    <input type="checkbox" id="acc2" class="acc-check">
+                    <label for="acc2" class="acc-label">
+                        <span>Can I animate it?</span>
+                        <i class="ri-arrow-down-s-line acc-icon"></i>
+                    </label>
+                    <div class="acc-content">
+                        <p style="margin: 15px 0;">当然。我们对 padding 和 max-height 进行了 transition 处理。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card with Image/Media layout -->
+            <div class="nb-box" style="padding: 0;">
+                <div style="border-bottom: 2px solid black; padding: 10px; background: black; color: white; display: flex; justify-content: space-between;">
+                    <span>IMG_001.JPG</span>
+                    <span>45KB</span>
+                </div>
+                <div style="height: 150px; background: repeating-linear-gradient(45deg, #f0f0f0, #f0f0f0 10px, #fff 10px, #fff 20px); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                    <!-- Scanline animation overlay -->
+                    <div style="position:absolute; width:100%; height:2px; background:rgba(0,0,0,0.1); animation: scanline 2s linear infinite; top:0;"></div>
+                    <i class="ri-image-line" style="font-size: 3rem; opacity: 0.2;"></i>
+                </div>
+                <div style="padding: 15px;">
+                    <h4>Article Card</h4>
+                    <p style="font-size: 0.9rem;">典型的卡片布局，带有扫描线动画效果。</p>
+                    <a href="#" style="color: var(--accent-color); text-decoration: none; font-weight: bold;">READ_MORE >></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: MIGRATION GUIDE -->
+        <div id="migration" class="section-header">
+            <div class="section-title" style="background: var(--accent-color); color: white;">04. 风格迁移指南</div>
+            <div style="flex-grow: 1; border-bottom: 1px dashed #000;"></div>
+        </div>
+
+        <div class="nb-box card" style="border-left: 10px solid var(--accent-color);">
+            <h3>如何将此风格应用到你的组件？</h3>
+            <p>NEO-BRUTALISM 的核心在于打破常规的“柔和”设计。遵循以下三步法则：</p>
+            <ol style="line-height: 1.8;">
+                <li><strong>去圆角 (Kill Border-Radius)</strong>: 将所有 `border-radius` 设为 0。</li>
+                <li><strong>加硬边 (Hard Borders)</strong>: 给所有容器添加 `border: 2px solid black`。</li>
+                <li><strong>硬阴影 (Hard Shadows)</strong>: 放弃 `rgba(0,0,0,0.1)` 的模糊阴影。使用 `box-shadow: 4px 4px 0 black`。不要有模糊半径 (blur-radius)。</li>
+                <li><strong>字体选择</strong>: 标题使用粗体无衬线 (Helvetica/Arial Black)，正文或数据使用等宽字体 (Courier/Mono)。</li>
+            </ol>
+            <p style="margin-top: 10px; font-style: italic;">只需复制本文件顶部的 `:root` 变量和 `.nb-box` 类，即可快速迁移。</p>
+        </div>
+
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>DESIGNED FOR THE POST-JS ERA.</p>
+            <p style="font-size: 0.8rem; opacity: 0.7;">NO COOKIES. NO TRACKING. JUST CSS.</p>
+        </div>
+    </footer>
+
+    <!-- GLOBAL MODAL (Hidden by default) -->
+    <!-- Checkbox Hack for Modal -->
+    <input type="checkbox" id="modal-1" class="modal-toggle">
+    <div class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span>SYSTEM_ALERT</span>
+                <label for="modal-1" class="modal-close-btn"><i class="ri-close-line"></i></label>
+            </div>
+            <div class="modal-body">
+                <h3 style="color: var(--accent-color);">警告：纯 CSS 模态框</h3>
+                <p>这个模态框是完全通过 HTML 和 CSS 工作的。</p>
+                <p>点击背景或右上角的 X 关闭它。</p>
+                <div style="margin-top: 20px; text-align: right;">
+                    <label for="modal-1" class="btn">我知道了</label>
+                    <label for="modal-1" class="btn btn-primary">确认</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

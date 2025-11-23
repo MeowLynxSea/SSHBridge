@@ -2,6 +2,7 @@ import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { TunnelStats, RealtimeStats, TunnelStatsWithInfo } from './types/stats';
 
 // SQLite types
 interface RunResult {
@@ -39,9 +40,7 @@ export interface Tunnel {
   id: number;
   user_id: number;
   name: string;
-  target_host: string;
-  target_port: number;
-  local_port: number;
+  external_port: number;
   created_at: Date;
 }
 
@@ -54,13 +53,25 @@ export interface Session {
 }
 
 class Database {
+  private static instance: Database | null = null;
   private db: sqlite3.Database;
   private jwtSecret: string;
+  private statsUpdateInterval: ReturnType<typeof setInterval> | null = null;
+  private currentBytesReceived: Map<number, number> = new Map();
+  private currentBytesSent: Map<number, number> = new Map();
+  private rateHistory: Map<number, Array<RealtimeStats>> = new Map();
 
-  constructor(dbPath: string = './sshbridge.db') {
+  private constructor(dbPath: string = './sshbridge.db') {
     this.db = new sqlite3.Database(dbPath);
     this.jwtSecret = process.env.JWT_SECRET || 'default-secret-key-change-in-production';
     this.init();
+  }
+
+  static getInstance(dbPath?: string): Database {
+    if (!Database.instance) {
+      Database.instance = new Database(dbPath);
+    }
+    return Database.instance;
   }
 
   private async init() {
@@ -76,19 +87,6 @@ class Database {
     `, []);
 
     await run(`
-      CREATE TABLE IF NOT EXISTS tunnels (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        target_host TEXT NOT NULL,
-        target_port INTEGER NOT NULL,
-        local_port INTEGER NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-      )
-    `, []);
-
-    await run(`
       CREATE TABLE IF NOT EXISTS sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -98,6 +96,92 @@ class Database {
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
       )
     `, []);
+    
+    // Check if tunnels table exists
+    const { get, all } = promisifyDb(this.db);
+    const tableInfo = await get("SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'", []);
+    
+    if (tableInfo) {
+      // Check if we need to migrate from old schema to new schema
+      const columns = await all("PRAGMA table_info(tunnels)", []);
+      const hasOldColumns = columns.some((col: any) => col.name === 'local_port') && 
+                            !columns.some((col: any) => col.name === 'external_port');
+      
+      if (hasOldColumns) {
+        console.log('Migrating tunnels database from old schema to new schema...');
+        
+        // Create a new table with the updated schema
+        await run(`
+          CREATE TABLE tunnels_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            external_port INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+          )
+        `, []);
+        
+        // Migrate data from old table to new table
+        await run(`
+          INSERT INTO tunnels_new (id, user_id, name, external_port, created_at)
+          SELECT id, user_id, name, local_port, created_at FROM tunnels
+        `, []);
+        
+        // Drop the old table and rename the new one
+        await run('DROP TABLE tunnels', []);
+        await run('ALTER TABLE tunnels_new RENAME TO tunnels', []);
+        
+        console.log('Database migration completed');
+      } else if (!columns.some((col: any) => col.name === 'external_port')) {
+        // Table exists but doesn't have external_port column, create it with default schema
+        await run('DROP TABLE tunnels', []);
+      }
+    }
+    
+    // Create the tunnels table with the new schema if it doesn't exist
+    await run(`
+      CREATE TABLE IF NOT EXISTS tunnels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        external_port INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `, []);
+
+    // Create the tunnel_stats table
+    await run(`
+      CREATE TABLE IF NOT EXISTS tunnel_stats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tunnel_id INTEGER NOT NULL,
+        total_bytes_received INTEGER DEFAULT 0,
+        total_bytes_sent INTEGER DEFAULT 0,
+        current_bytes_received INTEGER DEFAULT 0,
+        current_bytes_sent INTEGER DEFAULT 0,
+        active_connections INTEGER DEFAULT 0,
+        is_online INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tunnel_id) REFERENCES tunnels (id) ON DELETE CASCADE
+      )
+    `, []);
+
+    // Check if we need to add the is_online column (for backward compatibility)
+    const statsTableInfo = await all("PRAGMA table_info(tunnel_stats)", []);
+    const hasOnlineColumn = statsTableInfo.some((col: any) => col.name === 'is_online');
+    
+    if (!hasOnlineColumn) {
+      console.log('Adding is_online column to tunnel_stats table for backward compatibility');
+      await run('ALTER TABLE tunnel_stats ADD COLUMN is_online INTEGER DEFAULT 0', []);
+    }
+
+    // Load existing current session data from database
+    await this.loadCurrentSessionData();
+    
+    // Initialize stats tracking
+    this.startStatsTracking();
   }
 
   async createUser(username: string, password: string): Promise<User> {
@@ -143,23 +227,27 @@ class Database {
     return isValid ? user : null;
   }
 
-  async createTunnel(userId: number, name: string, targetHost: string, targetPort: number, localPort: number): Promise<Tunnel> {
+  async createTunnel(userId: number, name: string, externalPort: number): Promise<Tunnel> {
     const { run } = promisifyDb(this.db);
     
     const result = await run(
-      'INSERT INTO tunnels (user_id, name, target_host, target_port, local_port) VALUES (?, ?, ?, ?, ?)',
-      [userId, name, targetHost, targetPort, localPort]
+      'INSERT INTO tunnels (user_id, name, external_port) VALUES (?, ?, ?)',
+      [userId, name, externalPort]
     );
     
     const tunnel = await this.getTunnelById(result.lastID);
     if (!tunnel) throw new Error('Failed to create tunnel');
+    
+    // Create stats record for the new tunnel
+    await this.createTunnelStats(tunnel.id);
+    
     return tunnel;
   }
 
   async getTunnelsByUserId(userId: number): Promise<Tunnel[]> {
     const { all } = promisifyDb(this.db);
     const rows = await all('SELECT * FROM tunnels WHERE user_id = ?', [userId]);
-    return rows.map(this.mapRowToTunnel);
+    return rows.map(row => this.mapRowToTunnel(row));
   }
 
   async getTunnelById(id: number): Promise<Tunnel | null> {
@@ -168,12 +256,12 @@ class Database {
     return row ? this.mapRowToTunnel(row) : null;
   }
 
-  async updateTunnel(id: number, name: string, targetHost: string, targetPort: number, localPort: number): Promise<Tunnel | null> {
+  async updateTunnel(id: number, name: string, externalPort: number): Promise<Tunnel | null> {
     const { run } = promisifyDb(this.db);
     
     await run(
-      'UPDATE tunnels SET name = ?, target_host = ?, target_port = ?, local_port = ? WHERE id = ?',
-      [name, targetHost, targetPort, localPort, id]
+      'UPDATE tunnels SET name = ?, external_port = ? WHERE id = ?',
+      [name, externalPort, id]
     );
     
     return this.getTunnelById(id);
@@ -190,9 +278,7 @@ class Database {
       id: row.id,
       user_id: row.user_id,
       name: row.name,
-      target_host: row.target_host,
-      target_port: row.target_port,
-      local_port: row.local_port,
+      external_port: row.external_port,
       created_at: new Date(row.created_at)
     };
   }
@@ -226,6 +312,360 @@ class Database {
     const result = await run('DELETE FROM sessions WHERE token = ?', [token]);
     return result.changes > 0;
   }
+
+  // Statistics methods
+  async createTunnelStats(tunnelId: number): Promise<TunnelStats> {
+    const { run } = promisifyDb(this.db);
+    
+    await run(
+      'INSERT INTO tunnel_stats (tunnel_id) VALUES (?)',
+      [tunnelId]
+    );
+    
+    // Initialize rate history for the new tunnel
+    if (!this.rateHistory.has(tunnelId)) {
+      this.rateHistory.set(tunnelId, []);
+      // Add initial data point
+      this.rateHistory.get(tunnelId)!.push({
+        timestamp: new Date(),
+        bytes_per_second_received: 0,
+        bytes_per_second_sent: 0,
+        current_bytes_received: 0,
+        current_bytes_sent: 0
+      });
+    }
+    
+    const stats = await this.getTunnelStatsByTunnelId(tunnelId);
+    if (!stats) throw new Error('Failed to create tunnel stats');
+    return stats;
+  }
+
+  async getTunnelStatsByTunnelId(tunnelId: number): Promise<TunnelStats | null> {
+    const { get } = promisifyDb(this.db);
+    const row = await get('SELECT * FROM tunnel_stats WHERE tunnel_id = ?', [tunnelId]);
+    return row ? this.mapRowToTunnelStats(row) : null;
+  }
+
+  async getTunnelStatsByUserId(userId: number): Promise<TunnelStatsWithInfo[]> {
+    const { all } = promisifyDb(this.db);
+    
+    // First, ensure all tunnels have stats records
+    const tunnels = await all('SELECT * FROM tunnels WHERE user_id = ?', [userId]);
+    for (const tunnel of tunnels) {
+      const existingStats = await this.getTunnelStatsByTunnelId(tunnel.id);
+      if (!existingStats) {
+        await this.createTunnelStats(tunnel.id);
+      }
+    }
+    
+    const rows = await all(`
+      SELECT ts.*, t.name as tunnel_name, t.external_port, t.user_id
+      FROM tunnel_stats ts
+      JOIN tunnels t ON ts.tunnel_id = t.id
+      WHERE t.user_id = ?
+    `, [userId]);
+    return rows.map(row => this.mapRowToTunnelStatsWithInfo(row));
+  }
+
+  async getAllTunnelStats(): Promise<TunnelStatsWithInfo[]> {
+    const { all } = promisifyDb(this.db);
+    
+    // First, ensure all tunnels have stats records
+    const tunnels = await all('SELECT * FROM tunnels', []);
+    for (const tunnel of tunnels) {
+      const existingStats = await this.getTunnelStatsByTunnelId(tunnel.id);
+      if (!existingStats) {
+        await this.createTunnelStats(tunnel.id);
+      }
+    }
+    
+    const rows = await all(`
+      SELECT ts.*, t.name as tunnel_name, t.external_port, t.user_id
+      FROM tunnel_stats ts
+      JOIN tunnels t ON ts.tunnel_id = t.id
+    `, []);
+    return rows.map(row => this.mapRowToTunnelStatsWithInfo(row));
+  }
+
+  async updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections: number): Promise<void> {
+    const { run } = promisifyDb(this.db);
+    
+    // Track current session data
+    this.currentBytesReceived.set(tunnelId, (this.currentBytesReceived.get(tunnelId) || 0) + bytesReceived);
+    this.currentBytesSent.set(tunnelId, (this.currentBytesSent.get(tunnelId) || 0) + bytesSent);
+    
+    // Ensure rate history exists for this tunnel
+    if (!this.rateHistory.has(tunnelId)) {
+      this.rateHistory.set(tunnelId, []);
+    }
+    
+    await run(`
+      UPDATE tunnel_stats 
+      SET total_bytes_received = total_bytes_received + ?, 
+          total_bytes_sent = total_bytes_sent + ?,
+          current_bytes_received = ?,
+          current_bytes_sent = ?,
+          active_connections = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE tunnel_id = ?
+    `, [bytesReceived, bytesSent, this.currentBytesReceived.get(tunnelId), this.currentBytesSent.get(tunnelId), activeConnections, tunnelId]);
+  }
+
+  private async loadCurrentSessionData(): Promise<void> {
+    const { all } = promisifyDb(this.db);
+    
+    try {
+      // Load all tunnel stats but don't restore current session data
+      // Current session data should start fresh when server starts
+      const stats = await all('SELECT tunnel_id FROM tunnel_stats', []);
+      
+      for (const stat of stats) {
+        // Initialize current session data to 0 for all tunnels
+        this.currentBytesReceived.set(stat.tunnel_id, 0);
+        this.currentBytesSent.set(stat.tunnel_id, 0);
+        
+        // Initialize rate history for all tunnels
+        if (!this.rateHistory.has(stat.tunnel_id)) {
+          this.rateHistory.set(stat.tunnel_id, []);
+          // Add initial data point to prevent null returns
+          this.rateHistory.get(stat.tunnel_id)!.push({
+            timestamp: new Date(),
+            bytes_per_second_received: 0,
+            bytes_per_second_sent: 0,
+            current_bytes_received: 0,
+            current_bytes_sent: 0
+          });
+        }
+      }
+      
+      console.log(`Initialized current session data for ${stats.length} tunnels`);
+    } catch (error) {
+      console.error('Failed to initialize current session data:', error);
+    }
+  }
+
+  // New method to update just the active connections count without modifying byte counters
+  async updateTunnelConnections(tunnelId: number, activeConnections: number): Promise<void> {
+    const { run } = promisifyDb(this.db);
+    
+    await run(`
+      UPDATE tunnel_stats 
+      SET active_connections = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE tunnel_id = ?
+    `, [activeConnections, tunnelId]);
+  }
+
+  // Method to update tunnel online status based on SSH connection
+  async updateTunnelOnlineStatus(tunnelId: number, isOnline: boolean): Promise<void> {
+    const { run } = promisifyDb(this.db);
+    
+    await run(`
+      UPDATE tunnel_stats 
+      SET is_online = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE tunnel_id = ?
+    `, [isOnline ? 1 : 0, tunnelId]);
+  }
+
+  // Method to check if a tunnel is online
+  async isTunnelOnline(tunnelId: number): Promise<boolean> {
+    const { get } = promisifyDb(this.db);
+    const row = await get('SELECT is_online FROM tunnel_stats WHERE tunnel_id = ?', [tunnelId]);
+    return row ? row.is_online === 1 : false;
+  }
+
+  // Method to check if any tunnel with a specific external port is online
+  async isTunnelWithPortOnline(port: number): Promise<boolean> {
+    const { get } = promisifyDb(this.db);
+    const row = await get(`
+      SELECT ts.is_online 
+      FROM tunnel_stats ts
+      JOIN tunnels t ON ts.tunnel_id = t.id
+      WHERE t.external_port = ?
+    `, [port]);
+    return row ? row.is_online === 1 : false;
+  }
+
+  async resetCurrentSessionStats(tunnelId: number): Promise<void> {
+    const { run } = promisifyDb(this.db);
+    
+    this.currentBytesReceived.set(tunnelId, 0);
+    this.currentBytesSent.set(tunnelId, 0);
+    
+    await run(`
+      UPDATE tunnel_stats 
+      SET current_bytes_received = 0,
+          current_bytes_sent = 0,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE tunnel_id = ?
+    `, [tunnelId]);
+  }
+
+  private mapRowToTunnelStats(row: any): TunnelStats {
+    return {
+      id: row.id,
+      tunnel_id: row.tunnel_id,
+      total_bytes_received: row.total_bytes_received,
+      total_bytes_sent: row.total_bytes_sent,
+      current_bytes_received: row.current_bytes_received,
+      current_bytes_sent: row.current_bytes_sent,
+      active_connections: row.active_connections,
+      is_online: row.is_online,
+      created_at: new Date(row.created_at),
+      updated_at: new Date(row.updated_at)
+    };
+  }
+
+  private mapRowToTunnelStatsWithInfo(row: any): TunnelStatsWithInfo {
+    return {
+      ...this.mapRowToTunnelStats(row),
+      tunnel_name: row.tunnel_name,
+      external_port: row.external_port,
+      user_id: row.user_id
+    };
+  }
+
+  private startStatsTracking(): void {
+    // Update rates every 5 seconds
+    this.statsUpdateInterval = setInterval(() => {
+      this.calculateAndStoreRates();
+    }, 5000);
+  }
+
+  private calculateAndStoreRates(): void {
+    const now = new Date();
+    
+    // Also include tunnels that might not have data yet but exist in the database
+    // We need to fetch all tunnels to ensure we're calculating rates for all of them
+    this.getAllTunnelIds().then(tunnelIds => {
+      for (const tunnelId of tunnelIds) {
+        const currentReceived = this.currentBytesReceived.get(tunnelId) || 0;
+        const currentSent = this.currentBytesSent.get(tunnelId) || 0;
+        
+        // Get historical data for rate calculation
+        if (!this.rateHistory.has(tunnelId)) {
+          this.rateHistory.set(tunnelId, []);
+        }
+        
+        const history = this.rateHistory.get(tunnelId)!;
+        
+        // Keep only last 12 data points (1 minute of history)
+        if (history.length >= 12) {
+          history.shift();
+        }
+        
+        // Calculate rate (difference from last reading / time interval)
+        let rateReceived = 0;
+        let rateSent = 0;
+        
+        if (history.length > 0) {
+          const lastReading = history[history.length - 1];
+          const timeDiff = (now.getTime() - lastReading.timestamp.getTime()) / 1000; // seconds
+          
+          if (timeDiff > 0) {
+            rateReceived = (currentReceived - (history[history.length - 1]?.current_bytes_received || 0)) / timeDiff;
+            rateSent = (currentSent - (history[history.length - 1]?.current_bytes_sent || 0)) / timeDiff;
+          }
+        }
+        
+        history.push({
+          timestamp: now,
+          bytes_per_second_received: Math.max(0, rateReceived),
+          bytes_per_second_sent: Math.max(0, rateSent),
+          current_bytes_received: currentReceived,
+          current_bytes_sent: currentSent
+        });
+        
+        this.rateHistory.set(tunnelId, history);
+      }
+    }).catch(error => {
+      console.error('Error calculating rates:', error);
+    });
+  }
+  
+  private async updateCurrentSessionData(): Promise<void> {
+    const { run } = promisifyDb(this.db);
+    
+    try {
+      // Update current session data for all tunnels in memory
+      for (const [tunnelId, currentReceived] of this.currentBytesReceived.entries()) {
+        const currentSent = this.currentBytesSent.get(tunnelId) || 0;
+        
+        await run(`
+          UPDATE tunnel_stats 
+          SET current_bytes_received = ?,
+              current_bytes_sent = ?,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE tunnel_id = ?
+        `, [currentReceived, currentSent, tunnelId]);
+      }
+    } catch (error) {
+      console.error('Error updating current session data:', error);
+    }
+  }
+  
+  async getAllTunnelIds(): Promise<number[]> {
+    const { all } = promisifyDb(this.db);
+    try {
+      const tunnels = await all('SELECT id FROM tunnels', []);
+      return tunnels.map((t: any) => t.id);
+    } catch (error) {
+      console.error('Error fetching tunnel IDs:', error);
+      return [];
+    }
+  }
+
+  getRealtimeStats(tunnelId: number): RealtimeStats | null {
+    const history = this.rateHistory.get(tunnelId);
+    if (!history || history.length === 0) {
+      return null;
+    }
+    
+    const latest = history[history.length - 1];
+    return {
+      timestamp: latest.timestamp,
+      bytes_per_second_received: latest.bytes_per_second_received,
+      bytes_per_second_sent: latest.bytes_per_second_sent
+    };
+  }
+
+  getAverageRates(tunnelId: number, seconds: number = 30): RealtimeStats | null {
+    const history = this.rateHistory.get(tunnelId);
+    if (!history || history.length === 0) {
+      return null;
+    }
+    
+    // Calculate average over the specified time period
+    const cutoffTime = new Date(Date.now() - seconds * 1000);
+    const relevantData = history.filter(entry => entry.timestamp >= cutoffTime);
+    
+    if (relevantData.length === 0) {
+      return null;
+    }
+    
+    const avgReceiveRate = relevantData.reduce((sum, entry) => sum + entry.bytes_per_second_received, 0) / relevantData.length;
+    const avgSendRate = relevantData.reduce((sum, entry) => sum + entry.bytes_per_second_sent, 0) / relevantData.length;
+    
+    return {
+      timestamp: new Date(),
+      bytes_per_second_received: avgReceiveRate,
+      bytes_per_second_sent: avgSendRate
+    };
+  }
+
+  cleanup(): void {
+    if (this.statsUpdateInterval) {
+      clearInterval(this.statsUpdateInterval);
+      this.statsUpdateInterval = null;
+    }
+  }
 }
 
-export default Database;
+// Export a function that returns the singleton instance
+export default function getDatabaseInstance(dbPath?: string): Database {
+  return Database.getInstance(dbPath);
+}
+
+// Also export the Database class for type checking
+export { Database };

@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import Database from '../../../src/database';
+import getDatabaseInstance from '../../../src/database';
 
-const database = new Database();
+const database = getDatabaseInstance();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

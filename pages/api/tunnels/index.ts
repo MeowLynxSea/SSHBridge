@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import Database from '../../../src/database';
+import getDatabaseInstance from '../../../src/database';
 
-const database = new Database();
+const database = getDatabaseInstance();
 
 async function authenticate(req: NextApiRequest): Promise<{ id: number; username: string } | null> {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -30,22 +30,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     case 'POST':
       try {
-        const { name, target_host, target_port, local_port } = req.body;
+        const { name, external_port } = req.body;
 
-        if (!name || !target_host || !target_port || !local_port) {
-          return res.status(400).json({ error: 'All fields are required' });
+        if (!name || !external_port) {
+          return res.status(400).json({ error: 'Name and external_port are required' });
         }
 
-        if (isNaN(target_port) || isNaN(local_port)) {
-          return res.status(400).json({ error: 'Ports must be numbers' });
+        if (isNaN(external_port)) {
+          return res.status(400).json({ error: 'External port must be a number' });
         }
 
         const tunnel = await database.createTunnel(
           user.id,
           name,
-          target_host,
-          parseInt(target_port),
-          parseInt(local_port)
+          parseInt(external_port)
         );
 
         res.status(201).json({ tunnel });

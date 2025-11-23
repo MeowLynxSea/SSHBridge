@@ -9,8 +9,24 @@ function AppContent() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-6">
+          <div className="nb-loader"></div>
+          <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'var(--font-sans)' }}>
+            Loading...
+          </h2>
+          <div 
+            className="nb-box" 
+            style={{ 
+              padding: '10px', 
+              fontSize: '0.8rem', 
+              fontFamily: 'monospace',
+              transform: 'rotate(1deg)'
+            }}
+          >
+            SYSTEM INITIALIZING...
+          </div>
+        </div>
       </div>
     );
   }

@@ -32,77 +32,101 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {mode === 'login' ? 'Sign in to SSHBridge' : 'Create SSHBridge account'}
-          </h2>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="nb-box nb-card" style={{ width: '100%', maxWidth: '500px' }}>
+        <div className="nb-card-header">
+          <h1 className="nb-card-title">
+            {mode === 'login' ? 'SIGN IN' : 'REGISTER'}
+          </h1>
+          <div className="loader-container">
+            {isLoading && <div className="nb-loader"></div>}
+          </div>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        
+        <div className="nb-card-body">
+          <p className="mb-6">
+            {mode === 'login' 
+              ? 'ENTER YOUR CREDENTIALS TO ACCESS YOUR SSH TUNNELS' 
+              : 'CREATE A NEW ACCOUNT TO START MANAGING SSH TUNNELS'
+            }
+          </p>
+          
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+            <div className="nb-alert nb-alert-destructive">
               {error}
             </div>
           )}
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="username" className="sr-only">
-                Username
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="form-group">
+              <label className="nb-label" htmlFor="username">
+                USERNAME
               </label>
               <input
+                className="nb-input"
                 id="username"
-                name="username"
                 type="text"
                 autoComplete="username"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Username"
+                placeholder="Enter your username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
             </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
+            
+            <div className="form-group">
+              <label className="nb-label" htmlFor="password">
+                PASSWORD
               </label>
               <input
+                className="nb-input"
                 id="password"
-                name="password"
                 type="password"
                 autoComplete="current-password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {isLoading ? 'Processing...' : (mode === 'login' ? 'Sign In' : 'Register')}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={onToggleMode}
-              className="text-indigo-600 hover:text-indigo-500 text-sm"
-            >
-              {mode === 'login' 
-                ? "Don't have an account? Register" 
-                : 'Already have an account? Sign in'
-              }
-            </button>
-          </div>
-        </form>
+            
+            <div className="flex flex-col space-y-4 pt-4">
+              <button 
+                className="nb-btn nb-btn-primary w-full" 
+                type="submit" 
+                disabled={isLoading}
+              >
+                {isLoading ? 'PROCESSING...' : (mode === 'login' ? 'SIGN IN' : 'REGISTER')}
+              </button>
+              
+              <button
+                className="nb-btn w-full"
+                type="button"
+                onClick={onToggleMode}
+              >
+                {mode === 'login' 
+                  ? "DON'T HAVE AN ACCOUNT? REGISTER" 
+                  : 'ALREADY HAVE AN ACCOUNT? SIGN IN'
+                }
+              </button>
+            </div>
+          </form>
+        </div>
+        
+        {/* 装饰性元素 */}
+        <div className="decoration" style={{ 
+          position: 'absolute', 
+          right: '20px', 
+          top: '20px', 
+          border: '2px solid black', 
+          padding: '10px', 
+          transform: 'rotate(3deg)', 
+          fontSize: '0.7rem',
+          fontFamily: 'monospace'
+        }}>
+          SYSTEM STATUS: ONLINE<br/>
+          SECURITY: {mode === 'login' ? 'ENFORCED' : 'CREATING'}<br/>
+        </div>
       </div>
     </div>
   );

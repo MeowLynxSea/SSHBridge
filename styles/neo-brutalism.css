@@ -1,0 +1,398 @@
+/* =========================================
+   SSHBridge - NEO-BRUTALISM UI Implementation
+   ========================================= */
+
+/* 全局变量与重置 */
+:root {
+    /* 配色方案 */
+    --bg-color: #ffffff;
+    --fg-color: #000000;
+    --accent-color: #ff5500; /* 唯一的橙色 */
+    --gray-light: #f0f0f0;
+
+    /* 尺寸系统 */
+    --border-width: 2px;
+    --border-radius: 0px; /* 拒绝圆角，拥抱直角 */
+    --shadow-distance: 4px;
+
+    /* 字体 */
+    --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --font-mono: "Courier New", Courier, monospace;
+}
+
+/* 装饰性网格背景 */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+        linear-gradient(var(--fg-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--fg-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.03;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* 标题样式 */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
+    font-weight: 900;
+    text-transform: uppercase;
+    margin-top: 0;
+    letter-spacing: -0.5px;
+}
+
+/* 核心动画库 */
+@keyframes glitch-anim {
+    0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
+    20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
+    40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
+    60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
+    80% { clip-path: inset(10% 0 60% 0); transform: translate(-1px, 1px); }
+    100% { clip-path: inset(30% 0 70% 0); transform: translate(1px, -1px); }
+}
+
+@keyframes pulse-border {
+    0% { box-shadow: 0 0 0 0 rgba(255, 85, 0, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 85, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 85, 0, 0); }
+}
+
+@keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+}
+
+/* NEO-BRUTALISM 通用类 */
+.nb-box {
+    border: var(--border-width) solid var(--fg-color);
+    background: var(--bg-color);
+    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+}
+
+.nb-box:hover {
+     transform: translate(-2px, -2px);
+     box-shadow: calc(var(--shadow-distance) + 2px) calc(var(--shadow-distance) + 2px) 0 var(--accent-color);
+     transition: 0.2s ease;
+}
+
+.nb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
+    font-family: var(--font-mono);
+    font-weight: bold;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    border: var(--border-width) solid var(--fg-color);
+    background: var(--bg-color);
+    color: var(--fg-color);
+    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    font-size: 1rem;
+    border-radius: 0;
+}
+
+.nb-btn:active {
+    transform: translate(var(--shadow-distance), var(--shadow-distance));
+    box-shadow: 0 0 0 var(--fg-color);
+}
+
+.nb-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Button - Primary (Hover Slide Animation) */
+.nb-btn-primary::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: var(--fg-color);
+    transition: left 0.3s ease;
+    z-index: -1;
+}
+.nb-btn-primary:hover {
+    color: var(--bg-color);
+}
+.nb-btn-primary:hover::before {
+    left: 0;
+}
+
+/* Button - Accent */
+.nb-btn-accent {
+    background: var(--accent-color);
+    color: var(--bg-color); /* 白字 */
+    border-color: var(--fg-color);
+}
+.nb-btn-accent:hover {
+    background: var(--fg-color);
+    color: var(--accent-color);
+}
+
+/* Button - Glitch */
+.nb-btn-glitch:hover {
+    animation: glitch-anim 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+/* Form Elements */
+.nb-input {
+    width: 100%;
+    padding: 12px;
+    font-family: var(--font-mono);
+    border: var(--border-width) solid var(--fg-color);
+    background: var(--bg-color);
+    outline: none;
+    transition: 0.2s;
+    box-shadow: 2px 2px 0 transparent;
+    border-radius: 0;
+}
+
+.nb-input:focus {
+    box-shadow: 4px 4px 0 var(--accent-color);
+    transform: translate(-2px, -2px);
+}
+
+/* Label */
+.nb-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    font-family: var(--font-mono);
+}
+
+/* Checkbox Styling */
+.nb-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.nb-checkbox {
+    opacity: 0;
+    position: absolute;
+}
+
+.nb-checkmark {
+    width: 24px;
+    height: 24px;
+    border: var(--border-width) solid var(--fg-color);
+    margin-right: 10px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+    border-radius: 0;
+}
+
+.nb-checkbox:checked + .nb-checkmark {
+    background: var(--fg-color);
+    box-shadow: 2px 2px 0 var(--accent-color);
+}
+
+.nb-checkbox:checked + .nb-checkmark::after {
+    content: "✓";
+    color: var(--bg-color);
+    font-weight: bold;
+}
+
+.nb-checkbox:focus + .nb-checkmark {
+    border-color: var(--accent-color);
+}
+
+/* Card */
+.nb-card {
+    padding: 20px;
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    border: var(--border-width) solid var(--fg-color);
+    background: var(--bg-color);
+    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+}
+
+.nb-card-header {
+    border-bottom: 2px solid var(--fg-color);
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nb-card-title {
+    font-family: var(--font-sans);
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+/* Alert */
+.nb-alert {
+    border: var(--border-width) solid var(--fg-color);
+    background: var(--bg-color);
+    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
+.nb-alert-destructive {
+    border-color: var(--accent-color);
+    background: var(--bg-color);
+    color: var(--accent-color);
+    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--accent-color);
+}
+
+/* Table */
+.nb-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.nb-table th,
+.nb-table td {
+    border: var(--border-width) solid var(--fg-color);
+    padding: 12px;
+    text-align: left;
+    font-family: var(--font-mono);
+}
+
+.nb-table th {
+    background: var(--fg-color);
+    color: var(--bg-color);
+    font-weight: bold;
+}
+
+/* Badge */
+.nb-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    font-family: var(--font-mono);
+    font-weight: bold;
+    border: var(--border-width) solid var(--fg-color);
+    background: var(--bg-color);
+}
+
+.nb-badge-secondary {
+    background: var(--gray-light);
+}
+
+/* Tabs */
+.nb-tabs {
+    margin-bottom: 20px;
+    border-bottom: var(--border-width) solid var(--fg-color);
+}
+
+.nb-tab {
+    padding: 12px 20px;
+    font-family: var(--font-mono);
+    font-weight: bold;
+    border: var(--border-width) solid transparent;
+    border-bottom: none;
+    cursor: pointer;
+    transition: 0.2s;
+    display: inline-block;
+    margin-right: 5px;
+    background: var(--bg-color);
+}
+
+.nb-tab:hover {
+    color: var(--accent-color);
+}
+
+.nb-tab-active {
+    border-color: var(--fg-color);
+    background: var(--accent-color);
+    color: white;
+    box-shadow: 0 -2px 0 rgba(0,0,0,0.1);
+}
+
+/* Dialog/Modal */
+.nb-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 85, 0, 0.9); /* 橙色半透明 */
+    z-index: 999;
+    display: none;
+    place-items: center;
+    backdrop-filter: grayscale(100%) contrast(1.2);
+}
+
+.nb-dialog-card {
+    background: var(--bg-color);
+    border: 3px solid var(--fg-color);
+    padding: 0;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 10px 10px 0 var(--fg-color);
+}
+
+.nb-dialog-header {
+    background: var(--fg-color);
+    color: var(--bg-color);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nb-dialog-body {
+    padding: 20px;
+}
+
+/* Loader */
+.nb-loader {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--fg-color);
+    border-top-color: var(--accent-color);
+    animation: nb-spin 1s linear infinite;
+}
+
+@keyframes nb-spin { 
+    to { transform: rotate(360deg); } 
+}
+
+/* 覆盖默认样式 */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--fg-color);
+    font-family: var(--font-mono);
+    line-height: 1.5;
+    overflow-x: hidden;
+}
+
+code, pre {
+    font-family: var(--font-mono);
+}
+
+/* 响应式简单处理 */
+@media (max-width: 768px) {
+    .grid-3 { grid-template-columns: 1fr; }
+}

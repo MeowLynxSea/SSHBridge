@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import TunnelStats from './TunnelStats';
 
 interface Tunnel {
   id: number;
   user_id: number;
   name: string;
-  target_host: string;
-  target_port: number;
-  local_port: number;
+  external_port: number;
   created_at: string;
+  is_online?: boolean;
+}
+
+interface TunnelManagerProps {
+  // No props for now, but we can add props later if needed
+}
+
+interface TunnelStatus {
+  id: number;
+  is_online: boolean;
 }
 
 interface TunnelFormData {
   name: string;
-  target_host: string;
-  target_port: string;
-  local_port: string;
+  external_port: string;
 }
 
 export default function TunnelManager() {
@@ -25,16 +32,40 @@ export default function TunnelManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingTunnel, setEditingTunnel] = useState<Tunnel | null>(null);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'tunnels' | 'stats'>('tunnels');
+  const [tunnelStatuses, setTunnelStatuses] = useState<Map<number, boolean>>(new Map());
   const [formData, setFormData] = useState<TunnelFormData>({
     name: '',
-    target_host: '',
-    target_port: '',
-    local_port: ''
+    external_port: ''
   });
 
   useEffect(() => {
     fetchTunnels();
+    // Set up interval to fetch tunnel statuses
+    const interval = setInterval(fetchTunnelStatuses, 5000);
+    return () => clearInterval(interval);
   }, [token]);
+
+  const fetchTunnelStatuses = async () => {
+    try {
+      const response = await fetch('/api/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const statuses = new Map<number, boolean>();
+        data.stats.forEach((stat: any) => {
+          statuses.set(stat.tunnel_id, stat.is_online === 1);
+        });
+        setTunnelStatuses(statuses);
+      }
+    } catch (err) {
+      console.error('Failed to fetch tunnel statuses:', err);
+    }
+  };
 
   const fetchTunnels = async () => {
     try {
@@ -46,7 +77,10 @@ export default function TunnelManager() {
 
       if (response.ok) {
         const data = await response.json();
-        setTunnels(data.tunnels);
+        setTunnels(data.tunnels.map((tunnel: Tunnel) => ({
+          ...tunnel,
+          is_online: tunnelStatuses.get(tunnel.id) || false
+        })));
       }
     } catch (err) {
       console.error('Failed to fetch tunnels:', err);
@@ -75,14 +109,12 @@ export default function TunnelManager() {
         },
         body: JSON.stringify({
           name: formData.name,
-          target_host: formData.target_host,
-          target_port: parseInt(formData.target_port),
-          local_port: parseInt(formData.local_port),
+          external_port: parseInt(formData.external_port),
         }),
       });
 
       if (response.ok) {
-        setFormData({ name: '', target_host: '', target_port: '', local_port: '' });
+        setFormData({ name: '', external_port: '' });
         setShowForm(false);
         setEditingTunnel(null);
         fetchTunnels();
@@ -100,9 +132,7 @@ export default function TunnelManager() {
     setEditingTunnel(tunnel);
     setFormData({
       name: tunnel.name,
-      target_host: tunnel.target_host,
-      target_port: tunnel.target_port.toString(),
-      local_port: tunnel.local_port.toString()
+      external_port: tunnel.external_port.toString()
     });
     setShowForm(true);
   };
@@ -131,172 +161,275 @@ export default function TunnelManager() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-6">
+          <div className="nb-loader"></div>
+          <h2 className="text-2xl font-bold">LOADING...</h2>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <h1 className="text-3xl font-bold text-gray-900">SSH Tunnels</h1>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setShowForm(true)}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+    <div className="min-h-screen">
+      {/* Header */}
+      <header className="nb-box" style={{ 
+        borderBottom: 'none', 
+        padding: '20px 0', 
+        boxShadow: 'none',
+        position: 'relative'
+      }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h1 className="text-4xl font-black uppercase">
+              SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
+            </h1>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+              <button 
+                className="nb-btn nb-btn-accent" 
+                onClick={() => {
+                  setEditingTunnel(null);
+                  setFormData({ name: '', external_port: '' });
+                  setShowForm(true);
+                }}
               >
-                Create Tunnel
+                CREATE TUNNEL
               </button>
-              <button
-                onClick={logout}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                Logout
+              <button className="nb-btn nb-btn-glitch" onClick={logout}>
+                LOGOUT
               </button>
             </div>
           </div>
+          
+          {/* Tabs */}
+          <div className="nb-tabs">
+            <button 
+              className={`nb-tab ${activeTab === 'tunnels' ? 'nb-tab-active' : ''}`}
+              onClick={() => setActiveTab('tunnels')}
+            >
+              TUNNELS
+            </button>
+            <button 
+              className={`nb-tab ${activeTab === 'stats' ? 'nb-tab-active' : ''}`}
+              onClick={() => setActiveTab('stats')}
+            >
+              STATISTICS
+            </button>
+          </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded mb-6">
-            {error}
+      {/* Main Content */}
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+        {activeTab === 'tunnels' && (
+          <div style={{ marginTop: '40px' }}>
+            {error && (
+              <div className="nb-alert nb-alert-destructive">
+                {error}
+              </div>
+            )}
+
+            {tunnels.length === 0 ? (
+              <div className="nb-box nb-card">
+                <div className="nb-card-header">
+                  <h2 className="nb-card-title">NO TUNNELS CONFIGURED</h2>
+                </div>
+                <div className="nb-card-body">
+                  <p style={{ marginBottom: '20px' }}>
+                    Create your first tunnel to get started with SSHBridge.
+                  </p>
+                  <button 
+                    className="nb-btn nb-btn-primary"
+                    onClick={() => setShowForm(true)}
+                  >
+                    CREATE YOUR FIRST TUNNEL
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="nb-box nb-card">
+                <div className="nb-card-header">
+                  <h2 className="nb-card-title">YOUR SSH TUNNELS</h2>
+                </div>
+                <div className="nb-card-body">
+                  <table className="nb-table">
+                    <thead>
+                      <tr>
+                        <th>NAME</th>
+                        <th>EXTERNAL PORT</th>
+                        <th>CREATED</th>
+                        <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tunnels.map((tunnel) => (
+                        <tr key={tunnel.id}>
+                          <td className="font-medium">{tunnel.name}</td>
+                          <td>
+                            <span className="nb-badge">{tunnel.external_port}</span>
+                          </td>
+                          <td>
+                            {new Date(tunnel.created_at).toLocaleString()}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                              <button
+                                className="nb-btn"
+                                style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                onClick={() => handleEdit(tunnel)}
+                              >
+                                EDIT
+                              </button>
+                              <button
+                                className="nb-btn nb-btn-glitch"
+                                style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                onClick={() => handleDelete(tunnel.id)}
+                              >
+                                DELETE
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Instructions */}
+            <div className="nb-box nb-card" style={{ marginTop: '30px' }}>
+              <div className="nb-card-header">
+                <h2 className="nb-card-title">HOW TO USE YOUR TUNNELS</h2>
+              </div>
+              <div className="nb-card-body">
+                <ol style={{ lineHeight: '1.8', paddingLeft: '20px' }}>
+                  <li style={{ marginBottom: '10px' }}>Connect to this SSH server using your credentials and the -R flag</li>
+                  <li style={{ marginBottom: '10px' }}>
+                    Use your assigned external port: 
+                    <code style={{ 
+                      marginLeft: '10px', 
+                      padding: '4px 8px', 
+                      backgroundColor: 'var(--gray-light)', 
+                      border: '1px solid var(--fg-color)',
+                      fontFamily: 'monospace'
+                    }}>
+                      ssh -R {tunnels.length > 0 ? tunnels.map(t => t.external_port).join(', ') : 'PORT'}:localhost:LOCAL_PORT user@server
+                    </code>
+                  </li>
+                  <li style={{ marginBottom: '10px' }}>External users connect to your assigned external port on this SSH server</li>
+                  <li style={{ marginBottom: '10px' }}>SSH server forwards traffic to your local service specified in the -R flag</li>
+                  <li>
+                    Example: 
+                    <code style={{ 
+                      marginLeft: '10px', 
+                      padding: '4px 8px', 
+                      backgroundColor: 'var(--gray-light)', 
+                      border: '1px solid var(--fg-color)',
+                      fontFamily: 'monospace'
+                    }}>
+                      ssh -R 8080:localhost:3000 user@server
+                    </code>, 
+                    then external users access server:8080
+                  </li>
+                </ol>
+              </div>
+            </div>
           </div>
         )}
+        
+        {activeTab === 'stats' && (
+          <div style={{ marginTop: '40px' }}>
+            <TunnelStats />
+          </div>
+        )}
+      </main>
 
-        {showForm && (
-          <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <h2 className="text-xl font-semibold mb-4">
-              {editingTunnel ? 'Edit Tunnel' : 'Create New Tunnel'}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tunnel Name
+      {/* Dialog for Create/Edit Tunnel */}
+      {showForm && (
+        <div className="nb-dialog-overlay" style={{ display: 'grid' }}>
+          <div className="nb-dialog-card">
+            <div className="nb-dialog-header">
+              <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: '900', textTransform: 'uppercase' }}>
+                {editingTunnel ? 'EDIT TUNNEL' : 'CREATE NEW TUNNEL'}
+              </h2>
+              <button 
+                className="nb-btn" 
+                style={{ background: 'none', border: 'none', boxShadow: 'none', padding: '5px' }}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingTunnel(null);
+                  setFormData({ name: '', external_port: '' });
+                }}
+              >
+                X
+              </button>
+            </div>
+            <div className="nb-dialog-body">
+              <p style={{ marginBottom: '20px' }}>
+                {editingTunnel 
+                  ? 'Update the tunnel configuration below.'
+                  : 'Create a new SSH tunnel to expose your local services.'
+                }
+              </p>
+              
+              {error && (
+                <div className="nb-alert nb-alert-destructive">
+                  {error}
+                </div>
+              )}
+              
+              <form onSubmit={handleSubmit}>
+                <div className="form-group" style={{ marginBottom: '20px' }}>
+                  <label className="nb-label" htmlFor="name">
+                    TUNNEL NAME
                   </label>
                   <input
-                    type="text"
-                    required
+                    className="nb-input"
+                    id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Target Host
-                  </label>
-                  <input
-                    type="text"
+                    placeholder="e.g., Web Server"
                     required
-                    value={formData.target_host}
-                    onChange={(e) => setFormData({ ...formData, target_host: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Target Port
+                
+                <div className="form-group" style={{ marginBottom: '20px' }}>
+                  <label className="nb-label" htmlFor="external_port">
+                    EXTERNAL PORT
                   </label>
                   <input
+                    className="nb-input"
+                    id="external_port"
                     type="number"
+                    value={formData.external_port}
+                    onChange={(e) => setFormData({ ...formData, external_port: e.target.value })}
+                    placeholder="8080"
                     required
-                    value={formData.target_port}
-                    onChange={(e) => setFormData({ ...formData, target_port: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Local Port
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={formData.local_port}
-                    onChange={(e) => setFormData({ ...formData, local_port: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
+                
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button
+                    className="nb-btn"
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingTunnel(null);
+                      setFormData({ name: '', external_port: '' });
+                    }}
+                  >
+                    CANCEL
+                  </button>
+                  <button className="nb-btn nb-btn-primary" type="submit">
+                    {editingTunnel ? 'UPDATE' : 'CREATE'} TUNNEL
+                  </button>
                 </div>
-              </div>
-              <div className="flex space-x-4">
-                <button
-                  type="submit"
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
-                >
-                  {editingTunnel ? 'Update' : 'Create'} Tunnel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingTunnel(null);
-                    setFormData({ name: '', target_host: '', target_port: '', local_port: '' });
-                  }}
-                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          {tunnels.length === 0 ? (
-            <div className="px-4 py-8 text-center text-gray-500">
-              No tunnels configured. Create your first tunnel to get started.
+              </form>
             </div>
-          ) : (
-            <ul className="divide-y divide-gray-200">
-              {tunnels.map((tunnel) => (
-                <li key={tunnel.id} className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">{tunnel.name}</h3>
-                      <p className="text-sm text-gray-500">
-                        {tunnel.target_host}:{tunnel.target_port} → localhost:{tunnel.local_port}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        Created: {new Date(tunnel.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEdit(tunnel)}
-                        className="text-indigo-600 hover:text-indigo-900 text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(tunnel.id)}
-                        className="text-red-600 hover:text-red-900 text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          </div>
         </div>
-
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">How to use your tunnels:</h3>
-          <ol className="text-sm text-blue-700 list-decimal list-inside space-y-1">
-            <li>Connect to this SSH server using your credentials</li>
-            <li>Configure your SSH client to use local port forwarding</li>
-            <li>Example: ssh -L [local_port]:[target_host]:[target_port] user@server</li>
-            <li>The tunnel will forward traffic from your local port to the target host</li>
-          </ol>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
