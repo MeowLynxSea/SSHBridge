@@ -11,14 +11,9 @@ interface Tunnel {
   is_online?: boolean;
 }
 
-interface TunnelManagerProps {
-  // No props for now, but we can add props later if needed
-}
 
-interface TunnelStatus {
-  id: number;
-  is_online: boolean;
-}
+
+
 
 interface TunnelFormData {
   name: string;
@@ -44,7 +39,7 @@ export default function TunnelManager() {
     // Set up interval to fetch tunnel statuses
     const interval = setInterval(fetchTunnelStatuses, 5000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [token, fetchTunnelStatuses, fetchTunnels]);
 
   const fetchTunnelStatuses = async () => {
     try {
