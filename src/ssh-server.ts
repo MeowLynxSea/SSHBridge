@@ -485,7 +485,7 @@ export class SSHBridgeServer {
                 }
               } else if (command === 'status') {
                 // Enter status mode
-                this.showTunnelStatus(channel, conn, user);
+                await this.showTunnelStatus(channel, conn, user);
                 return; // Return early to avoid showing prompt
               } else if (command) {
                 channel.write(`Unknown command: ${command}\r\n`);
@@ -785,9 +785,12 @@ export class SSHBridgeServer {
   }
 
   // Show real-time tunnel status in a table format
-  private showTunnelStatus(channel: any, conn: any, user: any): void {
+  private async showTunnelStatus(channel: any, conn: any, user: any): Promise<void> {
     let statusInterval: any = null;
     let isStatusMode = true;
+    
+    // Get user's specific refresh interval
+    const userRefreshInterval = await this.database.getUserRefreshInterval(user.id);
     
     // Function to clear screen and move cursor to top-left
     const clearScreen = () => {
@@ -886,10 +889,10 @@ export class SSHBridgeServer {
     // Initial render
     renderStatusTable();
     
-    // Set up interval to refresh the table every 2 seconds
+    // Set up interval to refresh the table using the user's specific interval
     statusInterval = setInterval(() => {
       renderStatusTable();
-    }, 2000);
+    }, userRefreshInterval);
     
     // Override the data handler to catch Ctrl+C
     const originalDataHandler = channel.listeners('data')[0];

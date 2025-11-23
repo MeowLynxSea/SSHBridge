@@ -1,5 +1,6 @@
 import getDatabaseInstance from './database';
 import { SSHBridgeServer } from './ssh-server';
+import { setSSHServer } from './sshInstance';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -29,6 +30,9 @@ async function startServer() {
       port: sshPort,
       hostKey
     }, database);
+    
+    // Set the SSH server instance in our shared module
+    setSSHServer(sshServer);
     
     await sshServer.start();
     console.log(`SSH server started on port ${sshPort}`);

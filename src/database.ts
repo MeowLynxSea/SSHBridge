@@ -113,6 +113,18 @@ class Database {
       )
     `, []);
     
+    // Create user settings table
+    await run(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL UNIQUE,
+        refresh_interval INTEGER NOT NULL DEFAULT 2000,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `, []);
+    
     // Check if tunnels table exists
     const { get, all } = promisifyDb(this.db);
     const tableInfo = await get("SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'", []);
@@ -675,6 +687,39 @@ class Database {
     if (this.statsUpdateInterval) {
       clearInterval(this.statsUpdateInterval);
       this.statsUpdateInterval = null;
+    }
+  }
+
+  // User Settings Methods
+  async getUserRefreshInterval(userId: number): Promise<number> {
+    const { get } = promisifyDb(this.db);
+    try {
+      const setting = await get(
+        'SELECT refresh_interval FROM user_settings WHERE user_id = ?',
+        [userId]
+      ) as { refresh_interval: number } | undefined;
+      
+      return setting ? setting.refresh_interval : 2000; // Default 2 seconds
+    } catch (error) {
+      console.error('Error getting user refresh interval:', error);
+      return 2000; // Default on error
+    }
+  }
+
+  async setUserRefreshInterval(userId: number, refreshInterval: number): Promise<boolean> {
+    const { run } = promisifyDb(this.db);
+    try {
+      await run(`
+        INSERT INTO user_settings (user_id, refresh_interval, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id) 
+        DO UPDATE SET refresh_interval = ?, updated_at = CURRENT_TIMESTAMP
+      `, [userId, refreshInterval, refreshInterval]);
+      
+      return true;
+    } catch (error) {
+      console.error('Error setting user refresh interval:', error);
+      return false;
     }
   }
 }

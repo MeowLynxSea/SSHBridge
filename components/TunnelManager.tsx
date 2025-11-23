@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import TunnelStats from './TunnelStats';
+import Settings from './Settings';
 import { formatForDisplay } from '../src/utils/timeUtils';
 
 interface Tunnel {
@@ -30,6 +31,7 @@ export default function TunnelManager() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'tunnels' | 'stats'>('tunnels');
   const [tunnelStatuses, setTunnelStatuses] = useState<Map<number, boolean>>(new Map());
+  const [showSettings, setShowSettings] = useState(false);
   const [formData, setFormData] = useState<TunnelFormData>({
     name: '',
     external_port: ''
@@ -190,6 +192,16 @@ export default function TunnelManager() {
                 }}
               >
                 CREATE TUNNEL
+              </button>
+              <button 
+                className="nb-btn" 
+                onClick={() => setShowSettings(true)}
+                style={{ 
+                  background: 'var(--gray-light)', 
+                  color: 'var(--fg-color)' 
+                }}
+              >
+                SETTINGS
               </button>
               <button className="nb-btn nb-btn-glitch" onClick={logout}>
                 LOGOUT
@@ -426,6 +438,11 @@ export default function TunnelManager() {
           </div>
         </div>
       )}
+      {/* Settings Dialog */}
+      <Settings 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+      />
     </div>
   );
 }

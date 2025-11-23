@@ -30,6 +30,7 @@ export default function TunnelStats() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(5000); // Default 5 seconds
 
   const fetchStats = useCallback(async () => {
     try {
@@ -55,17 +56,40 @@ export default function TunnelStats() {
   }, [token]);
 
   useEffect(() => {
+    // Also fetch the refresh interval
+    const fetchRefreshInterval = async () => {
+      try {
+        const response = await fetch('/api/settings', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.refreshInterval) {
+            setRefreshInterval(data.refreshInterval);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch refresh interval:', err);
+      }
+    };
+
     fetchStats();
-    
+    fetchRefreshInterval();
+  }, [fetchStats, token]);
+
+  useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (autoRefresh) {
-      interval = setInterval(fetchStats, 5000); // Update every 5 seconds
+      interval = setInterval(fetchStats, refreshInterval);
     }
     
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [token, autoRefresh, fetchStats]);
+  }, [token, autoRefresh, fetchStats, refreshInterval]);
 
   const formatDate = (dateString: string) => {
     return formatForDisplay(dateString);
@@ -96,7 +120,7 @@ export default function TunnelStats() {
               />
               <span className="nb-checkmark"></span>
               <label htmlFor="auto-refresh" className="nb-label" style={{ margin: 0, marginBottom: 0 }}>
-                AUTO-REFRESH (5s)
+                AUTO-REFRESH ({refreshInterval / 1000}s)
               </label>
             </div>
             <button 
