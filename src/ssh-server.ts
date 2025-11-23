@@ -68,6 +68,10 @@ export class SSHBridgeServer {
   private handleAuthenticatedConnection(conn: any, user: any) {
     console.log(`User ${user.username} authenticated`);
     
+    // Initialize port forward request tracking
+    conn._pendingPortForwards = 0;
+    conn._processedPortForwards = 0;
+    
     // Reset current session stats when SSH session starts
     this.database.getTunnelsByUserId(user.id).then((tunnels: Tunnel[]) => {
       tunnels.forEach((tunnel: Tunnel) => {
@@ -81,8 +85,10 @@ export class SSHBridgeServer {
     conn.on('request', async (accept: any, reject: any, name: string, data: any) => {
       if (name === 'tcpip-forward') {
         try {
-          console.log(`Remote port forward request from ${user.username}: ${JSON.stringify(data)}`);
           const { bindAddr, bindPort } = data;
+          
+          // Track pending port forward requests
+          conn._pendingPortForwards = (conn._pendingPortForwards || 0) + 1;
           
           // Check if this remote forward matches any of the user's tunnel configurations
           const userTunnels = await this.database.getTunnelsByUserId(user.id);
@@ -108,9 +114,11 @@ export class SSHBridgeServer {
             reject();
             
             // Disconnect the SSH connection after a short delay
-            setTimeout(() => {
-              conn.end();
-            }, 500);
+            // Mark port forward as processed
+            conn._processedPortForwards = (conn._processedPortForwards || 0) + 1;
+            
+            // Wait for PTY request to show error before disconnecting
+            // Don't disconnect immediately - let PTY handler show the error
             return;
           }
 
@@ -133,9 +141,11 @@ export class SSHBridgeServer {
             reject();
             
             // Disconnect the SSH connection after a short delay
-            setTimeout(() => {
-              conn.end();
-            }, 500);
+            // Mark port forward as processed
+            conn._processedPortForwards = (conn._processedPortForwards || 0) + 1;
+            
+            // Wait for PTY request to show error before disconnecting
+            // Don't disconnect immediately - let PTY handler show the error
             return;
           }
           
@@ -262,6 +272,10 @@ export class SSHBridgeServer {
             
             // Accept the port forward request
             accept();
+            
+            // Mark port forward as processed
+            conn._processedPortForwards = (conn._processedPortForwards || 0) + 1;
+            
             console.log(`Remote port forwarding accepted: ${bindAddr}:${bindPort}`);
           });
           
@@ -364,7 +378,17 @@ export class SSHBridgeServer {
 
       // Handle shell requests
       session.on('shell', (accept: any, _reject: any) => {
-        console.log(`Shell request from user ${user.username}`);
+        // Wait for all port forward requests to be processed
+        const pending = conn._pendingPortForwards || 0;
+        const processed = conn._processedPortForwards || 0;
+        
+        if (processed < pending) {
+          setTimeout(() => {
+            session.emit('shell', accept, _reject);
+          }, 500);
+          return;
+        }
+        
         const channel = accept();
         
         // Store reference to channel and connection
