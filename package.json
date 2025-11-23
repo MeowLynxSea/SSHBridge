@@ -1,0 +1,50 @@
+{
+  "name": "sshbridge",
+  "version": "1.0.0",
+  "description": "SSH server with tunnel management and WebUI",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run web:dev\"",
+    "server:dev": "tsx watch src/server.ts",
+    "web:dev": "next dev",
+    "build": "npm run build:server && npm run build:web",
+    "build:server": "tsc",
+    "build:web": "next build",
+    "start": "node dist/server.js",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "ssh",
+    "tunnel",
+    "proxy",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "net": "^1.0.2",
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "sqlite3": "^5.1.6",
+    "ssh2": "^1.14.0",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.8.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/ws": "^8.5.8",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "tsx": "^4.20.6",
+    "typescript": "^5.2.2"
+  }
+}

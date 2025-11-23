@@ -1,0 +1,26 @@
+import { NextApiRequest, NextApiResponse } from 'next';
+import Database from '../../../src/database';
+
+const database = new Database();
+
+async function authenticate(req: NextApiRequest): Promise<{ id: number; username: string } | null> {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return null;
+  
+  const user = await database.validateSession(token);
+  return user ? { id: user.id, username: user.username } : null;
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'POST') {
+    try {
+      await database.deleteSession(req.headers.authorization?.replace('Bearer ', '') || '');
+      res.status(200).json({ message: 'Logged out successfully' });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  } else {
+    res.status(405).json({ error: 'Method not allowed' });
+  }
+}
