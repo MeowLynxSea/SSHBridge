@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { formatForDisplay } from '../src/utils/timeUtils';
 
 interface TunnelStatsResponse {
   id: number;
@@ -67,7 +68,7 @@ export default function TunnelStats() {
   }, [token, autoRefresh, fetchStats]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    return formatForDisplay(dateString);
   };
 
   if (isLoading) {

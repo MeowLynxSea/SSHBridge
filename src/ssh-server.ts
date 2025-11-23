@@ -3,6 +3,7 @@ import ssh2 from 'ssh2';
 import { Socket, createConnection } from 'net';
 import * as net from 'net';
 import { Database, Tunnel } from './database';
+import { getCurrentTime, formatDuration } from './utils/timeUtils';
 import './types/ssh2.d';
 
 export interface SSHServerConfig {
@@ -803,23 +804,7 @@ export class SSHBridgeServer {
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
     
-    // Function to format duration from milliseconds to human-readable format
-    const formatDuration = (startTime: Date): string => {
-      const now = new Date();
-      const diffMs = now.getTime() - startTime.getTime();
-      
-      const hours = Math.floor(diffMs / (1000 * 60 * 60));
-      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-      
-      if (hours > 0) {
-        return `${hours}h ${minutes}m ${seconds}s`;
-      } else if (minutes > 0) {
-        return `${minutes}m ${seconds}s`;
-      } else {
-        return `${seconds}s`;
-      }
-    };
+
     
     // Function to render the status table
     const renderStatusTable = async () => {
@@ -828,7 +813,7 @@ export class SSHBridgeServer {
       clearScreen();
       channel.write(`\x1b[1mSSHBridge Tunnel Status Monitor\x1b[0m\r\n`);
       channel.write(`User: ${user.username} | Showing current session tunnels only | Press Ctrl+C to exit\r\n`);
-      channel.write(`Last updated: ${new Date().toLocaleString()}\r\n`);
+      channel.write(`Last updated: ${getCurrentTime()}\r\n`);
       channel.write(`\r\n`);
       
       // Get active remote port forwards for this connection

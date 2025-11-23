@@ -7,8 +7,8 @@ export interface TunnelStats {
   current_bytes_sent: number;
   active_connections: number;
   is_online: number;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface RealtimeStats {

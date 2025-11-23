@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { TunnelStats, RealtimeStats, TunnelStatsWithInfo } from './types/stats';
+import { parseDatabaseDate, createFutureTime } from './utils/timeUtils';
 
 // SQLite types
 interface RunResult {
@@ -48,7 +49,7 @@ export interface User {
   id: number;
   username: string;
   password: string;
-  created_at: Date;
+  created_at: string;
 }
 
 export interface Tunnel {
@@ -56,15 +57,15 @@ export interface Tunnel {
   user_id: number;
   name: string;
   external_port: number;
-  created_at: Date;
+  created_at: string;
 }
 
 export interface Session {
   id: number;
   user_id: number;
   token: string;
-  expires_at: Date;
-  created_at: Date;
+  expires_at: string;
+  created_at: string;
 }
 
 class Database {
@@ -230,7 +231,7 @@ class Database {
       id: Number(row.id),
       username: String(row.username),
       password: String(row.password),
-      created_at: new Date(String(row.created_at))
+      created_at: parseDatabaseDate(String(row.created_at)).toISOString()
     };
   }
 
@@ -294,19 +295,18 @@ class Database {
       user_id: Number(row.user_id),
       name: String(row.name),
       external_port: Number(row.external_port),
-      created_at: new Date(String(row.created_at))
+      created_at: parseDatabaseDate(String(row.created_at)).toISOString()
     };
   }
 
   async createSession(userId: number): Promise<string> {
     const token = jwt.sign({ userId }, this.jwtSecret, { expiresIn: '24h' });
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
+    const expiresAt = createFutureTime(24);
     
     const { run } = promisifyDb(this.db);
     await run(
       'INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)',
-      [userId, token, expiresAt.toISOString()]
+      [userId, token, expiresAt]
     );
     
     return token;
@@ -529,8 +529,8 @@ class Database {
       current_bytes_sent: Number(row.current_bytes_sent),
       active_connections: Number(row.active_connections),
       is_online: Number(Number(row.is_online) === 1),
-      created_at: new Date(String(row.created_at)),
-      updated_at: new Date(String(row.updated_at))
+      created_at: parseDatabaseDate(String(row.created_at)).toISOString(),
+      updated_at: parseDatabaseDate(String(row.updated_at)).toISOString()
     };
   }
 

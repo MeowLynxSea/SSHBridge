@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import TunnelStats from './TunnelStats';
+import { formatForDisplay } from '../src/utils/timeUtils';
 
 interface Tunnel {
   id: number;
@@ -264,7 +265,7 @@ export default function TunnelManager() {
                             <span className="nb-badge">{tunnel.external_port}</span>
                           </td>
                           <td>
-                            {new Date(tunnel.created_at).toLocaleString()}
+                            {formatForDisplay(tunnel.created_at)}
                           </td>
                           <td style={{ textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
