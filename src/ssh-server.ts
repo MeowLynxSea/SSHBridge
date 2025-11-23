@@ -172,15 +172,26 @@ export class SSHBridgeServer {
                 return;
               }
               
-              // Forward data between socket and channel
+              // Set socket timeout
+              socket.setTimeout(30000); // 30 second timeout
+              
+              // Forward data between socket and channel with backpressure handling
               socket.on('data', (data: Buffer) => {
                 bytesReceived += data.length;
-                channel.write(data);
+                // Handle backpressure - pause socket if channel buffer is full
+                if (!channel.write(data)) {
+                  socket.pause();
+                  channel.once('drain', () => socket.resume());
+                }
               });
               
               channel.on('data', (data: Buffer) => {
                 bytesSent += data.length;
-                socket.write(data);
+                // Handle backpressure - pause channel if socket buffer is full
+                if (!socket.write(data)) {
+                  channel.pause();
+                  socket.once('drain', () => channel.resume());
+                }
               });
               
               socket.on('close', () => {
@@ -196,8 +207,9 @@ export class SSHBridgeServer {
                 this.updateTunnelConnectionCount(matchingTunnel.id);
               });
               
-              channel.on('close', () => {
-                socket.end();
+              socket.on('timeout', () => {
+                console.log(`Socket timeout for ${bindAddr}:${bindPort}`);
+                socket.destroy();
               });
               
               socket.on('error', (err: Error) => {
@@ -213,6 +225,14 @@ export class SSHBridgeServer {
                 }
               });
               
+              channel.on('close', () => {
+                try {
+                  socket.destroy(); // Use destroy instead of end for immediate closure
+                } catch {
+                  // Socket might already be closed, ignore error
+                }
+              });
+              
               channel.on('error', (err: Error) => {
                 console.error(`Channel error: ${err.message}`);
                 // Clean up connection tracking when channel error occurs
@@ -220,7 +240,7 @@ export class SSHBridgeServer {
                 this.updateTunnelConnectionCount(matchingTunnel.id);
                 // Close the socket but do NOT affect the SSH connection itself
                 try {
-                  socket.end();
+                  socket.destroy(); // Use destroy instead of end for immediate closure
                 } catch {
                   // Socket might already be closed, ignore error
                 }
@@ -575,7 +595,8 @@ export class SSHBridgeServer {
       // For direct-tcpip connections, we forward to the address specified in the connection info
       const socket = createConnection({
         host: info.destAddr,
-        port: info.destPort
+        port: info.destPort,
+        timeout: 10000 // 10 second connect timeout
       }) as Socket;
       
       // Track this connection for statistics
@@ -598,15 +619,30 @@ export class SSHBridgeServer {
       socket.on('connect', () => {
         console.log(`Connected to target ${info.destAddr}:${info.destPort}`);
       });
+      
+      socket.setTimeout(30000); // 30 second timeout
 
       socket.on('data', (data: Buffer) => {
         totalBytesReceived += data.length;
-        channel.write(data);
+        // Handle backpressure - pause socket if channel buffer is full
+        if (!channel.write(data)) {
+          socket.pause();
+          channel.once('drain', () => socket.resume());
+        }
       });
 
       channel.on('data', (data: Buffer) => {
         totalBytesSent += data.length;
-        socket.write(data);
+        // Handle backpressure - pause channel if socket buffer is full
+        if (!socket.write(data)) {
+          channel.pause();
+          socket.once('drain', () => channel.resume());
+        }
+      });
+
+      socket.on('timeout', () => {
+        console.log(`Socket timeout for ${info.destAddr}:${info.destPort}`);
+        socket.destroy();
       });
 
       socket.on('error', (err: Error) => {
