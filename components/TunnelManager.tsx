@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import TunnelStats from './TunnelStats';
 
@@ -34,14 +34,7 @@ export default function TunnelManager() {
     external_port: ''
   });
 
-  useEffect(() => {
-    fetchTunnels();
-    // Set up interval to fetch tunnel statuses
-    const interval = setInterval(fetchTunnelStatuses, 5000);
-    return () => clearInterval(interval);
-  }, [token, fetchTunnelStatuses, fetchTunnels]);
-
-  const fetchTunnelStatuses = async () => {
+  const fetchTunnelStatuses = useCallback(async () => {
     try {
       const response = await fetch('/api/stats', {
         headers: {
@@ -52,7 +45,7 @@ export default function TunnelManager() {
       if (response.ok) {
         const data = await response.json();
         const statuses = new Map<number, boolean>();
-        data.stats.forEach((stat: any) => {
+        data.stats.forEach((stat: { tunnel_id: number; is_online: number }) => {
           statuses.set(stat.tunnel_id, stat.is_online === 1);
         });
         setTunnelStatuses(statuses);
@@ -60,9 +53,9 @@ export default function TunnelManager() {
     } catch (err) {
       console.error('Failed to fetch tunnel statuses:', err);
     }
-  };
+  }, [token]);
 
-  const fetchTunnels = async () => {
+  const fetchTunnels = useCallback(async () => {
     try {
       const response = await fetch('/api/tunnels', {
         headers: {
@@ -83,7 +76,14 @@ export default function TunnelManager() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, tunnelStatuses]);
+
+  useEffect(() => {
+    fetchTunnels();
+    // Set up interval to fetch tunnel statuses
+    const interval = setInterval(fetchTunnelStatuses, 5000);
+    return () => clearInterval(interval);
+  }, [token, fetchTunnelStatuses, fetchTunnels]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

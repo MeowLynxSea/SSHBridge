@@ -26,11 +26,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       token
     });
-  } catch (error: any) {
-    if (error.message && error.message.includes('UNIQUE constraint failed')) {
+  } catch (error: unknown) {
+    const err = error as Error;
+    if (err.message && err.message.includes('UNIQUE constraint failed')) {
       return res.status(409).json({ error: 'Username already exists' });
     }
-    console.error('Registration error:', error);
+    console.error('Registration error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

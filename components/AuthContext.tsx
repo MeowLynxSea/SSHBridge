@@ -27,10 +27,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const savedUser = localStorage.getItem('user');
     
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      // Use requestAnimationFrame to avoid setState synchronously in effect
+      requestAnimationFrame(() => {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+        setIsLoading(false);
+      });
+    } else {
+      requestAnimationFrame(() => {
+        setIsLoading(false);
+      });
     }
-    setIsLoading(false);
   }, []);
 
   const login = async (username: string, password: string) => {

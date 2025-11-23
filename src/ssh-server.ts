@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import ssh2 from 'ssh2';
 import { Socket, createConnection } from 'net';
+import * as net from 'net';
 import { Database, Tunnel } from './database';
 import './types/ssh2.d';
 
@@ -139,8 +141,7 @@ export class SSHBridgeServer {
           console.log(`Remote forward ${bindAddr}:${bindPort} validated for user ${user.username} - matches tunnel: ${matchingTunnel.name}`);
           
           // Create a TCP server to listen on the requested port
-          const net = await import('net');
-          const server = net.createServer((socket) => {
+          const server = net.createServer((socket: any) => {
             console.log(`New connection to ${bindAddr}:${bindPort} from ${socket.remoteAddress}:${socket.remotePort}`);
             
             // Track this connection for statistics
@@ -153,6 +154,13 @@ export class SSHBridgeServer {
             // Update active connections count
             this.updateTunnelConnectionCount(matchingTunnel.id);
             
+            // Don't reset current session stats for individual TCP connections
+            // Only reset when the entire SSH session starts
+            
+            // Track data transfer for statistics
+            let bytesReceived = 0;
+            let bytesSent = 0;
+            
             // Open a channel back to the SSH client for forwarded-tcpip
             conn.forwardOut(bindAddr, bindPort, socket.remoteAddress, socket.remotePort, (err: any, channel: any) => {
               if (err) {
@@ -164,21 +172,14 @@ export class SSHBridgeServer {
                 return;
               }
               
-              // Don't reset current session stats for individual TCP connections
-              // Only reset when the entire SSH session starts
-              
-              // Track data transfer for statistics
-              let totalBytesReceived = 0;
-              let totalBytesSent = 0;
-              
               // Forward data between socket and channel
               socket.on('data', (data: Buffer) => {
-                totalBytesReceived += data.length;
+                bytesReceived += data.length;
                 channel.write(data);
               });
               
               channel.on('data', (data: Buffer) => {
-                totalBytesSent += data.length;
+                bytesSent += data.length;
                 socket.write(data);
               });
               
@@ -190,7 +191,7 @@ export class SSHBridgeServer {
                 }
                 
                 // Update statistics and remove connection tracking
-                this.updateTunnelStats(matchingTunnel.id, totalBytesReceived, totalBytesSent);
+                this.updateTunnelStats(matchingTunnel.id, bytesReceived, bytesSent);
                 this.tunnelConnections.get(matchingTunnel.id)?.delete(connectionId);
                 this.updateTunnelConnectionCount(matchingTunnel.id);
               });
@@ -398,7 +399,7 @@ export class SSHBridgeServer {
         channel.write(`\r\nSSHBridge> `);
         
         let inputBuffer = '';
-
+        
         channel.on('data', async (data: Buffer) => {
           const str = data.toString();
           
@@ -649,13 +650,62 @@ export class SSHBridgeServer {
         this.updateTunnelConnectionCount(tunnel.id);
       });
 
-      this.tunnels.set(`${conn.id}_${info.destPort}`, { connection: conn, tunnel });
-      
+      socket.on('end', () => {
+        try {
+          channel.close();
+        } catch {
+          // Channel might already be closed, ignore error
+        }
+      });
+
+      channel.on('end', () => {
+        try {
+          socket.end();
+        } catch {
+          // Socket might already be closed, ignore error
+        }
+      });
     } catch (error) {
       console.error('Error handling direct-tcpip:', error);
     }
   }
 
+  private updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number): void {
+    this.database.updateTunnelStats(tunnelId, bytesReceived, bytesSent, 0); // 0 for active connections since we're just updating stats
+  }
+
+  private updateTunnelConnectionCount(tunnelId: number): void {
+    const connections = this.tunnelConnections.get(tunnelId);
+    const count = connections ? connections.size : 0;
+    this.database.updateTunnelConnections(tunnelId, count);
+  }
+
+  // Method to disconnect a tunnel if it's being used by another connection
+  disconnectTunnelIfActive(tunnelId: number, currentConn: any): void {
+    const activeTunnel = this.activeTunnels.get(tunnelId);
+    if (activeTunnel && activeTunnel.connection !== currentConn) {
+      console.log(`Disconnecting tunnel ${tunnelId} from previous connection`);
+      
+      // Set up a flag on the old connection to show a message
+      activeTunnel.connection._sshbTunnelReplaced = {
+        message: `隧道 ${tunnelId} 已被新连接替换`,
+        details: '您的隧道已从另一个位置连接。此连接将被关闭。'
+      };
+      
+      // Close the old connection
+      activeTunnel.connection.end();
+      
+      // Clean up the old tunnel
+      const key = `${activeTunnel.user.username}_${activeTunnel.tunnel.port}`;
+      this.remoteForwards.delete(key);
+      activeTunnel.server.close();
+      
+      // Remove from active tunnels
+      this.activeTunnels.delete(tunnelId);
+    }
+  }
+
+  // Method to cleanup all connections and servers for a given connection
   private cleanupConnection(conn: any) {
     // Clean up regular tunnels
     for (const [key, value] of this.tunnels.entries()) {
@@ -664,148 +714,47 @@ export class SSHBridgeServer {
         this.tunnels.delete(key);
       }
     }
-    
-    // Clean up remote port forwards and mark tunnels as offline
+
+    // Clean up remote port forwards
     for (const [key, value] of this.remoteForwards.entries()) {
       if (value.connection === conn) {
-        console.log(`Cleaning up remote forward: ${value.bindAddr}:${value.bindPort}`);
-        
-        // Find the tunnel associated with this port to mark it offline and clean up connections
-        (async () => {
-          try {
-            const userTunnels = await this.database.getTunnelsByUserId(value.user.id);
-            const matchingTunnel = userTunnels.find((tunnel: Tunnel) => tunnel.external_port === value.bindPort);
-            if (matchingTunnel) {
-              // Clean up connection tracking for this tunnel
-              this.tunnelConnections.delete(matchingTunnel.id);
-              this.updateTunnelConnectionCount(matchingTunnel.id);
-              
-              this.database.updateTunnelOnlineStatus(matchingTunnel.id, false);
-              this.activeTunnels.delete(matchingTunnel.id);
-            }
-          } catch (error) {
-            console.error('Error marking tunnel offline:', error);
-          }
-        })();
-        
+        console.log(`Cleaning up remote forward on ${value.bindAddr}:${value.bindPort}`);
         value.server.close();
         this.remoteForwards.delete(key);
-      }
-    }
-  }
-
-  private async updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number): Promise<void> {
-    try {
-      const activeConnections = this.tunnelConnections.get(tunnelId)?.size || 0;
-      await this.database.updateTunnelStats(tunnelId, bytesReceived, bytesSent, activeConnections);
-    } catch (error) {
-      console.error(`Failed to update tunnel stats for tunnel ${tunnelId}:`, error);
-    }
-  }
-
-  private async updateTunnelConnectionCount(tunnelId: number): Promise<void> {
-    try {
-      const activeConnections = this.tunnelConnections.get(tunnelId)?.size || 0;
-      await this.database.updateTunnelConnections(tunnelId, activeConnections);
-    } catch (error) {
-      console.error(`Failed to update connection count for tunnel ${tunnelId}:`, error);
-    }
-  }
-
-  start(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // Reset all tunnel statistics when server starts
-      this.resetAllTunnelStats().then(() => {
-        this.sshServer.listen(this.config.port, this.config.host || '0.0.0.0', () => {
-          console.log(`SSH server listening on ${this.config.host || '0.0.0.0'}:${this.config.port}`);
-          resolve();
-        }).on('error', reject);
-      }).catch(error => {
-        console.error('Error resetting tunnel stats during startup:', error);
-        // Even if stats reset fails, still try to start the server
-        this.sshServer.listen(this.config.port, this.config.host || '0.0.0.0', () => {
-          console.log(`SSH server listening on ${this.config.host || '0.0.0.0'}:${this.config.port}`);
-          resolve();
-        }).on('error', reject);
-      });
-    });
-  }
-
-  stop(): Promise<void> {
-    return new Promise((resolve) => {
-      // Clean up statistics tracking
-      this.database.cleanup();
-      
-      // Reset all tunnel statistics when server shuts down
-      this.resetAllTunnelStats().then(() => {
-        for (const [key, value] of this.tunnels.entries()) {
-          value.connection.end();
-          this.tunnels.delete(key);
+        
+        // Find and remove from active tunnels
+        for (const [tunnelId, activeTunnel] of this.activeTunnels.entries()) {
+          if (activeTunnel.connection === conn) {
+            this.activeTunnels.delete(tunnelId);
+            break;
+          }
         }
-        
-        this.sshServer.close(() => {
-          console.log('SSH server stopped');
-          resolve();
-        });
-      }).catch(error => {
-        console.error('Error resetting tunnel stats:', error);
-        
-        // Even if stats reset fails, still shut down the server
-        for (const [key, value] of this.tunnels.entries()) {
-          value.connection.end();
-          this.tunnels.delete(key);
-        }
-        
-        this.sshServer.close(() => {
-          console.log('SSH server stopped');
-          resolve();
-        });
-      });
-    });
-  }
-
-  private async resetAllTunnelStats(): Promise<void> {
-    try {
-      const allTunnelIds = await this.database.getAllTunnelIds();
-      
-      for (const tunnelId of allTunnelIds) {
-        // Reset current session data
-        this.database.resetCurrentSessionStats(tunnelId);
-        
-        // Set tunnel to offline
-        this.database.updateTunnelOnlineStatus(tunnelId, false);
-        
-        // Set active connections to 0
-        this.database.updateTunnelConnections(tunnelId, 0);
       }
-      
-      console.log(`Reset stats for ${allTunnelIds.length} tunnels during server shutdown`);
-    } catch (error) {
-      console.error('Error resetting all tunnel stats:', error);
-      throw error;
+    }
+
+    // Clear connection tracking for all tunnels associated with this connection
+    for (const [tunnelId, connections] of this.tunnelConnections.entries()) {
+      // We don't know which specific connections belong to this SSH connection,
+      // so we'll clear all of them to avoid stale data
+      connections.clear();
+      this.updateTunnelConnectionCount(tunnelId);
     }
   }
 
-  getActiveTunnels(): Array<{ tunnel: Tunnel; user: string }> {
-    return Array.from(this.tunnels.values()).map(value => ({
-      tunnel: value.tunnel,
-      user: 'unknown' // We would need to track users separately
-    }));
+  start(callback?: () => void) {
+    this.sshServer.listen({
+      port: this.config.port,
+      host: this.config.host || '0.0.0.0'
+    }, callback);
   }
 
-  // Get online tunnels by tunnel ID
-  isTunnelOnline(tunnelId: number): boolean {
-    return this.activeTunnels.has(tunnelId);
-  }
-
-  // Get online tunnels for a user
-  getOnlineTunnelsForUser(userId: number): Array<{ tunnel: Tunnel; port: number }> {
-    const result: Array<{ tunnel: Tunnel; port: number }> = [];
-    for (const [, info] of this.activeTunnels.entries()) {
-      if (info.tunnel.user_id === userId) {
-        result.push({ tunnel: info.tunnel, port: info.port });
-      }
+  stop(callback?: () => void) {
+    // Close all active connections and servers
+    for (const [key, value] of this.remoteForwards.entries()) {
+      value.server.close();
+      this.remoteForwards.delete(key);
     }
-    return result;
+
+    this.sshServer.close(callback);
   }
 }

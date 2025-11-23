@@ -10,23 +10,23 @@ interface RunResult {
   changes: number;
 }
 
-interface Row {
-  [key: string]: string | number | boolean | null;
-}
-
-interface TableColumn {
-  cid: number;
-  name: string;
-  type: string;
-  notnull: number;
-  dflt_value: string | null;
-  pk: number;
-}
-
-interface TunnelRow {
-  id: number;
-  name: string;
+interface Row extends Record<string, string | number | boolean | null> {
+  name?: string;
+  id?: number;
+  username?: string;
+  password?: string;
+  created_at?: string;
+  user_id?: number;
   tunnel_id?: number;
+  external_port?: number;
+  total_bytes_received?: number;
+  total_bytes_sent?: number;
+  current_bytes_received?: number;
+  current_bytes_sent?: number;
+  active_connections?: number;
+  is_online?: number;
+  updated_at?: string;
+  tunnel_name?: string;
 }
 
 // Helper function to promisify database methods
@@ -118,9 +118,9 @@ class Database {
     
     if (tableInfo) {
       // Check if we need to migrate from old schema to new schema
-      const columns = await all("PRAGMA table_info(tunnels)", []) as unknown as TableColumn[];
-      const hasOldColumns = columns.some((col) => col.name === 'local_port') && 
-                            !columns.some((col) => col.name === 'external_port');
+      const columns = await all("PRAGMA table_info(tunnels)", []);
+      const hasOldColumns = columns.some((col: Row) => col.name === 'local_port') && 
+                            !columns.some((col: Row) => col.name === 'external_port');
       
       if (hasOldColumns) {
         console.log('Migrating tunnels database from old schema to new schema...');
@@ -148,7 +148,7 @@ class Database {
         await run('ALTER TABLE tunnels_new RENAME TO tunnels', []);
         
         console.log('Database migration completed');
-      } else if (!columns.some((col) => col.name === 'external_port')) {
+      } else if (!columns.some((col: Row) => col.name === 'external_port')) {
         // Table exists but doesn't have external_port column, create it with default schema
         await run('DROP TABLE tunnels', []);
       }
@@ -184,8 +184,8 @@ class Database {
     `, []);
 
     // Check if we need to add the is_online column (for backward compatibility)
-    const statsTableInfo = await all("PRAGMA table_info(tunnel_stats)", []) as unknown as TableColumn[];
-    const hasOnlineColumn = statsTableInfo.some((col) => col.name === 'is_online');
+    const statsTableInfo = await all("PRAGMA table_info(tunnel_stats)", []);
+    const hasOnlineColumn = statsTableInfo.some((col: Row) => col.name === 'is_online');
     
     if (!hasOnlineColumn) {
       console.log('Adding is_online column to tunnel_stats table for backward compatibility');
@@ -227,10 +227,10 @@ class Database {
 
   private mapRowToUser(row: Row): User {
     return {
-      id: Number(row.id),
-      username: String(row.username),
-      password: String(row.password),
-      created_at: new Date(String(row.created_at))
+      id: row.id || 0,
+      username: row.username || '',
+      password: row.password || '',
+      created_at: new Date(row.created_at || '')
     };
   }
 
@@ -290,11 +290,19 @@ class Database {
 
   private mapRowToTunnel(row: Row): Tunnel {
     return {
-      id: Number(row.id),
-      user_id: Number(row.user_id),
-      name: String(row.name),
-      external_port: Number(row.external_port),
-      created_at: new Date(String(row.created_at))
+      id: row.id || 0,
+      user_id: row.user_id || 0,
+      name: row.name || '',
+      external_port: row.external_port || 0,
+      created_at: new Date(row.created_at || '')
+    };
+  }
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      name: row.name,
+      external_port: row.external_port,
+      created_at: new Date(row.created_at)
     };
   }
 
@@ -365,11 +373,11 @@ class Database {
     const { all } = promisifyDb(this.db);
     
     // First, ensure all tunnels have stats records
-    const tunnels = await all('SELECT * FROM tunnels WHERE user_id = ?', [userId]) as unknown as Tunnel[];
+    const tunnels = await all('SELECT * FROM tunnels WHERE user_id = ?', [userId]);
     for (const tunnel of tunnels) {
-      const existingStats = await this.getTunnelStatsByTunnelId(Number(tunnel.id));
+      const existingStats = await this.getTunnelStatsByTunnelId(tunnel.id);
       if (!existingStats) {
-        await this.createTunnelStats(Number(tunnel.id));
+        await this.createTunnelStats(tunnel.id);
       }
     }
     
@@ -378,20 +386,19 @@ class Database {
       FROM tunnel_stats ts
       JOIN tunnels t ON ts.tunnel_id = t.id
       WHERE t.user_id = ?
-    `, [userId]) as (Row & { tunnel_name: string; external_port: number; user_id: number })[];
-    const castRows = rows as (Row & { tunnel_name: string; external_port: number; user_id: number })[];
-    return castRows.map(row => this.mapRowToTunnelStatsWithInfo(row));
+    `, [userId]);
+    return rows.map(row => this.mapRowToTunnelStatsWithInfo(row));
   }
 
   async getAllTunnelStats(): Promise<TunnelStatsWithInfo[]> {
     const { all } = promisifyDb(this.db);
     
     // First, ensure all tunnels have stats records
-    const tunnels = await all('SELECT * FROM tunnels', []) as unknown as Tunnel[];
+    const tunnels = await all('SELECT * FROM tunnels', []);
     for (const tunnel of tunnels) {
-      const existingStats = await this.getTunnelStatsByTunnelId(Number(tunnel.id));
+      const existingStats = await this.getTunnelStatsByTunnelId(tunnel.id);
       if (!existingStats) {
-        await this.createTunnelStats(Number(tunnel.id));
+        await this.createTunnelStats(tunnel.id);
       }
     }
     
@@ -399,9 +406,8 @@ class Database {
       SELECT ts.*, t.name as tunnel_name, t.external_port, t.user_id
       FROM tunnel_stats ts
       JOIN tunnels t ON ts.tunnel_id = t.id
-    `, []) as (Row & { tunnel_name: string; external_port: number; user_id: number })[];
-    const castRows = rows as (Row & { tunnel_name: string; external_port: number; user_id: number })[];
-    return castRows.map(row => this.mapRowToTunnelStatsWithInfo(row));
+    `, []);
+    return rows.map(row => this.mapRowToTunnelStatsWithInfo(row));
   }
 
   async updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections: number): Promise<void> {
@@ -425,7 +431,7 @@ class Database {
           active_connections = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE tunnel_id = ?
-    `, [bytesReceived, bytesSent, Number(this.currentBytesReceived.get(tunnelId)) || 0, Number(this.currentBytesSent.get(tunnelId)) || 0, activeConnections, tunnelId]);
+    `, [bytesReceived, bytesSent, this.currentBytesReceived.get(tunnelId), this.currentBytesSent.get(tunnelId), activeConnections, tunnelId]);
   }
 
   private async loadCurrentSessionData(): Promise<void> {
@@ -434,7 +440,7 @@ class Database {
     try {
       // Load all tunnel stats but don't restore current session data
       // Current session data should start fresh when server starts
-      const stats = await all('SELECT tunnel_id FROM tunnel_stats', []) as unknown as { tunnel_id: number }[];
+      const stats = await all('SELECT tunnel_id FROM tunnel_stats', []);
       
       for (const stat of stats) {
         // Initialize current session data to 0 for all tunnels
@@ -482,7 +488,7 @@ class Database {
       SET is_online = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE tunnel_id = ?
-    `, [Number(isOnline) ? 1 : 0, tunnelId]);
+    `, [isOnline ? 1 : 0, tunnelId]);
   }
 
   // Method to check if a tunnel is online
@@ -521,25 +527,45 @@ class Database {
 
   private mapRowToTunnelStats(row: Row): TunnelStats {
     return {
-      id: Number(row.id),
-      tunnel_id: Number(row.tunnel_id),
-      total_bytes_received: Number(row.total_bytes_received),
-      total_bytes_sent: Number(row.total_bytes_sent),
-      current_bytes_received: Number(row.current_bytes_received),
-      current_bytes_sent: Number(row.current_bytes_sent),
-      active_connections: Number(row.active_connections),
-      is_online: Number(Number(row.is_online) === 1),
-      created_at: new Date(String(row.created_at)),
-      updated_at: new Date(String(row.updated_at))
+      id: row.id || 0,
+      tunnel_id: row.tunnel_id || 0,
+      total_bytes_received: row.total_bytes_received || 0,
+      total_bytes_sent: row.total_bytes_sent || 0,
+      current_bytes_received: row.current_bytes_received || 0,
+      current_bytes_sent: row.current_bytes_sent || 0,
+      active_connections: row.active_connections || 0,
+      is_online: row.is_online || 0,
+      created_at: new Date(row.created_at || ''),
+      updated_at: new Date(row.updated_at || '')
+    };
+  }
+    return {
+      id: row.id,
+      tunnel_id: row.tunnel_id,
+      total_bytes_received: row.total_bytes_received,
+      total_bytes_sent: row.total_bytes_sent,
+      current_bytes_received: row.current_bytes_received,
+      current_bytes_sent: row.current_bytes_sent,
+      active_connections: row.active_connections,
+      is_online: row.is_online,
+      created_at: new Date(row.created_at),
+      updated_at: new Date(row.updated_at)
     };
   }
 
-  private mapRowToTunnelStatsWithInfo(row: Row & { tunnel_name: string; external_port: number; user_id: number }): TunnelStatsWithInfo {
+  private mapRowToTunnelStatsWithInfo(row: Row): TunnelStatsWithInfo {
     return {
       ...this.mapRowToTunnelStats(row),
-      tunnel_name: String(row.tunnel_name),
-      external_port: Number(row.external_port),
-      user_id: Number(row.user_id)
+      tunnel_name: row.tunnel_name || '',
+      external_port: row.external_port || 0,
+      user_id: row.user_id || 0
+    };
+  }
+    return {
+      ...this.mapRowToTunnelStats(row),
+      tunnel_name: row.tunnel_name,
+      external_port: row.external_port,
+      user_id: row.user_id
     };
   }
 
@@ -588,10 +614,10 @@ class Database {
         
         history.push({
           timestamp: now,
-          bytes_per_second_received: Math.max(0, Number(rateReceived) || 0),
-          bytes_per_second_sent: Math.max(0, Number(rateSent) || 0),
-          current_bytes_received: Number(currentReceived) || 0,
-          current_bytes_sent: Number(currentSent) || 0
+          bytes_per_second_received: Math.max(0, rateReceived),
+          bytes_per_second_sent: Math.max(0, rateSent),
+          current_bytes_received: currentReceived,
+          current_bytes_sent: currentSent
         });
         
         this.rateHistory.set(tunnelId, history);
@@ -615,7 +641,7 @@ class Database {
               current_bytes_sent = ?,
               updated_at = CURRENT_TIMESTAMP
           WHERE tunnel_id = ?
-        `, [Number(currentReceived) || 0, Number(currentSent) || 0, tunnelId]);
+        `, [currentReceived, currentSent, tunnelId]);
       }
     } catch (error) {
       console.error('Error updating current session data:', error);
@@ -625,8 +651,8 @@ class Database {
   async getAllTunnelIds(): Promise<number[]> {
     const { all } = promisifyDb(this.db);
     try {
-      const tunnels = await all('SELECT id FROM tunnels', []) as unknown as TunnelRow[];
-      return tunnels.map((t) => Number(t.id));
+      const tunnels = await all('SELECT id FROM tunnels', []);
+      return tunnels.map((t: Row) => t.id || 0);
     } catch (error) {
       console.error('Error fetching tunnel IDs:', error);
       return [];

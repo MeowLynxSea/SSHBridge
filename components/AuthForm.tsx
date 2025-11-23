@@ -24,8 +24,9 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       } else {
         await register(username, password);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }

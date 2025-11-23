@@ -12,6 +12,9 @@
     "sourceType": "module",
     "ecmaFeatures": {
       "jsx": true
+    },
+    "globals": {
+      "NodeJS": true
     }
   },
   "settings": {
@@ -24,7 +27,18 @@
     "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",
-    "@typescript-eslint/no-explicit-any": "warn",
-    "react-hooks/exhaustive-deps": "warn"
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/prefer-const": "error",
+    "@typescript-eslint/no-unnecessary-type-assertion": "error",
+    "@typescript-eslint/prefer-nullish-coalescing": "error",
+    "@typescript-eslint/prefer-optional-chain": "error",
+    "@typescript-eslint/strict-boolean-expressions": "error",
+    "react-hooks/exhaustive-deps": "error",
+    "react-hooks/set-state-in-effect": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-console": "warn",
+    "eqeqeq": "error",
+    "curly": "error"
   }
 }
