@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 
 interface Tunnel {
@@ -34,7 +34,7 @@ export default function TunnelManager() {
 
   useEffect(() => {
     fetchTunnels();
-  }, []);
+  }, [token]);
 
   const fetchTunnels = async () => {
     try {
@@ -49,6 +49,7 @@ export default function TunnelManager() {
         setTunnels(data.tunnels);
       }
     } catch (err) {
+      console.error('Failed to fetch tunnels:', err);
       setError('Failed to fetch tunnels');
     } finally {
       setIsLoading(false);
@@ -90,6 +91,7 @@ export default function TunnelManager() {
         setError(error.error || 'Failed to save tunnel');
       }
     } catch (err) {
+      console.error('Failed to save tunnel:', err);
       setError('Network error');
     }
   };
@@ -122,6 +124,7 @@ export default function TunnelManager() {
         setError('Failed to delete tunnel');
       }
     } catch (err) {
+      console.error('Failed to delete tunnel:', err);
       setError('Network error');
     }
   };

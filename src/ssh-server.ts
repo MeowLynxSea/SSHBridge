@@ -1,8 +1,9 @@
 import { Server } from 'ssh2';
-import { Server as NetServer, createServer } from 'net';
+import { Socket, createConnection } from 'net';
 import { Connection } from 'ssh2';
 import Database from './database';
 import { Tunnel } from './database';
+import './types/ssh2.d';
 
 export interface SSHServerConfig {
   host?: string;
@@ -30,7 +31,7 @@ export class SSHBridgeServer {
     this.sshServer.on('connection', (conn: Connection) => {
       console.log('New SSH connection');
 
-      conn.on('authentication', async (ctx) => {
+      conn.on('authentication', async (ctx: any) => {
         if (ctx.method === 'password') {
           const user = await this.database.validatePassword(ctx.username, ctx.password);
           if (user) {
@@ -44,7 +45,7 @@ export class SSHBridgeServer {
         }
       });
 
-      conn.on('error', (err) => {
+      conn.on('error', (err: Error) => {
         console.error('SSH connection error:', err);
       });
     });
@@ -56,7 +57,7 @@ export class SSHBridgeServer {
     conn.on('session', (accept) => {
       const session = accept();
 
-      session.on('channel', (accept, reject, info) => {
+      session.on('channel', (accept: any, reject: any, info: any) => {
         if (info.type === 'direct-tcpip') {
           this.handleDirectTcpip(conn, accept, reject, info, user);
         } else {
@@ -65,7 +66,7 @@ export class SSHBridgeServer {
       });
     });
 
-    conn.on('error', (err) => {
+    conn.on('error', (err: Error) => {
       console.error(`Connection error for user ${user.username}:`, err);
       this.cleanupConnection(conn);
     });
@@ -100,26 +101,25 @@ export class SSHBridgeServer {
       console.log(`Creating tunnel: ${tunnel.name} -> ${tunnel.target_host}:${tunnel.target_port}`);
 
       const channel = accept();
-      const targetSocket = new NetServer();
       
       const socket = createConnection({
         host: tunnel.target_host,
         port: tunnel.target_port
-      });
+      }) as Socket;
 
       socket.on('connect', () => {
         console.log(`Connected to target ${tunnel.target_host}:${tunnel.target_port}`);
       });
 
-      socket.on('data', (data) => {
+      socket.on('data', (data: Buffer) => {
         channel.write(data);
       });
 
-      channel.on('data', (data) => {
+      channel.on('data', (data: Buffer) => {
         socket.write(data);
       });
 
-      socket.on('error', (err) => {
+      socket.on('error', (err: Error) => {
         console.error(`Target connection error: ${err.message}`);
         channel.close();
       });
@@ -151,10 +151,7 @@ export class SSHBridgeServer {
 
   start(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.sshServer.listen({
-        port: this.config.port,
-        host: this.config.host || '0.0.0.0'
-      }, () => {
+      this.sshServer.listen(this.config.port, this.config.host || '0.0.0.0', () => {
         console.log(`SSH server listening on ${this.config.host || '0.0.0.0'}:${this.config.port}`);
         resolve();
       }).on('error', reject);

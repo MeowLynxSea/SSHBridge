@@ -3,14 +3,6 @@ import Database from '../../../src/database';
 
 const database = new Database();
 
-async function authenticate(req: NextApiRequest): Promise<{ id: number; username: string } | null> {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return null;
-  
-  const user = await database.validateSession(token);
-  return user ? { id: user.id, username: user.username } : null;
-}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
