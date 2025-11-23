@@ -395,6 +395,7 @@ export class SSHBridgeServer {
         channel.write(`Available commands:\r\n`);
         channel.write(`  help     - Show this help message\r\n`);
         channel.write(`  tunnels  - List your active tunnels\r\n`);
+        channel.write(`  status   - Show real-time tunnel status (Press Ctrl+C to exit)\r\n`);
         channel.write(`  exit     - Disconnect from server\r\n`);
         channel.write(`\r\nSSHBridge> `);
         
@@ -420,6 +421,7 @@ export class SSHBridgeServer {
                 channel.write(`Available commands:\r\n`);
                 channel.write(`  help     - Show this help message\r\n`);
                 channel.write(`  tunnels  - List your active tunnels\r\n`);
+                channel.write(`  status   - Show real-time tunnel status (Press Ctrl+C to exit)\r\n`);
                 channel.write(`  exit     - Disconnect from server\r\n`);
               } else if (command === 'tunnels') {
                 // Get all configured tunnels for user
@@ -460,6 +462,10 @@ export class SSHBridgeServer {
                     channel.write(`  [ACTIVE] client:${rf.bindPort} -> server:${rf.bindAddr}\r\n`);
                   });
                 }
+              } else if (command === 'status') {
+                // Enter status mode
+                this.showTunnelStatus(channel, conn, user);
+                return; // Return early to avoid showing prompt
               } else if (command) {
                 channel.write(`Unknown command: ${command}\r\n`);
                 channel.write(`Type 'help' for available commands.\r\n`);
@@ -739,6 +745,162 @@ export class SSHBridgeServer {
       connections.clear();
       this.updateTunnelConnectionCount(tunnelId);
     }
+  }
+
+  // Show real-time tunnel status in a table format
+  private showTunnelStatus(channel: any, conn: any, user: any): void {
+    let statusInterval: any = null;
+    let isStatusMode = true;
+    
+    // Function to clear screen and move cursor to top-left
+    const clearScreen = () => {
+      // ANSI escape codes to clear screen and move cursor
+      channel.write('\x1b[2J\x1b[H');
+    };
+    
+    // Function to format bytes for human-readable display
+    const formatBytes = (bytes: number): string => {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+    
+    // Function to format duration from milliseconds to human-readable format
+    const formatDuration = (startTime: Date): string => {
+      const now = new Date();
+      const diffMs = now.getTime() - startTime.getTime();
+      
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+      
+      if (hours > 0) {
+        return `${hours}h ${minutes}m ${seconds}s`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+      } else {
+        return `${seconds}s`;
+      }
+    };
+    
+    // Function to render the status table
+    const renderStatusTable = async () => {
+      if (!isStatusMode) return;
+      
+      clearScreen();
+      channel.write(`\x1b[1mSSHBridge Tunnel Status Monitor\x1b[0m\r\n`);
+      channel.write(`User: ${user.username} | Showing current session tunnels only | Press Ctrl+C to exit\r\n`);
+      channel.write(`Last updated: ${new Date().toLocaleString()}\r\n`);
+      channel.write(`\r\n`);
+      
+      // Get active remote port forwards for this connection
+      const activeRemoteForwards = Array.from(this.remoteForwards.entries())
+        .filter(([, value]) => value.connection === conn)
+        .map(([, value]) => ({ bindAddr: value.bindAddr, bindPort: value.bindPort }));
+      
+      // Get active remote forward ports
+      const activeRemotePorts = new Set(
+        activeRemoteForwards.map(rf => rf.bindPort.toString())
+      );
+      
+      // Get all tunnels for user
+      const allTunnels = await this.database.getTunnelsByUserId(user.id);
+      const tunnelStats = await this.database.getTunnelStatsByUserId(user.id);
+      
+      // Create a map of tunnel stats for quick lookup
+      const statsMap = new Map<number, any>();
+      tunnelStats.forEach(stat => {
+        statsMap.set(stat.tunnel_id, stat);
+      });
+      
+      // Filter to only show tunnels that are currently active in this session
+      const activeTunnels = allTunnels.filter(tunnel => 
+        activeRemotePorts.has(tunnel.external_port.toString())
+      );
+      
+      // Draw table header
+      const header = `┌─────────────┬──────────────────────────┬───────────────┬──────────────┬────────────────────────────┐\r\n` +
+                   `│ \x1b[1mSTATUS.   \x1b[0m  │ \x1b[1mTUNNEL NAME\x1b[0m              │ \x1b[1mDURATION\x1b[0m      │ \x1b[1mACTIVE CONNS \x1b[0m│ \x1b[1mSESSION TRAFFIC\x1b[0m            │\r\n` +
+                   `├─────────────┼──────────────────────────┼───────────────┼──────────────┼────────────────────────────┤\r\n`;
+      channel.write(header);
+      
+      // Display each active tunnel's status
+      if (activeTunnels.length === 0) {
+        const emptyRow = `│             │ No active tunnels in current session                                     │\r\n`;
+        channel.write(emptyRow);
+      } else {
+        for (const tunnel of activeTunnels) {
+          const stats = statsMap.get(tunnel.id);
+          const duration = stats ? formatDuration(stats.updated_at) : 'N/A';
+          const activeConnections = stats ? stats.active_connections.toString() : '0';
+          
+          // Calculate current session traffic
+          let sessionTraffic = '0 B';
+          if (stats) {
+            const totalBytes = stats.current_bytes_received + stats.current_bytes_sent;
+            sessionTraffic = formatBytes(totalBytes);
+          }
+          
+          // Format table row with proper spacing
+          // STATUS (11 chars with ANSI codes): "ACTIVE"
+          const statusText = 'ACTIVE';
+          const row = `│ \x1b[32m${statusText}\x1b[0m` + 
+                     ' '.repeat(11 - statusText.length) + ' │ ' +
+                     tunnel.name.padEnd(24) + ' │ ' +
+                     duration.padEnd(13) + ' │ ' +
+                     activeConnections.padEnd(12) + ' │ ' +
+                     sessionTraffic.padEnd(26) + ' │\r\n';
+          channel.write(row);
+        }
+      }
+      
+      // Draw table footer
+      const footer = `└─────────────┴──────────────────────────┴───────────────┴──────────────┴────────────────────────────┘\r\n`;
+      channel.write(footer);
+      channel.write(`\r\nActive tunnels in current session: ${activeTunnels.length}\r\n`);
+    };
+    
+    // Initial render
+    renderStatusTable();
+    
+    // Set up interval to refresh the table every 2 seconds
+    statusInterval = setInterval(() => {
+      renderStatusTable();
+    }, 2000);
+    
+    // Override the data handler to catch Ctrl+C
+    const originalDataHandler = channel.listeners('data')[0];
+    channel.removeAllListeners('data');
+    
+    channel.on('data', (data: Buffer) => {
+      const str = data.toString();
+      
+      // Check for Ctrl+C (ETX character)
+      if (str.includes('\x03')) {
+        // Exit status mode
+        isStatusMode = false;
+        
+        // Clear interval
+        if (statusInterval) {
+          clearInterval(statusInterval);
+          statusInterval = null;
+        }
+        
+        // Restore original data handler
+        channel.removeAllListeners('data');
+        channel.on('data', originalDataHandler);
+        
+        // Show exit message and prompt
+        clearScreen();
+        channel.write('Exited status monitor.\r\n');
+        channel.write(`\r\nSSHBridge> `);
+        return;
+      }
+      
+      // In status mode, ignore all other input
+    });
   }
 
   start(callback?: () => void) {
