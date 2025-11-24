@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { formatForDisplay } from '../src/utils/timeUtils';
 
+
 interface TunnelStatsResponse {
   id: number;
   tunnel_id: number;
@@ -21,6 +22,13 @@ interface TunnelStatsResponse {
     total_bytes_sent: string;
     current_bytes_received: string;
     current_bytes_sent: string;
+    rate_received: string;
+    rate_sent: string;
+  };
+  realtimeStats?: {
+    timestamp: Date;
+    bytes_per_second_received: number;
+    bytes_per_second_sent: number;
   };
 }
 
@@ -94,6 +102,8 @@ export default function TunnelStats() {
   const formatDate = (dateString: string) => {
     return formatForDisplay(dateString);
   };
+
+
 
   if (isLoading) {
     return (
@@ -214,30 +224,54 @@ export default function TunnelStats() {
                     </div>
                     
                     {stat.is_online && (
-                      <div className="nb-box" style={{ padding: '15px' }}>
-                        <div style={{ 
-                          fontSize: '0.8rem', 
-                          fontWeight: 'bold', 
-                          textTransform: 'uppercase',
-                          marginBottom: '10px',
-                          fontFamily: 'monospace'
-                        }}>
-                          Current Session
-                        </div>
-                        <div style={{ fontSize: '0.9rem', fontFamily: 'monospace' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                            <span>Received:</span>
-                            <span>{stat.formatted?.current_bytes_received}</span>
+                      <>
+                        <div className="nb-box" style={{ padding: '15px' }}>
+                          <div style={{ 
+                            fontSize: '0.8rem', 
+                            fontWeight: 'bold', 
+                            textTransform: 'uppercase',
+                            marginBottom: '10px',
+                            fontFamily: 'monospace'
+                          }}>
+                            Current Session
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Sent:</span>
-                            <span>{stat.formatted?.current_bytes_sent}</span>
+                          <div style={{ fontSize: '0.9rem', fontFamily: 'monospace' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                              <span>Received:</span>
+                              <span>{stat.formatted?.current_bytes_received}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Sent:</span>
+                              <span>{stat.formatted?.current_bytes_sent}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                    
+                        
+                        <div className="nb-box" style={{ padding: '15px' }}>
+                          <div style={{ 
+                            fontSize: '0.8rem', 
+                            fontWeight: 'bold', 
+                            textTransform: 'uppercase',
+                            marginBottom: '10px',
+                            fontFamily: 'monospace'
+                          }}>
+                            Real-time Rate
+                          </div>
+                          <div style={{ fontSize: '0.9rem', fontFamily: 'monospace' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                              <span>Received:</span>
+                              <span>{stat.formatted?.rate_received}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Sent:</span>
+                              <span>{stat.formatted?.rate_sent}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
 
+                      </>
+                    )}
                   </div>
 
                   <div style={{ 
@@ -245,9 +279,12 @@ export default function TunnelStats() {
                     opacity: 0.7,
                     marginTop: '10px',
                     padding: '0 20px 20px',
-                    fontFamily: 'monospace'
+                    fontFamily: 'monospace',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                   }}>
-                    Last updated: {formatDate(stat.updated_at)}
+                    <span>Last updated: {formatDate(stat.updated_at)}</span>
                   </div>
 
                   <div style={{ 

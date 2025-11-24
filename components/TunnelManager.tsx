@@ -68,10 +68,14 @@ export default function TunnelManager() {
 
       if (response.ok) {
         const data = await response.json();
-        setTunnels(data.tunnels.map((tunnel: Tunnel) => ({
+        
+        // Set tunnels with online status
+        const tunnelsWithStatus = data.tunnels.map((tunnel: Tunnel) => ({
           ...tunnel,
           is_online: tunnelStatuses.get(tunnel.id) || false
-        })));
+        }));
+        
+        setTunnels(tunnelsWithStatus);
       }
     } catch (err) {
       console.error('Failed to fetch tunnels:', err);
@@ -156,6 +160,8 @@ export default function TunnelManager() {
       setError('Network error');
     }
   };
+
+
 
   if (isLoading) {
     return (
@@ -443,6 +449,8 @@ export default function TunnelManager() {
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)} 
       />
+
     </div>
   );
 }
+

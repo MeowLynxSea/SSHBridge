@@ -23,8 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Get tunnel statistics for the authenticated user
         const stats = await database.getTunnelStatsByUserId(user.id);
         
-        // Format statistics and include online status
-        const statsFormatted = stats.map(stat => {
+        // Format statistics and include online status and real-time rates
+        const statsFormatted = await Promise.all(stats.map(async stat => {
+          const realtimeStats = await database.getRealtimeStats(stat.tunnel_id);
+          
           return {
             ...stat,
             is_online: stat.is_online === 1,
@@ -32,10 +34,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               total_bytes_received: formatBytes(stat.total_bytes_received),
               total_bytes_sent: formatBytes(stat.total_bytes_sent),
               current_bytes_received: formatBytes(stat.current_bytes_received),
-              current_bytes_sent: formatBytes(stat.current_bytes_sent)
-            }
+              current_bytes_sent: formatBytes(stat.current_bytes_sent),
+              rate_received: realtimeStats ? formatBytes(realtimeStats.bytes_per_second_received) + '/s' : '0 B/s',
+              rate_sent: realtimeStats ? formatBytes(realtimeStats.bytes_per_second_sent) + '/s' : '0 B/s'
+            },
+            realtimeStats
           };
-        });
+        }));
         
         res.status(200).json({ stats: statsFormatted });
       } catch (error) {

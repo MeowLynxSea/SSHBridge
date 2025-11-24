@@ -23,6 +23,7 @@ export class SSHBridgeServer {
   private tunnelConnections: Map<number, Set<string>> = new Map(); // Track active connections per tunnel
   private activeTunnels: Map<number, any> = new Map(); // Track active SSH tunnels by tunnel ID
 
+
   constructor(config: SSHServerConfig, database: Database) {
     this.config = config;
     this.database = database;
@@ -75,7 +76,8 @@ export class SSHBridgeServer {
     // Reset current session stats when SSH session starts
     this.database.getTunnelsByUserId(user.id).then((tunnels: Tunnel[]) => {
       tunnels.forEach((tunnel: Tunnel) => {
-        this.database.resetCurrentSessionStats(tunnel.id);
+        // Only reset current session, not total traffic
+        this.database.updateTunnelStats(tunnel.id, 0, 0, 0);
       });
     }).catch((err: Error) => {
       console.error('Error resetting stats on SSH session start:', err);
@@ -151,6 +153,8 @@ export class SSHBridgeServer {
           
           console.log(`Remote forward ${bindAddr}:${bindPort} validated for user ${user.username} - matches tunnel: ${matchingTunnel.name}`);
           
+
+          
           // Create a TCP server to listen on the requested port
           const server = net.createServer((socket: any) => {
             console.log(`New connection to ${bindAddr}:${bindPort} from ${socket.remoteAddress}:${socket.remotePort}`);
@@ -173,7 +177,7 @@ export class SSHBridgeServer {
             let bytesSent = 0;
             
             // Open a channel back to the SSH client for forwarded-tcpip
-            conn.forwardOut(bindAddr, bindPort, socket.remoteAddress, socket.remotePort, (err: any, channel: any) => {
+            conn.forwardOut(bindAddr, bindPort, socket.remoteAddress, socket.remotePort, async (err: any, channel: any) => {
               if (err) {
                 console.error(`Error opening channel: ${err.message}`);
                 // Clean up connection tracking when channel creation fails
@@ -186,23 +190,25 @@ export class SSHBridgeServer {
               // Set socket timeout
               socket.setTimeout(30000); // 30 second timeout
               
-              // Forward data between socket and channel with backpressure handling
-              socket.on('data', (data: Buffer) => {
+              // Forward data between socket and channel
+              socket.on('data', async (data: Buffer) => {
                 bytesReceived += data.length;
-                // Handle backpressure - pause socket if channel buffer is full
-                if (!channel.write(data)) {
-                  socket.pause();
-                  channel.once('drain', () => socket.resume());
-                }
+                
+                // Update session stats in real-time for rate calculation
+                this.database.updateSessionStats(matchingTunnel.id, data.length, 0);
+                
+                // Write data directly to channel
+                channel.write(data);
               });
               
-              channel.on('data', (data: Buffer) => {
+              channel.on('data', async (data: Buffer) => {
                 bytesSent += data.length;
-                // Handle backpressure - pause channel if socket buffer is full
-                if (!socket.write(data)) {
-                  channel.pause();
-                  socket.once('drain', () => channel.resume());
-                }
+                
+                // Update session stats in real-time for rate calculation
+                this.database.updateSessionStats(matchingTunnel.id, 0, data.length);
+                
+                // Write data directly to socket
+                socket.write(data);
               });
               
               socket.on('close', () => {
@@ -625,22 +631,24 @@ export class SSHBridgeServer {
       
       socket.setTimeout(30000); // 30 second timeout
 
-      socket.on('data', (data: Buffer) => {
+      socket.on('data', async (data: Buffer) => {
         totalBytesReceived += data.length;
-        // Handle backpressure - pause socket if channel buffer is full
-        if (!channel.write(data)) {
-          socket.pause();
-          channel.once('drain', () => socket.resume());
-        }
+        
+        // Update session stats in real-time for rate calculation
+        this.database.updateSessionStats(tunnel.id, data.length, 0);
+        
+        // Write data directly to channel
+        channel.write(data);
       });
 
-      channel.on('data', (data: Buffer) => {
+      channel.on('data', async (data: Buffer) => {
         totalBytesSent += data.length;
-        // Handle backpressure - pause channel if socket buffer is full
-        if (!socket.write(data)) {
-          channel.pause();
-          socket.once('drain', () => channel.resume());
-        }
+        
+        // Update session stats in real-time for rate calculation
+        this.database.updateSessionStats(tunnel.id, 0, data.length);
+        
+        // Write data directly to socket
+        socket.write(data);
       });
 
       socket.on('timeout', () => {
@@ -830,6 +838,7 @@ export class SSHBridgeServer {
         this.activeTunnels.delete(tunnelId);
       }
     }
+
     
     // Now close the TCP servers that belonged to this connection
     serversToClose.forEach(({server, bindAddr, bindPort}) => {
@@ -1037,7 +1046,7 @@ export class SSHBridgeServer {
   stop(callback?: () => void) {
     console.log('Shutting down all TCP servers and SSH server...');
     
-    // First, close all active connections for tunnel tracking
+    // Close all active connections for tunnel tracking
     for (const [tunnelId, connections] of this.tunnelConnections.entries()) {
       connections.clear();
       this.updateTunnelConnectionCount(tunnelId);

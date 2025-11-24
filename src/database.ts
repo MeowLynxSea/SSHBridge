@@ -30,6 +30,17 @@ interface TunnelRow {
   tunnel_id?: number;
 }
 
+interface RateHistoryRow {
+  id: number;
+  tunnel_id: number;
+  timestamp: string;
+  bytes_per_second_received: number;
+  bytes_per_second_sent: number;
+  current_bytes_received: number;
+  current_bytes_sent: number;
+  created_at: string;
+}
+
 // Helper function to promisify database methods
 const promisifyDb = (db: sqlite3.Database) => ({
   run: promisify((sql: string, params: unknown[], callback: (err: Error | null, result: RunResult) => void) => {
@@ -57,6 +68,7 @@ export interface Tunnel {
   user_id: number;
   name: string;
   external_port: number;
+  max_bandwidth?: number; // in bytes per second
   created_at: string;
 }
 
@@ -88,6 +100,20 @@ class Database {
       Database.instance = new Database(dbPath);
     }
     return Database.instance;
+  }
+
+  // Public getters for accessing private properties
+  getCurrentSessionReceived(tunnelId: number): number {
+    return this.currentBytesReceived.get(tunnelId) || 0;
+  }
+
+  getCurrentSessionSent(tunnelId: number): number {
+    return this.currentBytesSent.get(tunnelId) || 0;
+  }
+
+  setCurrentSessionStats(tunnelId: number, received: number, sent: number): void {
+    this.currentBytesReceived.set(tunnelId, received);
+    this.currentBytesSent.set(tunnelId, sent);
   }
 
   private async init() {
@@ -195,6 +221,28 @@ class Database {
         FOREIGN KEY (tunnel_id) REFERENCES tunnels (id) ON DELETE CASCADE
       )
     `, []);
+
+    // Create rate_history table to store rate calculations across processes
+    await run(`
+      CREATE TABLE IF NOT EXISTS rate_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tunnel_id INTEGER NOT NULL,
+        timestamp DATETIME NOT NULL,
+        bytes_per_second_received REAL NOT NULL,
+        bytes_per_second_sent REAL NOT NULL,
+        current_bytes_received INTEGER NOT NULL,
+        current_bytes_sent INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tunnel_id) REFERENCES tunnels (id) ON DELETE CASCADE
+      )
+    `, []);
+
+    // Create index for faster queries
+    await run(`CREATE INDEX IF NOT EXISTS idx_rate_history_tunnel_timestamp ON rate_history(tunnel_id, timestamp)`, []);
+
+    // Clean up old rate history (keep only last hour)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await run(`DELETE FROM rate_history WHERE timestamp < ?`, [oneHourAgo]);
 
     // Check if we need to add the is_online column (for backward compatibility)
     const statsTableInfo = await all("PRAGMA table_info(tunnel_stats)", []) as unknown as TableColumn[];
@@ -419,55 +467,101 @@ class Database {
   async updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections: number): Promise<void> {
     const { run } = promisifyDb(this.db);
     
-    // Track current session data
-    this.currentBytesReceived.set(tunnelId, (this.currentBytesReceived.get(tunnelId) || 0) + bytesReceived);
-    this.currentBytesSent.set(tunnelId, (this.currentBytesSent.get(tunnelId) || 0) + bytesSent);
+    // Only update active connections and current session values
+    // Total traffic is now updated in real-time by updateSessionStats
+    await run(`
+      UPDATE tunnel_stats 
+      SET current_bytes_received = ?,
+          current_bytes_sent = ?,
+          active_connections = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE tunnel_id = ?
+    `, [Number(this.currentBytesReceived.get(tunnelId)) || 0, Number(this.currentBytesSent.get(tunnelId)) || 0, activeConnections, tunnelId]);
+  }
+
+  // New method to update only in-memory stats for rate calculation
+  updateSessionStats(tunnelId: number, bytesReceived: number, bytesSent: number): void {
+    // Update in-memory counters for rate calculation
+    const currentReceived = this.currentBytesReceived.get(tunnelId) || 0;
+    const currentSent = this.currentBytesSent.get(tunnelId) || 0;
     
+    this.currentBytesReceived.set(tunnelId, currentReceived + bytesReceived);
+    this.currentBytesSent.set(tunnelId, currentSent + bytesSent);
+    
+
     // Ensure rate history exists for this tunnel
     if (!this.rateHistory.has(tunnelId)) {
       this.rateHistory.set(tunnelId, []);
     }
     
-    await run(`
-      UPDATE tunnel_stats 
-      SET total_bytes_received = total_bytes_received + ?, 
-          total_bytes_sent = total_bytes_sent + ?,
-          current_bytes_received = ?,
-          current_bytes_sent = ?,
-          active_connections = ?,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE tunnel_id = ?
-    `, [bytesReceived, bytesSent, Number(this.currentBytesReceived.get(tunnelId)) || 0, Number(this.currentBytesSent.get(tunnelId)) || 0, activeConnections, tunnelId]);
+    // Also update total traffic in real-time to keep Total Traffic and Current Session in sync
+    // Use async but don't await to avoid blocking
+    this.updateTunnelStatsAsync(tunnelId, bytesReceived, bytesSent);
+  }
+
+  // Async method to update total traffic without blocking
+  private async updateTunnelStatsAsync(tunnelId: number, bytesReceived: number, bytesSent: number): Promise<void> {
+    try {
+      const { run } = promisifyDb(this.db);
+      await run(`
+        UPDATE tunnel_stats 
+        SET total_bytes_received = total_bytes_received + ?, 
+            total_bytes_sent = total_bytes_sent + ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE tunnel_id = ?
+      `, [bytesReceived, bytesSent, tunnelId]);
+    } catch (error) {
+      console.error('Error updating total traffic:', error);
+    }
   }
 
   private async loadCurrentSessionData(): Promise<void> {
     const { all } = promisifyDb(this.db);
     
     try {
-      // Load all tunnel stats but don't restore current session data
-      // Current session data should start fresh when server starts
-      const stats = await all('SELECT tunnel_id FROM tunnel_stats', []) as unknown as { tunnel_id: number }[];
+      // Check if this is a web process
+      const isWebProcess = typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'nodejs';
       
-      for (const stat of stats) {
-        // Initialize current session data to 0 for all tunnels
-        this.currentBytesReceived.set(stat.tunnel_id, 0);
-        this.currentBytesSent.set(stat.tunnel_id, 0);
+      if (isWebProcess) {
+        // Web server: Load current session data from database (read-only)
+        const stats = await all('SELECT tunnel_id, current_bytes_received, current_bytes_sent FROM tunnel_stats', []) as unknown as { tunnel_id: number; current_bytes_received: number; current_bytes_sent: number }[];
         
-        // Initialize rate history for all tunnels
-        if (!this.rateHistory.has(stat.tunnel_id)) {
-          this.rateHistory.set(stat.tunnel_id, []);
-          // Add initial data point to prevent null returns
-          this.rateHistory.get(stat.tunnel_id)!.push({
-            timestamp: new Date(),
-            bytes_per_second_received: 0,
-            bytes_per_second_sent: 0,
-            current_bytes_received: 0,
-            current_bytes_sent: 0
-          });
+        for (const stat of stats) {
+          // Use data from database
+          this.currentBytesReceived.set(stat.tunnel_id, Number(stat.current_bytes_received) || 0);
+          this.currentBytesSent.set(stat.tunnel_id, Number(stat.current_bytes_sent) || 0);
+          
+          // Initialize rate history for all tunnels
+          if (!this.rateHistory.has(stat.tunnel_id)) {
+            this.rateHistory.set(stat.tunnel_id, []);
+          }
         }
-      }
-      
-      console.log(`Initialized current session data for ${stats.length} tunnels`);
+        
+} else {
+        // SSH server: Initialize to 0 and let updateSessionStats track data
+        const stats = await all('SELECT tunnel_id FROM tunnel_stats', []) as unknown as { tunnel_id: number }[];
+        
+        for (const stat of stats) {
+          // Initialize current session data to 0 for SSH server
+          this.currentBytesReceived.set(stat.tunnel_id, 0);
+          this.currentBytesSent.set(stat.tunnel_id, 0);
+          
+          // Initialize rate history for all tunnels
+          if (!this.rateHistory.has(stat.tunnel_id)) {
+            this.rateHistory.set(stat.tunnel_id, []);
+            // Add initial data point to prevent null returns
+            this.rateHistory.get(stat.tunnel_id)!.push({
+              timestamp: new Date(),
+              bytes_per_second_received: 0,
+              bytes_per_second_sent: 0,
+              current_bytes_received: 0,
+              current_bytes_sent: 0
+            });
+          }
+          
+        }
+        
+}
     } catch (error) {
       console.error('Failed to initialize current session data:', error);
     }
@@ -519,9 +613,11 @@ class Database {
   async resetCurrentSessionStats(tunnelId: number): Promise<void> {
     const { run } = promisifyDb(this.db);
     
+    // Only reset in-memory counters, not database
     this.currentBytesReceived.set(tunnelId, 0);
     this.currentBytesSent.set(tunnelId, 0);
     
+    // Reset database values for current session only (not total)
     await run(`
       UPDATE tunnel_stats 
       SET current_bytes_received = 0,
@@ -601,26 +697,37 @@ class Database {
   }
 
   private startStatsTracking(): void {
-    // Update rates every 5 seconds
-    this.statsUpdateInterval = setInterval(() => {
-      this.calculateAndStoreRates();
-    }, 5000);
+    // Only SSH server should calculate rates and sync data
+    // Web server should only read data
+    const isWebProcess = typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'nodejs';
+    
+    if (!isWebProcess) {
+      console.log('Starting stats tracking for SSH server');
+      // Update rates every 5 seconds
+      this.statsUpdateInterval = setInterval(async () => {
+        await this.calculateAndStoreRates();
+      }, 5000);
+    } else {
+      console.log('Web server detected - not starting stats tracking');
+    }
   }
 
-  private calculateAndStoreRates(): void {
+  private async calculateAndStoreRates(): Promise<void> {
     const now = new Date();
     
-    // Also include tunnels that might not have data yet but exist in the database
-    // We need to fetch all tunnels to ensure we're calculating rates for all of them
-    this.getAllTunnelIds().then(tunnelIds => {
+    // Get all tunnel IDs to ensure we're calculating rates for all of them
+    try {
+      const tunnelIds = await this.getAllTunnelIds();
+      
       for (const tunnelId of tunnelIds) {
         const currentReceived = this.currentBytesReceived.get(tunnelId) || 0;
         const currentSent = this.currentBytesSent.get(tunnelId) || 0;
         
+
         // Get historical data for rate calculation
         if (!this.rateHistory.has(tunnelId)) {
           this.rateHistory.set(tunnelId, []);
-        }
+}
         
         const history = this.rateHistory.get(tunnelId)!;
         
@@ -637,25 +744,55 @@ class Database {
           const lastReading = history[history.length - 1];
           const timeDiff = (now.getTime() - lastReading.timestamp.getTime()) / 1000; // seconds
           
+
           if (timeDiff > 0) {
             rateReceived = (currentReceived - (history[history.length - 1]?.current_bytes_received || 0)) / timeDiff;
             rateSent = (currentSent - (history[history.length - 1]?.current_bytes_sent || 0)) / timeDiff;
           }
         }
         
-        history.push({
+        const newEntry = {
           timestamp: now,
           bytes_per_second_received: Math.max(0, Number(rateReceived) || 0),
           bytes_per_second_sent: Math.max(0, Number(rateSent) || 0),
           current_bytes_received: Number(currentReceived) || 0,
           current_bytes_sent: Number(currentSent) || 0
-        });
+        };
         
+
+        history.push(newEntry);
         this.rateHistory.set(tunnelId, history);
+        
+        // Save rate data to database for cross-process sharing
+        const { run } = promisifyDb(this.db);
+        await run(`
+          INSERT INTO rate_history (tunnel_id, timestamp, bytes_per_second_received, bytes_per_second_sent, current_bytes_received, current_bytes_sent)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [tunnelId, now.toISOString(), newEntry.bytes_per_second_received, newEntry.bytes_per_second_sent, newEntry.current_bytes_received, newEntry.current_bytes_sent]);
+        
+        // Also sync in-memory stats to database periodically
+        await this.syncSessionStatsToDatabase(tunnelId, currentReceived, currentSent);
       }
-    }).catch(error => {
+    } catch (error) {
       console.error('Error calculating rates:', error);
-    });
+    }
+  }
+
+  // New method to sync session stats to database
+  private async syncSessionStatsToDatabase(tunnelId: number, currentReceived: number, currentSent: number): Promise<void> {
+    const { run } = promisifyDb(this.db);
+    
+    try {
+      await run(`
+        UPDATE tunnel_stats 
+        SET current_bytes_received = ?,
+            current_bytes_sent = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE tunnel_id = ?
+      `, [currentReceived, currentSent, tunnelId]);
+    } catch (error) {
+      console.error('Error syncing session stats to database:', error);
+    }
   }
   
   private async updateCurrentSessionData(): Promise<void> {
@@ -690,49 +827,57 @@ class Database {
     }
   }
 
-  getRealtimeStats(tunnelId: number): RealtimeStats | null {
-    const history = this.rateHistory.get(tunnelId);
-    if (!history || history.length === 0) {
+  async getRealtimeStats(tunnelId: number): Promise<RealtimeStats | null> {
+    // Check if this is a web process
+    const isWebProcess = typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'nodejs';
+    
+    if (isWebProcess) {
+      try {
+        const { get } = promisifyDb(this.db);
+        const latest = await get(`
+          SELECT * FROM rate_history 
+          WHERE tunnel_id = ? 
+          ORDER BY timestamp DESC 
+          LIMIT 1
+        `, [tunnelId]) as unknown as RateHistoryRow | undefined;
+        
+        if (latest) {
+          return {
+            timestamp: new Date(latest.timestamp),
+            bytes_per_second_received: Number(latest.bytes_per_second_received),
+            bytes_per_second_sent: Number(latest.bytes_per_second_sent)
+          };
+        }
+      } catch (error) {
+        console.error(`getRealtimeStats (Web) - Tunnel ${tunnelId}: Database query error:`, error);
+      }
+      return null;
+    } else {
+      // SSH process: Use in-memory history for most up-to-date data
+      const history = this.rateHistory.get(tunnelId);
+      
+      if (history && history.length > 0) {
+        const latest = history[history.length - 1];
+        
+        return {
+          timestamp: latest.timestamp,
+          bytes_per_second_received: latest.bytes_per_second_received,
+          bytes_per_second_sent: latest.bytes_per_second_sent
+        };
+      }
+      
       return null;
     }
-    
-    const latest = history[history.length - 1];
-    return {
-      timestamp: latest.timestamp,
-      bytes_per_second_received: latest.bytes_per_second_received,
-      bytes_per_second_sent: latest.bytes_per_second_sent
-    };
   }
 
-  getAverageRates(tunnelId: number, seconds: number = 30): RealtimeStats | null {
-    const history = this.rateHistory.get(tunnelId);
-    if (!history || history.length === 0) {
-      return null;
-    }
-    
-    // Calculate average over the specified time period
-    const cutoffTime = new Date(Date.now() - seconds * 1000);
-    const relevantData = history.filter(entry => entry.timestamp >= cutoffTime);
-    
-    if (relevantData.length === 0) {
-      return null;
-    }
-    
-    const avgReceiveRate = relevantData.reduce((sum, entry) => sum + entry.bytes_per_second_received, 0) / relevantData.length;
-    const avgSendRate = relevantData.reduce((sum, entry) => sum + entry.bytes_per_second_sent, 0) / relevantData.length;
-    
-    return {
-      timestamp: new Date(),
-      bytes_per_second_received: avgReceiveRate,
-      bytes_per_second_sent: avgSendRate
-    };
-  }
+
 
   cleanup(): void {
     if (this.statsUpdateInterval) {
       clearInterval(this.statsUpdateInterval);
       this.statsUpdateInterval = null;
     }
+    console.log('Database cleanup completed');
   }
 
   // User Settings Methods
