@@ -531,6 +531,51 @@ class Database {
     `, [tunnelId]);
   }
 
+  // New method to clear all tunnels' session statistics, active connections, and online status
+  async clearAllTunnelsSessionState(): Promise<void> {
+    const { run } = promisifyDb(this.db);
+    
+    try {
+      console.log('Clearing all tunnels session state...');
+      
+      // Get all tunnel IDs
+      const tunnelIds = await this.getAllTunnelIds();
+      
+      // Clear current session data for all tunnels in memory
+      for (const tunnelId of tunnelIds) {
+        this.currentBytesReceived.set(tunnelId, 0);
+        this.currentBytesSent.set(tunnelId, 0);
+        
+        // Clear rate history for all tunnels
+        if (this.rateHistory.has(tunnelId)) {
+          this.rateHistory.set(tunnelId, []);
+          // Add initial data point to prevent null returns
+          this.rateHistory.get(tunnelId)!.push({
+            timestamp: new Date(),
+            bytes_per_second_received: 0,
+            bytes_per_second_sent: 0,
+            current_bytes_received: 0,
+            current_bytes_sent: 0
+          });
+        }
+      }
+      
+      // Reset all tunnel statistics in database
+      await run(`
+        UPDATE tunnel_stats 
+        SET current_bytes_received = 0,
+            current_bytes_sent = 0,
+            active_connections = 0,
+            is_online = 0,
+            updated_at = CURRENT_TIMESTAMP
+      `, []);
+      
+      console.log(`Cleared session state for ${tunnelIds.length} tunnels`);
+    } catch (error) {
+      console.error('Error clearing all tunnel session state:', error);
+    }
+  }
+
   private mapRowToTunnelStats(row: Row): TunnelStats {
     return {
       id: Number(row.id),

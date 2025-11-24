@@ -1,6 +1,6 @@
 import getDatabaseInstance from './database';
 import { SSHBridgeServer } from './ssh-server';
-import { setSSHServer } from './sshInstance';
+import { setSSHServer, getSSHServer } from './sshInstance';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -16,6 +16,25 @@ async function generateHostKey(): Promise<string> {
   const { execSync } = require('child_process');
   execSync(`ssh-keygen -t rsa -b 2048 -f ${keyPath} -N "" -C "SSHBridge Server"`);
   return fs.readFileSync(keyPath, 'utf8');
+}
+
+async function gracefulShutdown(): Promise<void> {
+  try {
+    console.log('Starting graceful shutdown...');
+    
+    const sshServer = getSSHServer();
+    if (sshServer) {
+      console.log('Shutting down SSH server and all TCP tunnels...');
+      await sshServer.stop();
+      console.log('SSH server and all TCP tunnels stopped');
+    }
+    
+    console.log('Shutdown complete');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
+  }
 }
 
 async function startServer() {
@@ -37,11 +56,19 @@ async function startServer() {
     await sshServer.start();
     console.log(`SSH server started on port ${sshPort}`);
     
-    process.on('SIGINT', async () => {
-      console.log('Shutting down gracefully...');
-      await sshServer.stop();
-      console.log('SSH server stopped');
-      process.exit(0);
+    // Handle multiple shutdown signals
+    process.on('SIGINT', gracefulShutdown);
+    process.on('SIGTERM', gracefulShutdown);
+    
+    // Handle uncaught exceptions and rejections
+    process.on('uncaughtException', (error) => {
+      console.error('Uncaught Exception:', error);
+      gracefulShutdown();
+    });
+    
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      gracefulShutdown();
     });
     
   } catch (error) {

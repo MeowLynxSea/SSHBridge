@@ -299,7 +299,7 @@ export class SSHBridgeServer {
             
             // Clean up any active connections that might have been created before the error
             if (this.tunnelConnections.has(matchingTunnel.id)) {
-              this.tunnelConnections.delete(matchingTunnel.id);
+              this.tunnelConnections.get(matchingTunnel.id)!.clear();
               this.updateTunnelConnectionCount(matchingTunnel.id);
             }
             
@@ -562,33 +562,11 @@ export class SSHBridgeServer {
     conn.on('error', (err: Error) => {
       console.error(`Connection error for user ${user.username}:`, err);
       
-      // Reset current session stats, online status, and connections when SSH session ends
-      this.database.getTunnelsByUserId(user.id).then((tunnels: Tunnel[]) => {
-        tunnels.forEach((tunnel: Tunnel) => {
-          this.database.resetCurrentSessionStats(tunnel.id);
-          this.database.updateTunnelOnlineStatus(tunnel.id, false);
-          this.database.updateTunnelConnections(tunnel.id, 0);
-        });
-      }).catch((err: Error) => {
-        console.error('Error resetting stats on SSH session error:', err);
-      });
-      
       this.cleanupConnection(conn);
     });
 
     conn.on('end', () => {
       console.log(`Connection ended for user ${user.username}`);
-      
-      // Reset current session stats, online status, and connections when SSH session ends
-      this.database.getTunnelsByUserId(user.id).then((tunnels: Tunnel[]) => {
-        tunnels.forEach((tunnel: Tunnel) => {
-          this.database.resetCurrentSessionStats(tunnel.id);
-          this.database.updateTunnelOnlineStatus(tunnel.id, false);
-          this.database.updateTunnelConnections(tunnel.id, 0);
-        });
-      }).catch((err: Error) => {
-        console.error('Error resetting stats on SSH session end:', err);
-      });
       
       this.cleanupConnection(conn);
     });
@@ -765,7 +743,30 @@ export class SSHBridgeServer {
       // Clean up the old tunnel
       const key = `${activeTunnel.user.username}_${activeTunnel.tunnel.port}`;
       this.remoteForwards.delete(key);
-      activeTunnel.server.close();
+      
+      // Properly close the TCP server
+      const server = activeTunnel.server;
+      if (server) {
+        console.log(`Closing TCP server for tunnel ${tunnelId}`);
+        try {
+          // Remove all event listeners to prevent new connections
+          server.removeAllListeners('connection');
+          server.removeAllListeners('error');
+          
+          // Close the server
+          if (server.listening) {
+            server.close((err?: Error) => {
+              if (err) {
+                console.error(`Error closing TCP server for tunnel ${tunnelId}:`, err);
+              } else {
+                console.log(`TCP server for tunnel ${tunnelId} closed successfully`);
+              }
+            });
+          }
+        } catch (error) {
+          console.error(`Exception while closing TCP server for tunnel ${tunnelId}:`, error);
+        }
+      }
       
       // Remove from active tunnels
       this.activeTunnels.delete(tunnelId);
@@ -774,6 +775,39 @@ export class SSHBridgeServer {
 
   // Method to cleanup all connections and servers for a given connection
   private cleanupConnection(conn: any) {
+    // First identify which tunnel IDs belong to this connection before we start removing them
+    const tunnelIdsForThisConnection: number[] = [];
+    const serversToClose: Array<{server: any, bindAddr: string, bindPort: number}> = [];
+    
+    // Check regular tunnels
+    for (const [, value] of this.tunnels.entries()) {
+      if (value.connection === conn) {
+        tunnelIdsForThisConnection.push(value.tunnel.id);
+        console.log(`Marking tunnel for cleanup: ${value.tunnel.name}`);
+      }
+    }
+    
+    // Check remote port forwards
+    for (const [, value] of this.remoteForwards.entries()) {
+      if (value.connection === conn) {
+        // Find the corresponding tunnel ID
+        for (const [tunnelId, activeTunnel] of this.activeTunnels.entries()) {
+          if (activeTunnel.connection === conn) {
+            tunnelIdsForThisConnection.push(tunnelId);
+            console.log(`Marking remote forward tunnel for cleanup: ${value.bindAddr}:${value.bindPort}`);
+            
+            // Collect servers to close (but don't close yet to avoid modifying the map while iterating)
+            serversToClose.push({
+              server: value.server,
+              bindAddr: value.bindAddr,
+              bindPort: value.bindPort
+            });
+            break;
+          }
+        }
+      }
+    }
+
     // Clean up regular tunnels
     for (const [key, value] of this.tunnels.entries()) {
       if (value.connection === conn) {
@@ -786,25 +820,55 @@ export class SSHBridgeServer {
     for (const [key, value] of this.remoteForwards.entries()) {
       if (value.connection === conn) {
         console.log(`Cleaning up remote forward on ${value.bindAddr}:${value.bindPort}`);
-        value.server.close();
         this.remoteForwards.delete(key);
-        
-        // Find and remove from active tunnels
-        for (const [tunnelId, activeTunnel] of this.activeTunnels.entries()) {
-          if (activeTunnel.connection === conn) {
-            this.activeTunnels.delete(tunnelId);
-            break;
-          }
-        }
       }
     }
+    
+    // Remove from active tunnels
+    for (const [tunnelId, activeTunnel] of this.activeTunnels.entries()) {
+      if (activeTunnel.connection === conn) {
+        this.activeTunnels.delete(tunnelId);
+      }
+    }
+    
+    // Now close the TCP servers that belonged to this connection
+    serversToClose.forEach(({server, bindAddr, bindPort}) => {
+      try {
+        console.log(`Closing TCP server for ${bindAddr}:${bindPort}`);
+        // Remove all event listeners to prevent new connections
+        server.removeAllListeners('connection');
+        server.removeAllListeners('error');
+        
+        // Close the server
+        if (server.listening) {
+          server.close((err?: Error) => {
+            if (err) {
+              console.error(`Error closing TCP server ${bindAddr}:${bindPort}:`, err);
+            } else {
+              console.log(`TCP server for ${bindAddr}:${bindPort} closed successfully`);
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`Exception while closing TCP server ${bindAddr}:${bindPort}:`, error);
+      }
+    });
 
-    // Clear connection tracking for all tunnels associated with this connection
-    for (const [tunnelId, connections] of this.tunnelConnections.entries()) {
-      // We don't know which specific connections belong to this SSH connection,
-      // so we'll clear all of them to avoid stale data
-      connections.clear();
-      this.updateTunnelConnectionCount(tunnelId);
+    // Reset stats, online status, and connection tracking only for tunnels that belonged to this specific connection
+    for (const tunnelId of tunnelIdsForThisConnection) {
+      // Reset session stats
+      this.database.resetCurrentSessionStats(tunnelId);
+      
+      // Mark tunnel as offline
+      this.database.updateTunnelOnlineStatus(tunnelId, false);
+      
+      // Clear connection tracking
+      const connections = this.tunnelConnections.get(tunnelId);
+      if (connections) {
+        connections.clear();
+        this.updateTunnelConnectionCount(tunnelId);
+        console.log(`Cleared connections for tunnel ${tunnelId} belonging to this connection`);
+      }
     }
   }
 
@@ -952,19 +1016,103 @@ export class SSHBridgeServer {
   }
 
   start(callback?: () => void) {
-    this.sshServer.listen({
-      port: this.config.port,
-      host: this.config.host || '0.0.0.0'
-    }, callback);
+    // Clear all tunnels session state on server startup
+    this.database.clearAllTunnelsSessionState().then(() => {
+      console.log('All tunnel session state cleared on server startup');
+      
+      this.sshServer.listen({
+        port: this.config.port,
+        host: this.config.host || '0.0.0.0'
+      }, callback);
+    }).catch(err => {
+      console.error('Error clearing tunnel session state on startup:', err);
+      // Continue with server start even if clearing fails
+      this.sshServer.listen({
+        port: this.config.port,
+        host: this.config.host || '0.0.0.0'
+      }, callback);
+    });
   }
 
   stop(callback?: () => void) {
-    // Close all active connections and servers
-    for (const [key, value] of this.remoteForwards.entries()) {
-      value.server.close();
-      this.remoteForwards.delete(key);
+    console.log('Shutting down all TCP servers and SSH server...');
+    
+    // First, close all active connections for tunnel tracking
+    for (const [tunnelId, connections] of this.tunnelConnections.entries()) {
+      connections.clear();
+      this.updateTunnelConnectionCount(tunnelId);
     }
-
-    this.sshServer.close(callback);
+    this.tunnelConnections.clear();
+    
+    // Close all TCP servers created for port forwarding
+    const closePromises: Promise<void>[] = [];
+    
+    for (const [key, value] of this.remoteForwards.entries()) {
+      console.log(`Closing TCP server for ${value.bindAddr}:${value.bindPort}`);
+      
+      // Create a promise to handle server close
+      const closePromise = new Promise<void>((resolve) => {
+        // Remove all event listeners to prevent further connections
+        value.server.removeAllListeners('connection');
+        value.server.removeAllListeners('error');
+        
+        // Force close all existing connections
+        if (value.server.listening) {
+          value.server.close((err?: Error) => {
+            if (err) {
+              console.error(`Error closing server ${key}:`, err);
+            } else {
+              console.log(`TCP server for ${key} closed successfully`);
+            }
+            resolve();
+          });
+        } else {
+          resolve();
+        }
+      });
+      
+      closePromises.push(closePromise);
+    }
+    
+    // Clear remote forwards and active tunnels
+    this.remoteForwards.clear();
+    this.activeTunnels.clear();
+    
+    // Wait for all servers to close before closing the main SSH server
+    Promise.all(closePromises)
+      .then(() => {
+        console.log('All TCP servers closed');
+        
+        // Clear all tunnels session state on server shutdown
+        return this.database.clearAllTunnelsSessionState();
+      })
+      .then(() => {
+        console.log('All tunnel session state cleared on server shutdown');
+        
+        // Now close the main SSH server
+        this.sshServer.close(() => {
+          console.log('SSH server closed');
+          if (callback) callback();
+        });
+      })
+      .catch((err) => {
+        console.error('Error while closing TCP servers:', err);
+        
+        // Still try to clear session state even if there were errors
+        this.database.clearAllTunnelsSessionState()
+          .then(() => {
+            console.log('Tunnel session state cleared despite previous errors');
+          })
+          .catch(sessionErr => {
+            console.error('Error clearing session state on shutdown:', sessionErr);
+          })
+          .finally(() => {
+            // Still try to close the SSH server even if there were errors
+            this.sshServer.close(() => {
+              console.log('SSH server closed after errors');
+              if (callback) callback();
+            });
+          });
+      });
   }
 }
