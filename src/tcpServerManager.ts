@@ -41,9 +41,13 @@ export class TcpServerManager {
   private servers: Map<string, TcpServerInfo> = new Map();
   private connections: Map<number, Set<string>> = new Map();
   private database: Database;
+  private readonly maxConnections: number = 1000; // Maximum connections per tunnel
+  private readonly connectionTimeout: number = 30000; // 30 seconds default timeout
 
-  constructor(database: Database) {
+  constructor(database: Database, maxConnections?: number, connectionTimeout?: number) {
     this.database = database;
+    if (maxConnections !== undefined) this.maxConnections = maxConnections;
+    if (connectionTimeout !== undefined) this.connectionTimeout = connectionTimeout;
   }
 
   /**
@@ -110,6 +114,14 @@ export class TcpServerManager {
     tunnelId: number,
     sshConnection: SSH2Connection
   ): void {
+    // Check if we've reached the maximum connections for this tunnel
+    const tunnelConnections = this.connections.get(tunnelId);
+    if (tunnelConnections && tunnelConnections.size >= this.maxConnections) {
+      console.log(`Refusing new connection to ${bindAddr}:${bindPort} - maximum connections (${this.maxConnections}) reached`);
+      socket.end();
+      return;
+    }
+    
     console.log(`New connection to ${bindAddr}:${bindPort} from ${socket.remoteAddress || 'unknown'}:${socket.remotePort || 'unknown'}`);
     
     // Track this connection for statistics
@@ -126,6 +138,9 @@ export class TcpServerManager {
     let bytesReceived = 0;
     let bytesSent = 0;
     
+    // Set socket timeout with configurable value
+    socket.setTimeout(this.connectionTimeout);
+    
     // Open a channel back to the SSH client for forwarded-tcpip
     sshConnection.forwardOut(
       bindAddr, 
@@ -140,10 +155,7 @@ export class TcpServerManager {
           return;
         }
       
-      // Set socket timeout
-      socket.setTimeout(30000); // 30 second timeout
-      
-      // Forward data between socket and channel
+        // Forward data between socket and channel
       socket.on('data', async (data: Buffer) => {
         bytesReceived += data.length;
         
@@ -383,12 +395,21 @@ export class TcpServerManager {
     const serverInfo = this.servers.get(key);
     
     if (!serverInfo) {
-      throw new Error(`No TCP server found for ${username}:${bindPort}`);
+      console.log(`No TCP server found for ${username}:${bindPort}, might already be closed`);
+      return;
     }
 
     // Remove all event listeners to prevent new connections
     serverInfo.server.removeAllListeners('connection');
     serverInfo.server.removeAllListeners('error');
+    
+    // Force close all existing connections for this server
+    const connections = this.connections.get(serverInfo.tunnelId);
+    if (connections) {
+      connections.forEach(_connectionId => {
+        // Connection cleanup will be handled by individual socket close handlers
+      });
+    }
     
     // Close the server
     if (serverInfo.server.listening) {
@@ -399,10 +420,15 @@ export class TcpServerManager {
             reject(err);
           } else {
             console.log(`TCP server for ${key} closed successfully`);
+            // Remove from servers map after successful close
+            this.servers.delete(key);
             resolve();
           }
         });
       });
+    } else {
+      // Server wasn't listening, just remove from map
+      this.servers.delete(key);
     }
   }
 
@@ -436,10 +462,24 @@ export class TcpServerManager {
    * Clean up a connection and update statistics
    */
   private cleanupConnection(connectionId: string, tunnelId: number, bytesReceived: number, bytesSent: number): void {
-    // Update statistics and remove connection tracking
-    this.updateTunnelStats(tunnelId, bytesReceived, bytesSent);
-    this.connections.get(tunnelId)?.delete(connectionId);
-    this.updateTunnelConnectionCount(tunnelId);
+    try {
+      // Update statistics and remove connection tracking
+      this.updateTunnelStats(tunnelId, bytesReceived, bytesSent);
+      
+      const connections = this.connections.get(tunnelId);
+      if (connections) {
+        connections.delete(connectionId);
+        
+        // Clean up empty connection sets to prevent memory leaks
+        if (connections.size === 0) {
+          this.connections.delete(tunnelId);
+        }
+      }
+      
+      this.updateTunnelConnectionCount(tunnelId);
+    } catch (error) {
+      console.error(`Error in cleanupConnection for ${connectionId}:`, error);
+    }
   }
 
   /**

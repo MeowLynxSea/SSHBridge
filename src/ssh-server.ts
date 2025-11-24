@@ -36,7 +36,8 @@ export class SSHBridgeServer {
   constructor(config: SSHServerConfig, database: Database) {
     this.config = config;
     this.database = database;
-    this.tcpServerManager = new TcpServerManager(database);
+    // Configure TcpServerManager with reasonable defaults
+    this.tcpServerManager = new TcpServerManager(database, 1000, 30000);
     this.sshServer = new ssh2.Server({
       hostKeys: [config.hostKey],
     });
