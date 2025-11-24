@@ -193,6 +193,15 @@ class Database {
       }
     }
     
+    // Check if we need to add max_bandwidth column
+    const tunnelTableInfo = await all("PRAGMA table_info(tunnels)", []) as unknown as TableColumn[];
+    const hasBandwidthColumn = tunnelTableInfo.some((col) => col.name === 'max_bandwidth');
+    
+    if (!hasBandwidthColumn) {
+      console.log('Adding max_bandwidth column to tunnels table for bandwidth limiting');
+      await run('ALTER TABLE tunnels ADD COLUMN max_bandwidth INTEGER', []);
+    }
+
     // Create the tunnels table with the new schema if it doesn't exist
     await run(`
       CREATE TABLE IF NOT EXISTS tunnels (
@@ -200,6 +209,7 @@ class Database {
         user_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         external_port INTEGER NOT NULL,
+        max_bandwidth INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
       )
@@ -303,12 +313,12 @@ class Database {
     return isValid ? user : null;
   }
 
-  async createTunnel(userId: number, name: string, externalPort: number): Promise<Tunnel> {
+  async createTunnel(userId: number, name: string, externalPort: number, maxBandwidth?: number): Promise<Tunnel> {
     const { run } = promisifyDb(this.db);
     
     const result = await run(
-      'INSERT INTO tunnels (user_id, name, external_port) VALUES (?, ?, ?)',
-      [userId, name, externalPort]
+      'INSERT INTO tunnels (user_id, name, external_port, max_bandwidth) VALUES (?, ?, ?, ?)',
+      [userId, name, externalPort, maxBandwidth || null]
     );
     
     const tunnel = await this.getTunnelById(result.lastID);
@@ -332,12 +342,23 @@ class Database {
     return row ? this.mapRowToTunnel(row) : null;
   }
 
-  async updateTunnel(id: number, name: string, externalPort: number): Promise<Tunnel | null> {
+  async updateTunnel(id: number, name: string, externalPort: number, maxBandwidth?: number): Promise<Tunnel | null> {
     const { run } = promisifyDb(this.db);
     
     await run(
-      'UPDATE tunnels SET name = ?, external_port = ? WHERE id = ?',
-      [name, externalPort, id]
+      'UPDATE tunnels SET name = ?, external_port = ?, max_bandwidth = ? WHERE id = ?',
+      [name, externalPort, maxBandwidth || null, id]
+    );
+    
+    return this.getTunnelById(id);
+  }
+
+  async updateTunnelBandwidth(id: number, maxBandwidth: number): Promise<Tunnel | null> {
+    const { run } = promisifyDb(this.db);
+    
+    await run(
+      'UPDATE tunnels SET max_bandwidth = ? WHERE id = ?',
+      [maxBandwidth, id]
     );
     
     return this.getTunnelById(id);
@@ -355,6 +376,7 @@ class Database {
       user_id: Number(row.user_id),
       name: String(row.name),
       external_port: Number(row.external_port),
+      max_bandwidth: row.max_bandwidth ? Number(row.max_bandwidth) : undefined,
       created_at: parseDatabaseDate(String(row.created_at)).toISOString()
     };
   }

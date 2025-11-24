@@ -1,6 +1,7 @@
 import { Socket, createConnection } from 'net';
 import * as net from 'net';
 import { SSH2Connection, SSH2Channel, SSH2ForwardData, UserData } from './types/ssh2-types';
+import { IntegratedRateLimiter } from './integratedRateLimiter';
 
 // Forward declarations to avoid circular dependency
 interface Tunnel {
@@ -16,6 +17,7 @@ interface Database {
   updateSessionStats(tunnelId: number, bytesReceived: number, bytesSent: number): void;
   updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections: number): void;
   updateTunnelConnections(tunnelId: number, connections: number): void;
+  getTunnelById(id: number): Promise<Tunnel | null>;
 }
 
 export interface TcpConnectionInfo {
@@ -43,11 +45,13 @@ export class TcpServerManager {
   private database: Database;
   private readonly maxConnections: number = 1000; // Maximum connections per tunnel
   private readonly connectionTimeout: number = 30000; // 30 seconds default timeout
+  private rateLimiter: IntegratedRateLimiter;
 
   constructor(database: Database, maxConnections?: number, connectionTimeout?: number) {
     this.database = database;
     if (maxConnections !== undefined) this.maxConnections = maxConnections;
     if (connectionTimeout !== undefined) this.connectionTimeout = connectionTimeout;
+    this.rateLimiter = new IntegratedRateLimiter();
   }
 
   /**
@@ -107,19 +111,36 @@ export class TcpServerManager {
   /**
    * Handle new connection to TCP server
    */
-  private handleNewConnection(
+  private async handleNewConnection(
     socket: Socket,
     bindAddr: string,
     bindPort: number,
     tunnelId: number,
     sshConnection: SSH2Connection
-  ): void {
+  ): Promise<void> {
     // Check if we've reached the maximum connections for this tunnel
     const tunnelConnections = this.connections.get(tunnelId);
     if (tunnelConnections && tunnelConnections.size >= this.maxConnections) {
       console.log(`Refusing new connection to ${bindAddr}:${bindPort} - maximum connections (${this.maxConnections}) reached`);
       socket.end();
       return;
+    }
+    
+    // Get tunnel configuration for bandwidth limiting
+    const tunnel = await this.database.getTunnelById(tunnelId);
+    if (tunnel?.max_bandwidth) {
+      // Initialize bandwidth limiting for this tunnel if not already done
+      this.rateLimiter.initBucket(tunnelId, {
+        maxBandwidth: tunnel.max_bandwidth,
+        burstFactor: 1.5, // Allow 50% burst capacity
+        enableShaping: true
+      }, 'upload');
+      
+      this.rateLimiter.initBucket(tunnelId, {
+        maxBandwidth: tunnel.max_bandwidth,
+        burstFactor: 1.5,
+        enableShaping: true
+      }, 'download');
     }
     
     console.log(`New connection to ${bindAddr}:${bindPort} from ${socket.remoteAddress || 'unknown'}:${socket.remotePort || 'unknown'}`);
@@ -155,26 +176,74 @@ export class TcpServerManager {
           return;
         }
       
-        // Forward data between socket and channel
-      socket.on('data', async (data: Buffer) => {
-        bytesReceived += data.length;
+        // Create serial data queues to maintain packet order
+        const uploadQueue: Buffer[] = [];
+        const downloadQueue: Buffer[] = [];
+        let uploadProcessing = false;
+        let downloadProcessing = false;
         
-        // Update session stats in real-time for rate calculation
-        this.database.updateSessionStats(tunnelId, data.length, 0);
+        // Serial upload processor (socket → channel)
+        const processUploadQueue = async () => {
+          if (uploadProcessing || uploadQueue.length === 0) return;
+          uploadProcessing = true;
+          
+          while (uploadQueue.length > 0) {
+            const data = uploadQueue.shift()!;
+            bytesReceived += data.length;
+            
+            // Update session stats in real-time for rate calculation
+            this.database.updateSessionStats(tunnelId, data.length, 0);
+            
+            // Apply bandwidth limit BEFORE sending data
+            if (tunnel?.max_bandwidth) {
+              await this.rateLimiter.writeWithRateLimit(tunnelId, data, 'upload');
+            }
+            
+            // Write data to channel (only after bandwidth control is complete)
+            channel.write(data);
+          }
+          
+          uploadProcessing = false;
+        };
         
-        // Write data directly to channel
-        channel.write(data);
-      });
+        // Serial download processor (channel → socket)
+        const processDownloadQueue = async () => {
+          if (downloadProcessing || downloadQueue.length === 0) return;
+          downloadProcessing = true;
+          
+          while (downloadQueue.length > 0) {
+            const data = downloadQueue.shift()!;
+            bytesSent += data.length;
+            
+            // Update session stats in real-time for rate calculation
+            this.database.updateSessionStats(tunnelId, 0, data.length);
+            
+            // Apply bandwidth limit BEFORE sending data
+            if (tunnel?.max_bandwidth) {
+              await this.rateLimiter.writeWithRateLimit(tunnelId, data, 'download');
+            }
+            
+            // Write data to socket (only after bandwidth control is complete)
+            socket.write(data);
+          }
+          
+          downloadProcessing = false;
+        };
       
-      channel.on('data', async (data: Buffer) => {
-        bytesSent += data.length;
-        
-        // Update session stats in real-time for rate calculation
-        this.database.updateSessionStats(tunnelId, 0, data.length);
-        
-        // Write data directly to socket
-        socket.write(data);
-      });
+        // Forward data between socket and channel with bandwidth limiting
+        socket.on('data', (data: Buffer) => {
+          // Queue data for serial processing (socket → channel)
+          uploadQueue.push(data);
+          // Process queue in next tick to maintain order
+          setImmediate(processUploadQueue);
+        });
+      
+        channel.on('data', (data: Buffer) => {
+          // Queue data for serial processing (channel → socket)
+          downloadQueue.push(data);
+          // Process queue in next tick to maintain order
+          setImmediate(processDownloadQueue);
+        });
       
       socket.on('close', () => {
         try {
@@ -237,6 +306,21 @@ export class TcpServerManager {
   ): Promise<void> {
     console.log(`Creating tunnel for external port: ${tunnel.name} -> ${tunnel.external_port}`);
     
+    // Initialize bandwidth limiting for this tunnel if needed
+    if (tunnel.max_bandwidth) {
+      this.rateLimiter.initBucket(tunnel.id, {
+        maxBandwidth: tunnel.max_bandwidth,
+        burstFactor: 1.5, // Allow 50% burst capacity
+        enableShaping: true
+      }, 'upload');
+      
+      this.rateLimiter.initBucket(tunnel.id, {
+        maxBandwidth: tunnel.max_bandwidth,
+        burstFactor: 1.5,
+        enableShaping: true
+      }, 'download');
+    }
+    
     const channel: SSH2Channel = accept();
     
     // For direct-tcpip connections, we forward to the address specified in the connection info
@@ -272,7 +356,12 @@ export class TcpServerManager {
       // Update session stats in real-time for rate calculation
       this.database.updateSessionStats(tunnel.id, data.length, 0);
       
-      // Write data directly to channel
+      // Check bandwidth limit (download direction: socket -> channel)
+      if (tunnel.max_bandwidth) {
+        await this.rateLimiter.writeWithRateLimit(tunnel.id, data, 'download');
+      }
+      
+      // Write data to channel (after bandwidth control if needed)
       channel.write(data);
     });
 
@@ -282,7 +371,12 @@ export class TcpServerManager {
       // Update session stats in real-time for rate calculation
       this.database.updateSessionStats(tunnel.id, 0, data.length);
       
-      // Write data directly to socket
+      // Check bandwidth limit (upload direction: channel -> socket)
+      if (tunnel.max_bandwidth) {
+        await this.rateLimiter.writeWithRateLimit(tunnel.id, data, 'upload');
+      }
+      
+      // Write data to socket (after bandwidth control if needed)
       socket.write(data);
     });
 
@@ -399,6 +493,9 @@ export class TcpServerManager {
       return;
     }
 
+    // Remove bandwidth limiters for this tunnel
+    this.rateLimiter.removeBucket(serverInfo.tunnelId);
+
     // Remove all event listeners to prevent new connections
     serverInfo.server.removeAllListeners('connection');
     serverInfo.server.removeAllListeners('error');
@@ -448,6 +545,9 @@ export class TcpServerManager {
    * Close all TCP servers
    */
   async closeAllServers(): Promise<void> {
+    // Clean up all bandwidth limiters
+    this.rateLimiter.destroy();
+    
     const closePromises: Promise<void>[] = [];
     this.servers.forEach((serverInfo, key) => {
       const [username, portStr] = key.split('_');
@@ -515,5 +615,43 @@ export class TcpServerManager {
       result.push(server);
     });
     return result;
+  }
+
+  /**
+   * Get bandwidth statistics for a tunnel
+   */
+  getBandwidthStats(tunnelId: number): {
+    upload: { tokens: number; capacity: number; refillRate: number; utilization: number } | null;
+    download: { tokens: number; capacity: number; refillRate: number; utilization: number } | null;
+  } {
+    return {
+      upload: this.rateLimiter.getBucketStats(tunnelId, 'upload'),
+      download: this.rateLimiter.getBucketStats(tunnelId, 'download')
+    };
+  }
+
+  /**
+   * Update bandwidth configuration for a tunnel
+   */
+  async updateBandwidthConfig(tunnelId: number): Promise<void> {
+    const tunnel = await this.database.getTunnelById(tunnelId);
+    
+    if (tunnel?.max_bandwidth) {
+      // Update existing bandwidth limiter
+      this.rateLimiter.initBucket(tunnelId, {
+        maxBandwidth: tunnel.max_bandwidth,
+        burstFactor: 1.5,
+        enableShaping: true
+      }, 'upload');
+      
+      this.rateLimiter.initBucket(tunnelId, {
+        maxBandwidth: tunnel.max_bandwidth,
+        burstFactor: 1.5,
+        enableShaping: true
+      }, 'download');
+    } else {
+      // Remove bandwidth limiters
+      this.rateLimiter.removeBucket(tunnelId);
+    }
   }
 }

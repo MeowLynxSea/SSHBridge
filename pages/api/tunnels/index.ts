@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     case 'POST':
       try {
-        const { name, external_port } = req.body;
+        const { name, external_port, max_bandwidth } = req.body;
 
         if (!name || !external_port) {
           return res.status(400).json({ error: 'Name and external_port are required' });
@@ -40,10 +40,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(400).json({ error: 'External port must be a number' });
         }
 
+        if (max_bandwidth && (isNaN(max_bandwidth) || parseInt(max_bandwidth) <= 0)) {
+          return res.status(400).json({ error: 'Max bandwidth must be a positive number (bytes per second)' });
+        }
+
         const tunnel = await database.createTunnel(
           user.id,
           name,
-          parseInt(external_port)
+          parseInt(external_port),
+          max_bandwidth ? parseInt(max_bandwidth) : undefined
         );
 
         res.status(201).json({ tunnel });

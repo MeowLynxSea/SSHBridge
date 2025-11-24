@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import TunnelStats from './TunnelStats';
 import Settings from './Settings';
+import BandwidthMonitor from './BandwidthMonitor';
 import { formatForDisplay } from '../src/utils/timeUtils';
 
 interface Tunnel {
@@ -9,6 +10,7 @@ interface Tunnel {
   user_id: number;
   name: string;
   external_port: number;
+  max_bandwidth?: number;
   created_at: string;
   is_online?: boolean;
 }
@@ -20,6 +22,7 @@ interface Tunnel {
 interface TunnelFormData {
   name: string;
   external_port: string;
+  max_bandwidth: string;
 }
 
 export default function TunnelManager() {
@@ -32,9 +35,11 @@ export default function TunnelManager() {
   const [activeTab, setActiveTab] = useState<'tunnels' | 'stats'>('tunnels');
   const [tunnelStatuses, setTunnelStatuses] = useState<Map<number, boolean>>(new Map());
   const [showSettings, setShowSettings] = useState(false);
+  const [selectedTunnelForBandwidth, setSelectedTunnelForBandwidth] = useState<Tunnel | null>(null);
   const [formData, setFormData] = useState<TunnelFormData>({
     name: '',
-    external_port: ''
+    external_port: '',
+    max_bandwidth: ''
   });
 
   const fetchTunnelStatuses = useCallback(async () => {
@@ -112,11 +117,12 @@ export default function TunnelManager() {
         body: JSON.stringify({
           name: formData.name,
           external_port: parseInt(formData.external_port),
+          max_bandwidth: formData.max_bandwidth ? parseInt(formData.max_bandwidth) : undefined,
         }),
       });
 
       if (response.ok) {
-        setFormData({ name: '', external_port: '' });
+        setFormData({ name: '', external_port: '', max_bandwidth: '' });
         setShowForm(false);
         setEditingTunnel(null);
         fetchTunnels();
@@ -134,7 +140,8 @@ export default function TunnelManager() {
     setEditingTunnel(tunnel);
     setFormData({
       name: tunnel.name,
-      external_port: tunnel.external_port.toString()
+      external_port: tunnel.external_port.toString(),
+      max_bandwidth: tunnel.max_bandwidth ? tunnel.max_bandwidth.toString() : ''
     });
     setShowForm(true);
   };
@@ -193,7 +200,7 @@ export default function TunnelManager() {
                 className="nb-btn nb-btn-accent" 
                 onClick={() => {
                   setEditingTunnel(null);
-                  setFormData({ name: '', external_port: '' });
+                  setFormData({ name: '', external_port: '', max_bandwidth: '' });
                   setShowForm(true);
                 }}
               >
@@ -271,6 +278,7 @@ export default function TunnelManager() {
                       <tr>
                         <th>NAME</th>
                         <th>EXTERNAL PORT</th>
+                        <th>MAX BANDWIDTH</th>
                         <th>CREATED</th>
                         <th style={{ textAlign: 'right' }}>ACTIONS</th>
                       </tr>
@@ -283,10 +291,33 @@ export default function TunnelManager() {
                             <span className="nb-badge">{tunnel.external_port}</span>
                           </td>
                           <td>
+                            {tunnel.max_bandwidth ? (
+                              <span className="nb-badge" style={{ backgroundColor: 'var(--accent-color)' }}>
+                                {tunnel.max_bandwidth < 1024 * 1024 
+                                  ? `${(tunnel.max_bandwidth / 1024).toFixed(1)}KB/s`
+                                  : `${(tunnel.max_bandwidth / (1024 * 1024)).toFixed(1)}MB/s`
+                                }
+                              </span>
+                            ) : (
+                              <span className="nb-badge" style={{ backgroundColor: 'var(--gray-light)', color: 'var(--fg-color)' }}>
+                                Unlimited
+                              </span>
+                            )}
+                          </td>
+                          <td>
                             {formatForDisplay(tunnel.created_at)}
                           </td>
                           <td style={{ textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                              {tunnel.is_online && (
+                                <button
+                                  className="nb-btn"
+                                  style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                  onClick={() => setSelectedTunnelForBandwidth(tunnel)}
+                                >
+                                  BANDWIDTH
+                                </button>
+                              )}
                               <button
                                 className="nb-btn"
                                 style={{ padding: '8px 12px', fontSize: '0.8rem' }}
@@ -373,7 +404,7 @@ export default function TunnelManager() {
                 onClick={() => {
                   setShowForm(false);
                   setEditingTunnel(null);
-                  setFormData({ name: '', external_port: '' });
+                  setFormData({ name: '', external_port: '', max_bandwidth: '' });
                 }}
               >
                 X
@@ -423,6 +454,23 @@ export default function TunnelManager() {
                   />
                 </div>
                 
+                <div className="form-group" style={{ marginBottom: '20px' }}>
+                  <label className="nb-label" htmlFor="max_bandwidth">
+                    MAX BANDWIDTH (bytes/s, optional)
+                  </label>
+                  <input
+                    className="nb-input"
+                    id="max_bandwidth"
+                    type="number"
+                    value={formData.max_bandwidth}
+                    onChange={(e) => setFormData({ ...formData, max_bandwidth: e.target.value })}
+                    placeholder="1048576 (1MB/s)"
+                  />
+                  <small style={{ color: 'var(--gray-medium)', display: 'block', marginTop: '5px' }}>
+                    Leave empty for unlimited bandwidth. Bandwidth is limited per tunnel.
+                  </small>
+                </div>
+                
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                   <button
                     className="nb-btn"
@@ -430,7 +478,7 @@ export default function TunnelManager() {
                     onClick={() => {
                       setShowForm(false);
                       setEditingTunnel(null);
-                      setFormData({ name: '', external_port: '' });
+                      setFormData({ name: '', external_port: '', max_bandwidth: '' });
                     }}
                   >
                     CANCEL
@@ -449,6 +497,15 @@ export default function TunnelManager() {
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)} 
       />
+      
+      {/* Bandwidth Monitor Dialog */}
+      {selectedTunnelForBandwidth && (
+        <BandwidthMonitor
+          tunnel={selectedTunnelForBandwidth}
+          isOpen={!!selectedTunnelForBandwidth}
+          onClose={() => setSelectedTunnelForBandwidth(null)}
+        />
+      )}
 
     </div>
   );

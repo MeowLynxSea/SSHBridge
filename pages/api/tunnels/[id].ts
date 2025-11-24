@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   switch (req.method) {
     case 'PUT':
       try {
-        const { name, external_port } = req.body;
+        const { name, external_port, max_bandwidth } = req.body;
 
         if (!name || !external_port) {
           return res.status(400).json({ error: 'Name and external_port are required' });
@@ -35,6 +35,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (isNaN(external_port)) {
           return res.status(400).json({ error: 'External port must be a number' });
+        }
+
+        if (max_bandwidth && (isNaN(max_bandwidth) || parseInt(max_bandwidth) <= 0)) {
+          return res.status(400).json({ error: 'Max bandwidth must be a positive number (bytes per second)' });
         }
 
         const tunnel = await database.getTunnelById(tunnelId);
@@ -45,12 +49,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const updatedTunnel = await database.updateTunnel(
           tunnelId,
           name,
-          parseInt(external_port)
+          parseInt(external_port),
+          max_bandwidth ? parseInt(max_bandwidth) : undefined
         );
 
         res.status(200).json({ tunnel: updatedTunnel });
       } catch (error) {
         console.error('Update tunnel error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+      break;
+
+    case 'PATCH':
+      try {
+        const { max_bandwidth } = req.body;
+
+        if (!max_bandwidth) {
+          return res.status(400).json({ error: 'Max bandwidth is required for PATCH operation' });
+        }
+
+        if (isNaN(max_bandwidth) || parseInt(max_bandwidth) <= 0) {
+          return res.status(400).json({ error: 'Max bandwidth must be a positive number (bytes per second)' });
+        }
+
+        const tunnel = await database.getTunnelById(tunnelId);
+        if (!tunnel || tunnel.user_id !== user.id) {
+          return res.status(404).json({ error: 'Tunnel not found' });
+        }
+
+        const updatedTunnel = await database.updateTunnelBandwidth(
+          tunnelId,
+          parseInt(max_bandwidth)
+        );
+
+        res.status(200).json({ tunnel: updatedTunnel });
+      } catch (error) {
+        console.error('Update tunnel bandwidth error:', error);
         res.status(500).json({ error: 'Internal server error' });
       }
       break;

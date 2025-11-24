@@ -169,8 +169,7 @@ export class SSHBridgeServer {
           await this.disconnectTunnelIfActive(matchingTunnel.id, conn).catch(err => console.error('Error disconnecting tunnel:', err));
           
           console.log(`Remote forward ${bindAddr}:${bindPort} validated for user ${user.username} - matches tunnel: ${matchingTunnel.name}`);
-          
-
+          console.log(`Bandwidth limit: ${matchingTunnel.max_bandwidth ? `${matchingTunnel.max_bandwidth} bytes/s` : 'unlimited'}`);
           
           // Create a TCP server to listen on the requested port
           try {
