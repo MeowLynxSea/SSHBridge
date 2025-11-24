@@ -1,9 +1,18 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import ssh2 from 'ssh2';
-import { Socket, createConnection } from 'net';
-import * as net from 'net';
+import { SSH2Connection, SSH2Session, SSH2Channel, SSH2PtyInfo, SSH2Server, SSH2AuthContext, SSH2RequestData, SSH2ForwardData, UserData, RemoteForwardInfo, ActiveTunnelInfo } from './types/ssh2-types';
 import { Database, Tunnel } from './database';
 import { getCurrentTime, formatDuration } from './utils/timeUtils';
+import { TcpServerManager } from './tcpServerManager';
+import ssh2 from 'ssh2';
+
+// Timer type for compatibility
+interface Timer {
+  ref(): Timer;
+  unref(): Timer;
+}
+
+declare function setInterval(callback: () => void, ms: number): Timer;
+declare function clearInterval(intervalId: Timer): void;
+
 import './types/ssh2.d';
 
 export interface SSHServerConfig {
@@ -13,20 +22,21 @@ export interface SSHServerConfig {
 }
 
 export class SSHBridgeServer {
-  private sshServer: any;
+  private sshServer: SSH2Server;
   private database: Database;
   private config: SSHServerConfig;
-  private tunnels: Map<string, { connection: any; tunnel: Tunnel }> = new Map();
-  private remoteForwards: Map<string, any> = new Map();
-  private ptyInfo: any = null;
-  private currentChannel: any = null;
-  private tunnelConnections: Map<number, Set<string>> = new Map(); // Track active connections per tunnel
-  private activeTunnels: Map<number, any> = new Map(); // Track active SSH tunnels by tunnel ID
+  private tunnels: Map<string, { connection: SSH2Connection; tunnel: Tunnel }> = new Map();
+  private remoteForwards: Map<string, RemoteForwardInfo> = new Map();
+  private ptyInfo: SSH2PtyInfo | null = null;
+  private currentChannel: SSH2Channel | null = null;
+  private activeTunnels: Map<number, ActiveTunnelInfo> = new Map();
+  private tcpServerManager: TcpServerManager;
 
 
   constructor(config: SSHServerConfig, database: Database) {
     this.config = config;
     this.database = database;
+    this.tcpServerManager = new TcpServerManager(database);
     this.sshServer = new ssh2.Server({
       hostKeys: [config.hostKey],
     });
@@ -35,11 +45,11 @@ export class SSHBridgeServer {
   }
 
   private setupEventHandlers() {
-    this.sshServer.on('connection', (conn: any) => {
+    this.sshServer.on('connection', (conn: SSH2Connection) => {
       console.log('New SSH connection');
 
-      conn.on('authentication', async (ctx: any) => {
-        if (ctx.method === 'password') {
+      conn.on('authentication', async (ctx: SSH2AuthContext) => {
+        if (ctx.method === 'password' && ctx.password) {
           const user = await this.database.validatePassword(ctx.username, ctx.password);
           if (user) {
             ctx.accept();
@@ -52,13 +62,17 @@ export class SSHBridgeServer {
         }
       });
 
-      conn.on('error', (err: Error) => {
-        console.error('SSH connection error:', err);
+      conn.on('error', (err?: Error) => {
+        if (err) {
+          console.error('SSH connection error:', err);
+        } else {
+          console.error('SSH connection error (unknown)');
+        }
       });
     });
   }
 
-  private sendErrorMessageToClient(conn: any, errorMsg: string, detailMsg: string): void {
+  private sendErrorMessageToClient(conn: SSH2Connection, errorMsg: string, detailMsg: string): void {
     // Store the error message for display when PTY is requested
     conn._sshbForwardError = {
       message: errorMsg,
@@ -66,7 +80,7 @@ export class SSHBridgeServer {
     };
   }
 
-  private handleAuthenticatedConnection(conn: any, user: any) {
+  private handleAuthenticatedConnection(conn: SSH2Connection, user: UserData) {
     console.log(`User ${user.username} authenticated`);
     
     // Initialize port forward request tracking
@@ -84,7 +98,7 @@ export class SSHBridgeServer {
     });
     
     // Handle remote port forwarding requests
-    conn.on('request', async (accept: any, reject: any, name: string, data: any) => {
+    conn.on('request', async (accept: () => void, reject: () => void, name: string, data: SSH2RequestData) => {
       if (name === 'tcpip-forward') {
         try {
           const { bindAddr, bindPort } = data;
@@ -127,7 +141,7 @@ export class SSHBridgeServer {
           // Check if this tunnel is already online (being used by this same user)
           const isTunnelOnline = await this.database.isTunnelWithPortOnline(bindPort);
           // Also check our internal state to be sure
-          const isPortInUse = this.activeTunnels.has(matchingTunnel.id);
+          const isPortInUse = this.tcpServerManager.isPortInUse(bindPort) || this.activeTunnels.has(matchingTunnel.id);
           
           if (isTunnelOnline || isPortInUse) {
             const errorMsg = `远程端口 ${bindAddr}:${bindPort} 启用失败`;
@@ -142,7 +156,6 @@ export class SSHBridgeServer {
             // Reject the port forwarding request
             reject();
             
-            // Disconnect the SSH connection after a short delay
             // Mark port forward as processed
             conn._processedPortForwards = (conn._processedPortForwards || 0) + 1;
             
@@ -151,121 +164,27 @@ export class SSHBridgeServer {
             return;
           }
           
+          // Disconnect any existing active tunnel
+          await this.disconnectTunnelIfActive(matchingTunnel.id, conn).catch(err => console.error('Error disconnecting tunnel:', err));
+          
           console.log(`Remote forward ${bindAddr}:${bindPort} validated for user ${user.username} - matches tunnel: ${matchingTunnel.name}`);
           
 
           
           // Create a TCP server to listen on the requested port
-          const server = net.createServer((socket: any) => {
-            console.log(`New connection to ${bindAddr}:${bindPort} from ${socket.remoteAddress}:${socket.remotePort}`);
+          try {
+            const server = await this.tcpServerManager.createTcpServer(
+              bindAddr, 
+              bindPort, 
+              matchingTunnel.id, 
+              user.id, 
+              user.username, 
+              conn
+            );
             
-            // Track this connection for statistics
-            const connectionId = `${socket.remoteAddress}:${socket.remotePort}-${Date.now()}`;
-            if (!this.tunnelConnections.has(matchingTunnel.id)) {
-              this.tunnelConnections.set(matchingTunnel.id, new Set());
-            }
-            this.tunnelConnections.get(matchingTunnel.id)!.add(connectionId);
+            // Start the TCP server
+            await this.tcpServerManager.startTcpServer(server, bindAddr, bindPort);
             
-            // Update active connections count
-            this.updateTunnelConnectionCount(matchingTunnel.id);
-            
-            // Don't reset current session stats for individual TCP connections
-            // Only reset when the entire SSH session starts
-            
-            // Track data transfer for statistics
-            let bytesReceived = 0;
-            let bytesSent = 0;
-            
-            // Open a channel back to the SSH client for forwarded-tcpip
-            conn.forwardOut(bindAddr, bindPort, socket.remoteAddress, socket.remotePort, async (err: any, channel: any) => {
-              if (err) {
-                console.error(`Error opening channel: ${err.message}`);
-                // Clean up connection tracking when channel creation fails
-                this.tunnelConnections.get(matchingTunnel.id)?.delete(connectionId);
-                this.updateTunnelConnectionCount(matchingTunnel.id);
-                socket.end();
-                return;
-              }
-              
-              // Set socket timeout
-              socket.setTimeout(30000); // 30 second timeout
-              
-              // Forward data between socket and channel
-              socket.on('data', async (data: Buffer) => {
-                bytesReceived += data.length;
-                
-                // Update session stats in real-time for rate calculation
-                this.database.updateSessionStats(matchingTunnel.id, data.length, 0);
-                
-                // Write data directly to channel
-                channel.write(data);
-              });
-              
-              channel.on('data', async (data: Buffer) => {
-                bytesSent += data.length;
-                
-                // Update session stats in real-time for rate calculation
-                this.database.updateSessionStats(matchingTunnel.id, 0, data.length);
-                
-                // Write data directly to socket
-                socket.write(data);
-              });
-              
-              socket.on('close', () => {
-                try {
-                  channel.close();
-                } catch {
-                  // Channel might already be closed, ignore error
-                }
-                
-                // Update statistics and remove connection tracking
-                this.updateTunnelStats(matchingTunnel.id, bytesReceived, bytesSent);
-                this.tunnelConnections.get(matchingTunnel.id)?.delete(connectionId);
-                this.updateTunnelConnectionCount(matchingTunnel.id);
-              });
-              
-              socket.on('timeout', () => {
-                console.log(`Socket timeout for ${bindAddr}:${bindPort}`);
-                socket.destroy();
-              });
-              
-              socket.on('error', (err: Error) => {
-                console.error(`Socket error: ${err.message}`);
-                // Clean up connection tracking when socket error occurs
-                this.tunnelConnections.get(matchingTunnel.id)?.delete(connectionId);
-                this.updateTunnelConnectionCount(matchingTunnel.id);
-                // Close the channel but do NOT affect the SSH connection itself
-                try {
-                  channel.close();
-                } catch {
-                  // Channel might already be closed, ignore error
-                }
-              });
-              
-              channel.on('close', () => {
-                try {
-                  socket.destroy(); // Use destroy instead of end for immediate closure
-                } catch {
-                  // Socket might already be closed, ignore error
-                }
-              });
-              
-              channel.on('error', (err: Error) => {
-                console.error(`Channel error: ${err.message}`);
-                // Clean up connection tracking when channel error occurs
-                this.tunnelConnections.get(matchingTunnel.id)?.delete(connectionId);
-                this.updateTunnelConnectionCount(matchingTunnel.id);
-                // Close the socket but do NOT affect the SSH connection itself
-                try {
-                  socket.destroy(); // Use destroy instead of end for immediate closure
-                } catch {
-                  // Socket might already be closed, ignore error
-                }
-              });
-            });
-          });
-          
-          server.listen(bindPort, bindAddr, () => {
             console.log(`Remote forward listening on ${bindAddr}:${bindPort}`);
             
             // Mark the tunnel as online
@@ -274,7 +193,7 @@ export class SSHBridgeServer {
             // Store the request information
             const key = `${user.username}_${bindPort}`;
             this.remoteForwards.set(key, { server, bindAddr, bindPort, connection: conn, user });
-            this.activeTunnels.set(matchingTunnel.id, { tunnel: matchingTunnel, connection: conn, port: bindPort });
+            this.activeTunnels.set(matchingTunnel.id, { tunnel: matchingTunnel, connection: conn, port: matchingTunnel.external_port, user });
             
             // Accept the port forward request
             accept();
@@ -283,10 +202,9 @@ export class SSHBridgeServer {
             conn._processedPortForwards = (conn._processedPortForwards || 0) + 1;
             
             console.log(`Remote port forwarding accepted: ${bindAddr}:${bindPort}`);
-          });
-          
-          server.on('error', (err: Error) => {
-            console.error(`Server error: ${err.message}`);
+          } catch (error) {
+            console.error(`Error setting up TCP server for ${bindAddr}:${bindPort}:`, error);
+            
             // When server fails to listen, reject the port forward request
             const errorMsg = `远程端口 ${bindAddr}:${bindPort} 启用失败`;
             
@@ -303,14 +221,8 @@ export class SSHBridgeServer {
               conn.end();
             }, 500);
             
-            // Clean up any active connections that might have been created before the error
-            if (this.tunnelConnections.has(matchingTunnel.id)) {
-              this.tunnelConnections.get(matchingTunnel.id)!.clear();
-              this.updateTunnelConnectionCount(matchingTunnel.id);
-            }
-            
             console.log(`Port forwarding request rejected for ${bindAddr}:${bindPort}, SSH connection closed`);
-          });
+          }
         } catch (error) {
           console.error('Error setting up remote port forward:', error);
           reject();
@@ -321,17 +233,23 @@ export class SSHBridgeServer {
           const key = `${user.username}_${bindPort}`;
           
           if (this.remoteForwards.has(key)) {
-            const { server, port } = this.remoteForwards.get(key);
+            const forwardInfo = this.remoteForwards.get(key);
             
             // Find the tunnel associated with this port to mark it offline
             const userTunnels = await this.database.getTunnelsByUserId(user.id);
-            const matchingTunnel = userTunnels.find((tunnel: Tunnel) => tunnel.external_port === port);
+            const matchingTunnel = userTunnels.find((tunnel: Tunnel) => tunnel.external_port === (forwardInfo?.bindPort || 0));
             if (matchingTunnel) {
               this.database.updateTunnelOnlineStatus(matchingTunnel.id, false);
               this.activeTunnels.delete(matchingTunnel.id);
             }
             
-            server.close();
+            // Close the TCP server
+            try {
+              await this.tcpServerManager.closeTcpServer(user.username, bindPort);
+            } catch (error) {
+              console.error(`Error closing TCP server for ${bindAddr}:${bindPort}:`, error);
+            }
+            
             this.remoteForwards.delete(key);
             console.log(`Remote port forwarding cancelled: ${bindAddr}:${bindPort}`);
             accept();
@@ -349,11 +267,11 @@ export class SSHBridgeServer {
 
 
 
-    conn.on('session', (accept: any) => {
-      const session = accept();
+    conn.on('session', (accept: () => SSH2Session) => {
+      const session: SSH2Session = accept();
 
       // Handle PTY requests
-      session.on('pty', (accept: any, reject: any, info: any) => {
+      session.on('pty', (accept: () => void, reject: () => void, info: SSH2PtyInfo) => {
         console.log(`PTY request: ${info.term} ${info.rows}x${info.cols}`);
         
         // Check if there was a forward error
@@ -383,7 +301,7 @@ export class SSHBridgeServer {
       });
 
       // Handle shell requests
-      session.on('shell', (accept: any, _reject: any) => {
+      session.on('shell', (accept: () => SSH2Channel, _reject: () => void) => {
         // Wait for all port forward requests to be processed
         const pending = conn._pendingPortForwards || 0;
         const processed = conn._processedPortForwards || 0;
@@ -395,7 +313,7 @@ export class SSHBridgeServer {
           return;
         }
         
-        const channel = accept();
+        const channel: SSH2Channel = accept();
         
         // Store reference to channel and connection
         this.currentChannel = channel;
@@ -503,13 +421,13 @@ export class SSHBridgeServer {
                   }
                 
                 // Display remote port forwards that don't overlap with configured external tunnels
-                const nonOverlappingForwards = activeRemoteForwards.filter((rf: any) => 
+                const nonOverlappingForwards = activeRemoteForwards.filter((rf: { bindAddr: string; bindPort: number }) => 
                   !allTunnels.some((tunnel: Tunnel) => tunnel.external_port === rf.bindPort)
                 );
                 
                 if (nonOverlappingForwards.length > 0) {
                   channel.write('\r\nRemote port forwards (client -> server):\r\n');
-                  nonOverlappingForwards.forEach((rf: any) => {
+                  nonOverlappingForwards.forEach((rf: { bindAddr: string; bindPort: number }) => {
                     channel.write(`  [ACTIVE] client:${rf.bindPort} -> server:${rf.bindAddr}\r\n`);
                   });
                 }
@@ -550,14 +468,18 @@ export class SSHBridgeServer {
           console.log(`Shell session closed for user ${user.username}`);
         });
 
-        channel.on('error', (err: Error) => {
-          console.error(`Shell session error for user ${user.username}:`, err);
+        channel.on('error', (err?: Error) => {
+          if (err) {
+            console.error(`Shell session error for user ${user.username}:`, err);
+          } else {
+            console.error(`Shell session error for user ${user.username} (unknown)`);
+          }
         });
       });
 
-      session.on('channel', (accept: any, _reject: any, info: any) => {
+      session.on('channel', (accept: () => SSH2Channel, _reject: () => void, info: SSH2ForwardData) => {
         if (info.type === 'direct-tcpip') {
-          this.handleDirectTcpip(conn, accept, () => {}, info, user);
+          this.handleDirectTcpip(conn, accept, _reject, info, user);
         } else {
           console.log(`Rejected channel type: ${info.type}`);
           _reject();
@@ -565,25 +487,27 @@ export class SSHBridgeServer {
       });
     });
 
-    conn.on('error', (err: Error) => {
-      console.error(`Connection error for user ${user.username}:`, err);
-      
-      this.cleanupConnection(conn);
+    conn.on('error', (err?: Error) => {
+      if (err) {
+        console.error(`Connection error for user ${user.username}:`, err);
+      } else {
+        console.error(`Connection error for user ${user.username} (unknown)`);
+      }
+      this.cleanupConnection(conn).catch(err => console.error('Error in cleanup:', err));
     });
 
-    conn.on('end', () => {
+    conn.on('end', async () => {
       console.log(`Connection ended for user ${user.username}`);
-      
-      this.cleanupConnection(conn);
+      await this.cleanupConnection(conn);
     });
   }
 
   private async handleDirectTcpip(
-    conn: any,
-    accept: any,
-    _reject: any,
-    info: any,
-    user: any
+    conn: SSH2Connection,
+    accept: () => SSH2Channel,
+    _reject: () => void,
+    info: SSH2ForwardData,
+    user: UserData
   ) {
     try {
       const tunnels = await this.database.getTunnelsByUserId(user.id);
@@ -597,127 +521,7 @@ export class SSHBridgeServer {
         return;
       }
 
-      console.log(`Creating tunnel for external port: ${tunnel.name} -> ${tunnel.external_port}`);
-      
-      const channel = accept();
-      
-      // For direct-tcpip connections, we forward to the address specified in the connection info
-      const socket = createConnection({
-        host: info.destAddr,
-        port: info.destPort,
-        timeout: 10000 // 10 second connect timeout
-      }) as Socket;
-      
-      // Track this connection for statistics
-      const connectionId = `${conn.remoteAddress}:${Date.now()}`;
-      if (!this.tunnelConnections.has(tunnel.id)) {
-        this.tunnelConnections.set(tunnel.id, new Set());
-      }
-      this.tunnelConnections.get(tunnel.id)!.add(connectionId);
-      
-      // Update active connections count
-      this.updateTunnelConnectionCount(tunnel.id);
-      
-      // Don't reset current session stats for individual TCP connections
-      // Only reset when the entire SSH session starts
-      
-      // Track data transfer for statistics
-      let totalBytesReceived = 0;
-      let totalBytesSent = 0;
-
-      socket.on('connect', () => {
-        console.log(`Connected to target ${info.destAddr}:${info.destPort}`);
-      });
-      
-      socket.setTimeout(30000); // 30 second timeout
-
-      socket.on('data', async (data: Buffer) => {
-        totalBytesReceived += data.length;
-        
-        // Update session stats in real-time for rate calculation
-        this.database.updateSessionStats(tunnel.id, data.length, 0);
-        
-        // Write data directly to channel
-        channel.write(data);
-      });
-
-      channel.on('data', async (data: Buffer) => {
-        totalBytesSent += data.length;
-        
-        // Update session stats in real-time for rate calculation
-        this.database.updateSessionStats(tunnel.id, 0, data.length);
-        
-        // Write data directly to socket
-        socket.write(data);
-      });
-
-      socket.on('timeout', () => {
-        console.log(`Socket timeout for ${info.destAddr}:${info.destPort}`);
-        socket.destroy();
-      });
-
-      socket.on('error', (err: Error) => {
-        console.error(`Target connection error: ${err.message}`);
-        // Clean up connection tracking when socket error occurs
-        this.tunnelConnections.get(tunnel.id)?.delete(connectionId);
-        this.updateTunnelConnectionCount(tunnel.id);
-        // Close the channel but do NOT affect the SSH connection itself
-        try {
-          channel.close();
-        } catch {
-          // Channel might already be closed, ignore error
-        }
-      });
-
-      channel.on('close', () => {
-        try {
-          socket.end();
-        } catch {
-          // Socket might already be closed, ignore error
-        }
-      });
-      
-      channel.on('error', (err: Error) => {
-        console.error(`Channel error in direct-tcpip: ${err.message}`);
-        // Clean up connection tracking when channel error occurs
-        this.tunnelConnections.get(tunnel.id)?.delete(connectionId);
-        this.updateTunnelConnectionCount(tunnel.id);
-        // Close the socket but do NOT affect the SSH connection itself
-        try {
-          socket.end();
-        } catch {
-          // Socket might already be closed, ignore error
-        }
-      });
-
-      socket.on('close', () => {
-        try {
-          channel.close();
-        } catch {
-          // Channel might already be closed, ignore error
-        }
-        
-        // Update statistics and remove connection tracking
-        this.updateTunnelStats(tunnel.id, totalBytesReceived, totalBytesSent);
-        this.tunnelConnections.get(tunnel.id)?.delete(connectionId);
-        this.updateTunnelConnectionCount(tunnel.id);
-      });
-
-      socket.on('end', () => {
-        try {
-          channel.close();
-        } catch {
-          // Channel might already be closed, ignore error
-        }
-      });
-
-      channel.on('end', () => {
-        try {
-          socket.end();
-        } catch {
-          // Socket might already be closed, ignore error
-        }
-      });
+      await this.tcpServerManager.handleDirectTcpip(conn, tunnel, user, info, accept);
     } catch (error) {
       console.error('Error handling direct-tcpip:', error);
     }
@@ -727,14 +531,8 @@ export class SSHBridgeServer {
     this.database.updateTunnelStats(tunnelId, bytesReceived, bytesSent, 0); // 0 for active connections since we're just updating stats
   }
 
-  private updateTunnelConnectionCount(tunnelId: number): void {
-    const connections = this.tunnelConnections.get(tunnelId);
-    const count = connections ? connections.size : 0;
-    this.database.updateTunnelConnections(tunnelId, count);
-  }
-
   // Method to disconnect a tunnel if it's being used by another connection
-  disconnectTunnelIfActive(tunnelId: number, currentConn: any): void {
+  async disconnectTunnelIfActive(tunnelId: number, currentConn: SSH2Connection): Promise<void> {
     const activeTunnel = this.activeTunnels.get(tunnelId);
     if (activeTunnel && activeTunnel.connection !== currentConn) {
       console.log(`Disconnecting tunnel ${tunnelId} from previous connection`);
@@ -749,31 +547,14 @@ export class SSHBridgeServer {
       activeTunnel.connection.end();
       
       // Clean up the old tunnel
-      const key = `${activeTunnel.user.username}_${activeTunnel.tunnel.port}`;
+      const key = `${activeTunnel.user.username}_${activeTunnel.port || activeTunnel.tunnel.external_port}`;
       this.remoteForwards.delete(key);
       
-      // Properly close the TCP server
-      const server = activeTunnel.server;
-      if (server) {
-        console.log(`Closing TCP server for tunnel ${tunnelId}`);
-        try {
-          // Remove all event listeners to prevent new connections
-          server.removeAllListeners('connection');
-          server.removeAllListeners('error');
-          
-          // Close the server
-          if (server.listening) {
-            server.close((err?: Error) => {
-              if (err) {
-                console.error(`Error closing TCP server for tunnel ${tunnelId}:`, err);
-              } else {
-                console.log(`TCP server for tunnel ${tunnelId} closed successfully`);
-              }
-            });
-          }
-        } catch (error) {
-          console.error(`Exception while closing TCP server for tunnel ${tunnelId}:`, error);
-        }
+      // Close the TCP server using TcpServerManager
+      try {
+        await this.tcpServerManager.closeTcpServer(activeTunnel.user.username, activeTunnel.tunnel.external_port);
+      } catch (error) {
+        console.error(`Error closing TCP server for tunnel ${tunnelId}:`, error);
       }
       
       // Remove from active tunnels
@@ -782,86 +563,82 @@ export class SSHBridgeServer {
   }
 
   // Method to cleanup all connections and servers for a given connection
-  private cleanupConnection(conn: any) {
-    // First identify which tunnel IDs belong to this connection before we start removing them
+  private async cleanupConnection(conn: SSH2Connection): Promise<void> {
+    // Identify which tunnel IDs belong to this connection
     const tunnelIdsForThisConnection: number[] = [];
-    const serversToClose: Array<{server: any, bindAddr: string, bindPort: number}> = [];
+    const serversToClose: Array<{username: string, port: number}> = [];
     
     // Check regular tunnels
-    for (const [, value] of this.tunnels.entries()) {
+    this.tunnels.forEach((value, _key) => {
       if (value.connection === conn) {
         tunnelIdsForThisConnection.push(value.tunnel.id);
         console.log(`Marking tunnel for cleanup: ${value.tunnel.name}`);
       }
-    }
+    });
     
     // Check remote port forwards
-    for (const [, value] of this.remoteForwards.entries()) {
+    this.remoteForwards.forEach((value, _key) => {
       if (value.connection === conn) {
         // Find the corresponding tunnel ID
-        for (const [tunnelId, activeTunnel] of this.activeTunnels.entries()) {
+        this.activeTunnels.forEach((activeTunnel, tunnelId) => {
           if (activeTunnel.connection === conn) {
             tunnelIdsForThisConnection.push(tunnelId);
             console.log(`Marking remote forward tunnel for cleanup: ${value.bindAddr}:${value.bindPort}`);
             
-            // Collect servers to close (but don't close yet to avoid modifying the map while iterating)
+            // Collect servers to close
             serversToClose.push({
-              server: value.server,
-              bindAddr: value.bindAddr,
-              bindPort: value.bindPort
+              username: value.user.username,
+              port: value.bindPort
             });
+            return;
+          }
+        });
+      }
+    });
+
+    // Clean up regular tunnels
+    this.tunnels.forEach((value) => {
+      if (value.connection === conn) {
+        console.log(`Cleaning up tunnel: ${value.tunnel.name}`);
+        // Find the key for this value
+        for (const [key, val] of this.tunnels.entries()) {
+          if (val === value) {
+            this.tunnels.delete(key);
             break;
           }
         }
       }
-    }
-
-    // Clean up regular tunnels
-    for (const [key, value] of this.tunnels.entries()) {
-      if (value.connection === conn) {
-        console.log(`Cleaning up tunnel: ${value.tunnel.name}`);
-        this.tunnels.delete(key);
-      }
-    }
+    });
 
     // Clean up remote port forwards
-    for (const [key, value] of this.remoteForwards.entries()) {
+    this.remoteForwards.forEach((value) => {
       if (value.connection === conn) {
         console.log(`Cleaning up remote forward on ${value.bindAddr}:${value.bindPort}`);
-        this.remoteForwards.delete(key);
+        // Find the key for this value
+        for (const [key, val] of this.remoteForwards.entries()) {
+          if (val === value) {
+            this.remoteForwards.delete(key);
+            break;
+          }
+        }
       }
-    }
+    });
     
     // Remove from active tunnels
-    for (const [tunnelId, activeTunnel] of this.activeTunnels.entries()) {
+    this.activeTunnels.forEach((activeTunnel, tunnelId) => {
       if (activeTunnel.connection === conn) {
         this.activeTunnels.delete(tunnelId);
       }
-    }
-
-    
-    // Now close the TCP servers that belonged to this connection
-    serversToClose.forEach(({server, bindAddr, bindPort}) => {
-      try {
-        console.log(`Closing TCP server for ${bindAddr}:${bindPort}`);
-        // Remove all event listeners to prevent new connections
-        server.removeAllListeners('connection');
-        server.removeAllListeners('error');
-        
-        // Close the server
-        if (server.listening) {
-          server.close((err?: Error) => {
-            if (err) {
-              console.error(`Error closing TCP server ${bindAddr}:${bindPort}:`, err);
-            } else {
-              console.log(`TCP server for ${bindAddr}:${bindPort} closed successfully`);
-            }
-          });
-        }
-      } catch (error) {
-        console.error(`Exception while closing TCP server ${bindAddr}:${bindPort}:`, error);
-      }
     });
+    
+    // Close all TCP servers using TcpServerManager
+    const closePromises = serversToClose.map(({username, port}) => 
+      this.tcpServerManager.closeTcpServer(username, port).catch(err => 
+        console.error(`Error closing TCP server for ${username}:${port}:`, err)
+      )
+    );
+    
+    await Promise.all(closePromises);
 
     // Reset stats, online status, and connection tracking only for tunnels that belonged to this specific connection
     for (const tunnelId of tunnelIdsForThisConnection) {
@@ -870,20 +647,12 @@ export class SSHBridgeServer {
       
       // Mark tunnel as offline
       this.database.updateTunnelOnlineStatus(tunnelId, false);
-      
-      // Clear connection tracking
-      const connections = this.tunnelConnections.get(tunnelId);
-      if (connections) {
-        connections.clear();
-        this.updateTunnelConnectionCount(tunnelId);
-        console.log(`Cleared connections for tunnel ${tunnelId} belonging to this connection`);
-      }
     }
   }
 
   // Show real-time tunnel status in a table format
-  private async showTunnelStatus(channel: any, conn: any, user: any): Promise<void> {
-    let statusInterval: any = null;
+  private async showTunnelStatus(channel: SSH2Channel, conn: SSH2Connection, user: UserData): Promise<void> {
+    let statusInterval: Timer | null = null;
     let isStatusMode = true;
     
     // Get user's specific refresh interval
@@ -906,15 +675,15 @@ export class SSHBridgeServer {
     
 
     
-    // Function to render the status table
-    const renderStatusTable = async () => {
-      if (!isStatusMode) return;
-      
-      clearScreen();
-      channel.write(`\x1b[1mSSHBridge Tunnel Status Monitor\x1b[0m\r\n`);
-      channel.write(`User: ${user.username} | Showing current session tunnels only | Press Ctrl+C to exit\r\n`);
-      channel.write(`Last updated: ${getCurrentTime()}\r\n`);
-      channel.write(`\r\n`);
+      // Function to render the status table
+      const renderStatusTable = async () => {
+        if (!isStatusMode) return;
+        
+        clearScreen();
+        channel.write(`\x1b[1mSSHBridge Tunnel Status Monitor\x1b[0m\r\n`);
+        channel.write(`User: ${user.username} | Showing current session tunnels only | Press Ctrl+C to exit\r\n`);
+        channel.write(`Last updated: ${getCurrentTime()}\r\n`);
+        channel.write(`\r\n`);
       
       // Get active remote port forwards for this connection
       const activeRemoteForwards = Array.from(this.remoteForwards.entries())
@@ -931,7 +700,14 @@ export class SSHBridgeServer {
       const tunnelStats = await this.database.getTunnelStatsByUserId(user.id);
       
       // Create a map of tunnel stats for quick lookup
-      const statsMap = new Map<number, any>();
+      interface TunnelStat {
+        tunnel_id: number;
+        updated_at: string;
+        active_connections: number;
+        current_bytes_received: number;
+        current_bytes_sent: number;
+      }
+      const statsMap = new Map<number, TunnelStat>();
       tunnelStats.forEach(stat => {
         statsMap.set(stat.tunnel_id, stat);
       });
@@ -1043,85 +819,33 @@ export class SSHBridgeServer {
     });
   }
 
-  stop(callback?: () => void) {
+  async stop(callback?: () => void): Promise<void> {
     console.log('Shutting down all TCP servers and SSH server...');
     
-    // Close all active connections for tunnel tracking
-    for (const [tunnelId, connections] of this.tunnelConnections.entries()) {
-      connections.clear();
-      this.updateTunnelConnectionCount(tunnelId);
-    }
-    this.tunnelConnections.clear();
-    
-    // Close all TCP servers created for port forwarding
-    const closePromises: Promise<void>[] = [];
-    
-    for (const [key, value] of this.remoteForwards.entries()) {
-      console.log(`Closing TCP server for ${value.bindAddr}:${value.bindPort}`);
-      
-      // Create a promise to handle server close
-      const closePromise = new Promise<void>((resolve) => {
-        // Remove all event listeners to prevent further connections
-        value.server.removeAllListeners('connection');
-        value.server.removeAllListeners('error');
-        
-        // Force close all existing connections
-        if (value.server.listening) {
-          value.server.close((err?: Error) => {
-            if (err) {
-              console.error(`Error closing server ${key}:`, err);
-            } else {
-              console.log(`TCP server for ${key} closed successfully`);
-            }
-            resolve();
-          });
-        } else {
-          resolve();
-        }
-      });
-      
-      closePromises.push(closePromise);
+    // Close all TCP servers using TcpServerManager
+    try {
+      await this.tcpServerManager.closeAllServers();
+      console.log('All TCP servers closed');
+    } catch (error) {
+      console.error('Error while closing TCP servers:', error);
     }
     
     // Clear remote forwards and active tunnels
     this.remoteForwards.clear();
     this.activeTunnels.clear();
     
-    // Wait for all servers to close before closing the main SSH server
-    Promise.all(closePromises)
-      .then(() => {
-        console.log('All TCP servers closed');
-        
-        // Clear all tunnels session state on server shutdown
-        return this.database.clearAllTunnelsSessionState();
-      })
-      .then(() => {
-        console.log('All tunnel session state cleared on server shutdown');
-        
-        // Now close the main SSH server
-        this.sshServer.close(() => {
-          console.log('SSH server closed');
-          if (callback) callback();
-        });
-      })
-      .catch((err) => {
-        console.error('Error while closing TCP servers:', err);
-        
-        // Still try to clear session state even if there were errors
-        this.database.clearAllTunnelsSessionState()
-          .then(() => {
-            console.log('Tunnel session state cleared despite previous errors');
-          })
-          .catch(sessionErr => {
-            console.error('Error clearing session state on shutdown:', sessionErr);
-          })
-          .finally(() => {
-            // Still try to close the SSH server even if there were errors
-            this.sshServer.close(() => {
-              console.log('SSH server closed after errors');
-              if (callback) callback();
-            });
-          });
-      });
+    // Clear all tunnels session state
+    try {
+      await this.database.clearAllTunnelsSessionState();
+      console.log('All tunnel session state cleared on server shutdown');
+    } catch (error) {
+      console.error('Error clearing session state on shutdown:', error);
+    }
+    
+    // Now close the main SSH server
+    this.sshServer.close(() => {
+      console.log('SSH server closed');
+      if (callback) callback();
+    });
   }
 }

@@ -1,0 +1,479 @@
+import { Socket, createConnection } from 'net';
+import * as net from 'net';
+import { SSH2Connection, SSH2Channel, SSH2ForwardData, UserData } from './types/ssh2-types';
+
+// Forward declarations to avoid circular dependency
+interface Tunnel {
+  id: number;
+  user_id: number;
+  name: string;
+  external_port: number;
+  max_bandwidth?: number;
+  created_at: string;
+}
+
+interface Database {
+  updateSessionStats(tunnelId: number, bytesReceived: number, bytesSent: number): void;
+  updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections: number): void;
+  updateTunnelConnections(tunnelId: number, connections: number): void;
+}
+
+export interface TcpConnectionInfo {
+  connectionId: string;
+  socket: Socket;
+  channel: SSH2Channel;
+  bytesReceived: number;
+  bytesSent: number;
+  tunnelId: number;
+}
+
+export interface TcpServerInfo {
+  server: net.Server;
+  bindAddr: string;
+  bindPort: number;
+  tunnelId: number;
+  userId: number;
+  username: string;
+  connection: SSH2Connection; // SSH connection
+}
+
+export class TcpServerManager {
+  private servers: Map<string, TcpServerInfo> = new Map();
+  private connections: Map<number, Set<string>> = new Map();
+  private database: Database;
+
+  constructor(database: Database) {
+    this.database = database;
+  }
+
+  /**
+   * Create a TCP server for a tunnel
+   */
+  async createTcpServer(
+    bindAddr: string,
+    bindPort: number,
+    tunnelId: number,
+    userId: number,
+    username: string,
+    sshConnection: SSH2Connection
+  ): Promise<net.Server> {
+    const key = `${username}_${bindPort}`;
+    
+    // Check if server already exists
+    if (this.servers.has(key)) {
+      throw new Error(`TCP server for ${bindAddr}:${bindPort} already exists`);
+    }
+
+    // Create TCP server
+    const server = net.createServer((socket: Socket) => {
+      this.handleNewConnection(socket, bindAddr, bindPort, tunnelId, sshConnection);
+    });
+
+    // Store server info
+    this.servers.set(key, {
+      server,
+      bindAddr,
+      bindPort,
+      tunnelId,
+      userId,
+      username,
+      connection: sshConnection
+    });
+
+    return server;
+  }
+
+  /**
+   * Start listening on a TCP server
+   */
+  async startTcpServer(server: net.Server, bindAddr: string, bindPort: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      server.listen(bindPort, bindAddr, () => {
+        console.log(`TCP server listening on ${bindAddr}:${bindPort}`);
+        resolve();
+      });
+
+      server.on('error', (err: Error) => {
+        console.error(`TCP server error: ${err.message}`);
+        reject(err);
+      });
+    });
+  }
+
+  /**
+   * Handle new connection to TCP server
+   */
+  private handleNewConnection(
+    socket: Socket,
+    bindAddr: string,
+    bindPort: number,
+    tunnelId: number,
+    sshConnection: SSH2Connection
+  ): void {
+    console.log(`New connection to ${bindAddr}:${bindPort} from ${socket.remoteAddress || 'unknown'}:${socket.remotePort || 'unknown'}`);
+    
+    // Track this connection for statistics
+    const connectionId = `${socket.remoteAddress || 'unknown'}:${socket.remotePort || 'unknown'}-${Date.now()}`;
+    if (!this.connections.has(tunnelId)) {
+      this.connections.set(tunnelId, new Set());
+    }
+    this.connections.get(tunnelId)!.add(connectionId);
+    
+    // Update active connections count
+    this.updateTunnelConnectionCount(tunnelId);
+    
+    // Track data transfer for statistics
+    let bytesReceived = 0;
+    let bytesSent = 0;
+    
+    // Open a channel back to the SSH client for forwarded-tcpip
+    sshConnection.forwardOut(
+      bindAddr, 
+      bindPort, 
+      socket.remoteAddress || '', 
+      socket.remotePort || 0, 
+      async (err: Error | null, channel: SSH2Channel) => {
+        if (err) {
+          console.error(`Error opening channel: ${err.message}`);
+          this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
+          socket.end();
+          return;
+        }
+      
+      // Set socket timeout
+      socket.setTimeout(30000); // 30 second timeout
+      
+      // Forward data between socket and channel
+      socket.on('data', async (data: Buffer) => {
+        bytesReceived += data.length;
+        
+        // Update session stats in real-time for rate calculation
+        this.database.updateSessionStats(tunnelId, data.length, 0);
+        
+        // Write data directly to channel
+        channel.write(data);
+      });
+      
+      channel.on('data', async (data: Buffer) => {
+        bytesSent += data.length;
+        
+        // Update session stats in real-time for rate calculation
+        this.database.updateSessionStats(tunnelId, 0, data.length);
+        
+        // Write data directly to socket
+        socket.write(data);
+      });
+      
+      socket.on('close', () => {
+        try {
+          channel.close();
+        } catch {
+          // Channel might already be closed, ignore error
+        }
+        
+        this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
+      });
+      
+      socket.on('timeout', () => {
+        console.log(`Socket timeout for ${bindAddr}:${bindPort}`);
+        socket.destroy();
+      });
+      
+      socket.on('error', (err?: Error) => {
+        console.error(`Socket error: ${err?.message || 'unknown'}`);
+        this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
+        
+        // Close the channel but do NOT affect the SSH connection itself
+        try {
+          channel.close();
+        } catch {
+          // Channel might already be closed, ignore error
+        }
+      });
+      
+      channel.on('close', () => {
+        try {
+          socket.destroy(); // Use destroy instead of end for immediate closure
+        } catch {
+          // Socket might already be closed, ignore error
+        }
+      });
+      
+      channel.on('error', (err: Error) => {
+        console.error(`Channel error: ${err.message}`);
+        this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
+        
+        // Close the socket but do NOT affect the SSH connection itself
+        try {
+          socket.destroy(); // Use destroy instead of end for immediate closure
+        } catch {
+          // Socket might already be closed, ignore error
+        }
+      });
+    });
+  }
+
+  /**
+   * Handle direct-tcpip connections (for local forwarding)
+   */
+  async handleDirectTcpip(
+    sshConnection: SSH2Connection,
+    tunnel: Tunnel,
+    user: UserData,
+    info: SSH2ForwardData,
+    accept: () => SSH2Channel
+  ): Promise<void> {
+    console.log(`Creating tunnel for external port: ${tunnel.name} -> ${tunnel.external_port}`);
+    
+    const channel: SSH2Channel = accept();
+    
+    // For direct-tcpip connections, we forward to the address specified in the connection info
+    const socket = createConnection({
+      host: info.destAddr,
+      port: info.destPort,
+      timeout: 10000 // 10 second connect timeout
+    }) as Socket;
+    
+    // Track this connection for statistics
+    const connectionId = `${sshConnection.remoteAddress}:${Date.now()}`;
+    if (!this.connections.has(tunnel.id)) {
+      this.connections.set(tunnel.id, new Set());
+    }
+    this.connections.get(tunnel.id)!.add(connectionId);
+    
+    // Update active connections count
+    this.updateTunnelConnectionCount(tunnel.id);
+    
+    // Track data transfer for statistics
+    let totalBytesReceived = 0;
+    let totalBytesSent = 0;
+
+    socket.on('connect', () => {
+      console.log(`Connected to target ${info.destAddr}:${info.destPort}`);
+    });
+    
+    socket.setTimeout(30000); // 30 second timeout
+
+    socket.on('data', async (data: Buffer) => {
+      totalBytesReceived += data.length;
+      
+      // Update session stats in real-time for rate calculation
+      this.database.updateSessionStats(tunnel.id, data.length, 0);
+      
+      // Write data directly to channel
+      channel.write(data);
+    });
+
+    channel.on('data', async (data: Buffer) => {
+      totalBytesSent += data.length;
+      
+      // Update session stats in real-time for rate calculation
+      this.database.updateSessionStats(tunnel.id, 0, data.length);
+      
+      // Write data directly to socket
+      socket.write(data);
+    });
+
+    socket.on('timeout', () => {
+      console.log(`Socket timeout for ${info.destAddr}:${info.destPort}`);
+      socket.destroy();
+    });
+
+    socket.on('error', (err: Error) => {
+      console.error(`Target connection error: ${err.message}`);
+      this.cleanupConnection(connectionId, tunnel.id, totalBytesReceived, totalBytesSent);
+      
+      // Close the channel but do NOT affect the SSH connection itself
+      try {
+        channel.close();
+      } catch {
+        // Channel might already be closed, ignore error
+      }
+    });
+
+    channel.on('close', () => {
+      try {
+        socket.end();
+      } catch {
+        // Socket might already be closed, ignore error
+      }
+    });
+    
+    channel.on('error', (err: Error) => {
+      console.error(`Channel error in direct-tcpip: ${err.message}`);
+      this.cleanupConnection(connectionId, tunnel.id, totalBytesReceived, totalBytesSent);
+      
+      // Close the socket but do NOT affect the SSH connection itself
+      try {
+        socket.end();
+      } catch {
+        // Socket might already be closed, ignore error
+      }
+    });
+
+    socket.on('close', () => {
+      try {
+        channel.close();
+      } catch {
+        // Channel might already be closed, ignore error
+      }
+      
+      // Update statistics and remove connection tracking
+      this.updateTunnelStats(tunnel.id, totalBytesReceived, totalBytesSent);
+      this.connections.get(tunnel.id)?.delete(connectionId);
+      this.updateTunnelConnectionCount(tunnel.id);
+    });
+
+    socket.on('end', () => {
+      try {
+        channel.close();
+      } catch {
+        // Channel might already be closed, ignore error
+      }
+    });
+
+    channel.on('end', () => {
+      try {
+        socket.end();
+      } catch {
+        // Socket might already be closed, ignore error
+      }
+    });
+  }
+
+  /**
+   * Get server info for a specific port and user
+   */
+  getServerInfo(username: string, bindPort: number): TcpServerInfo | undefined {
+    const key = `${username}_${bindPort}`;
+    return this.servers.get(key);
+  }
+
+  /**
+   * Get all servers for a specific user
+   */
+  getUserServers(username: string): TcpServerInfo[] {
+    const result: TcpServerInfo[] = [];
+    this.servers.forEach(server => {
+      if (server.username === username) {
+        result.push(server);
+      }
+    });
+    return result;
+  }
+
+  /**
+   * Check if a port is in use by any server
+   */
+  isPortInUse(bindPort: number): boolean {
+    let inUse = false;
+    this.servers.forEach(server => {
+      if (server.bindPort === bindPort) {
+        inUse = true;
+      }
+    });
+    return inUse;
+  }
+
+  /**
+   * Close a TCP server
+   */
+  async closeTcpServer(username: string, bindPort: number): Promise<void> {
+    const key = `${username}_${bindPort}`;
+    const serverInfo = this.servers.get(key);
+    
+    if (!serverInfo) {
+      throw new Error(`No TCP server found for ${username}:${bindPort}`);
+    }
+
+    // Remove all event listeners to prevent new connections
+    serverInfo.server.removeAllListeners('connection');
+    serverInfo.server.removeAllListeners('error');
+    
+    // Close the server
+    if (serverInfo.server.listening) {
+      return new Promise<void>((resolve, reject) => {
+        serverInfo.server.close((err?: Error) => {
+          if (err) {
+            console.error(`Error closing TCP server ${key}:`, err);
+            reject(err);
+          } else {
+            console.log(`TCP server for ${key} closed successfully`);
+            resolve();
+          }
+        });
+      });
+    }
+  }
+
+  /**
+   * Close all TCP servers for a user
+   */
+  async closeAllUserServers(username: string): Promise<void> {
+    const userServers = this.getUserServers(username);
+    const closePromises = userServers.map(server => 
+      this.closeTcpServer(server.username, server.bindPort)
+    );
+    
+    await Promise.all(closePromises);
+  }
+
+  /**
+   * Close all TCP servers
+   */
+  async closeAllServers(): Promise<void> {
+    const closePromises: Promise<void>[] = [];
+    this.servers.forEach((serverInfo, key) => {
+      const [username, portStr] = key.split('_');
+      closePromises.push(this.closeTcpServer(username, parseInt(portStr, 10)));
+    });
+    
+    await Promise.all(closePromises);
+    this.servers.clear();
+  }
+
+  /**
+   * Clean up a connection and update statistics
+   */
+  private cleanupConnection(connectionId: string, tunnelId: number, bytesReceived: number, bytesSent: number): void {
+    // Update statistics and remove connection tracking
+    this.updateTunnelStats(tunnelId, bytesReceived, bytesSent);
+    this.connections.get(tunnelId)?.delete(connectionId);
+    this.updateTunnelConnectionCount(tunnelId);
+  }
+
+  /**
+   * Update tunnel statistics
+   */
+  private updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number): void {
+    this.database.updateTunnelStats(tunnelId, bytesReceived, bytesSent, 0);
+  }
+
+  /**
+   * Update tunnel connection count
+   */
+  private updateTunnelConnectionCount(tunnelId: number): void {
+    const connections = this.connections.get(tunnelId);
+    const count = connections ? connections.size : 0;
+    this.database.updateTunnelConnections(tunnelId, count);
+  }
+
+  /**
+   * Get connection count for a tunnel
+   */
+  getConnectionCount(tunnelId: number): number {
+    const connections = this.connections.get(tunnelId);
+    return connections ? connections.size : 0;
+  }
+
+  /**
+   * Get active servers for monitoring
+   */
+  getActiveServers(): TcpServerInfo[] {
+    const result: TcpServerInfo[] = [];
+    this.servers.forEach(server => {
+      result.push(server);
+    });
+    return result;
+  }
+}
