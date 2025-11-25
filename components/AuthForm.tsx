@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext';
+import { useMobile } from './ResponsiveLayout';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -12,6 +13,7 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, register } = useAuth();
+  const { isMobile, isSmallMobile } = useMobile();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +36,11 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="nb-box nb-card" style={{ width: '100%', maxWidth: '500px' }}>
+      <div className="nb-box nb-card" style={{ 
+        width: '100%', 
+        maxWidth: isSmallMobile ? '100%' : '500px',
+        margin: isSmallMobile ? '0' : 'auto'
+      }}>
         <div className="nb-card-header">
           <h1 className="nb-card-title">
             {mode === 'login' ? 'SIGN IN' : 'REGISTER'}
@@ -93,17 +99,25 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             
             <div className="flex flex-col space-y-4 pt-4">
               <button 
-                className="nb-btn nb-btn-primary w-full" 
+                className={`nb-btn nb-btn-primary ${isMobile ? 'w-full' : 'w-full'}`} 
                 type="submit" 
                 disabled={isLoading}
+                style={{
+                  fontSize: isSmallMobile ? '1rem' : '1rem',
+                  padding: isSmallMobile ? '14px 16px' : '12px 24px'
+                }}
               >
                 {isLoading ? 'PROCESSING...' : (mode === 'login' ? 'SIGN IN' : 'REGISTER')}
               </button>
               
               <button
-                className="nb-btn w-full"
+                className={`nb-btn ${isMobile ? 'w-full' : 'w-full'}`}
                 type="button"
                 onClick={onToggleMode}
+                style={{
+                  fontSize: isSmallMobile ? '0.9rem' : '1rem',
+                  padding: isSmallMobile ? '12px 16px' : '12px 24px'
+                }}
               >
                 {mode === 'login' 
                   ? "DON'T HAVE AN ACCOUNT? REGISTER" 

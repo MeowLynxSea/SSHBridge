@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { formatForDisplay } from '../src/utils/timeUtils';
+import { useMobile } from './ResponsiveLayout';
 
 interface BandwidthStats {
   tunnel_id: number;
@@ -35,6 +36,7 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
   const [stats, setStats] = useState<BandwidthStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { isSmallMobile } = useMobile();
 
   // Function to format bytes for display
   const formatBytes = (bytes: number): string => {
@@ -103,10 +105,22 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
 
   return (
     <div className="nb-dialog-overlay" style={{ display: 'grid' }}>
-      <div className="nb-dialog-card" style={{ maxWidth: '700px' }}>
+      <div 
+        className="nb-dialog-card" 
+        style={{ 
+          maxWidth: isSmallMobile ? '100%' : '700px',
+          maxHeight: isSmallMobile ? '100vh' : '90vh',
+          overflowY: 'auto'
+        }}
+      >
         <div className="nb-dialog-header">
-          <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: '900', textTransform: 'uppercase' }}>
-            BANDWIDTH MONITOR: {tunnel.name}
+          <h2 style={{ 
+            fontFamily: 'var(--font-sans)', 
+            fontWeight: '900', 
+            textTransform: 'uppercase',
+            fontSize: isSmallMobile ? '1.2rem' : '1.5rem'
+          }}>
+            {isSmallMobile ? 'BANDWIDTH' : 'BANDWIDTH MONITOR'}: {tunnel.name}
           </h2>
           <button 
             className="nb-btn" 

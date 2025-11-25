@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from '../components/AuthContext';
 import AuthForm from '../components/AuthForm';
 import TunnelManager from '../components/TunnelManager';
+import ResponsiveLayout from '../components/ResponsiveLayout';
 
 function AppContent() {
   const { user, isLoading } = useAuth();
@@ -46,7 +47,9 @@ function AppContent() {
 export default function Home() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ResponsiveLayout>
+        <AppContent />
+      </ResponsiveLayout>
     </AuthProvider>
   );
 }

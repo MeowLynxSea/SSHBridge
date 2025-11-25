@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { useMobile } from './ResponsiveLayout';
 
 interface SettingsProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const { isMobile, isSmallMobile } = useMobile();
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -109,7 +111,15 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
 
   return (
     <div className="nb-dialog-overlay" style={{ display: 'grid' }}>
-      <div className="nb-dialog-card" style={{ maxWidth: '600px', width: '90%' }}>
+      <div 
+        className="nb-dialog-card" 
+        style={{ 
+          maxWidth: isSmallMobile ? '100%' : '600px', 
+          width: isSmallMobile ? '100%' : '90%',
+          maxHeight: isSmallMobile ? '100vh' : '90vh',
+          overflowY: 'auto'
+        }}
+      >
         <div className="nb-dialog-header">
           <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: '900', textTransform: 'uppercase' }}>
             SETTINGS
@@ -168,12 +178,18 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
               </p>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <div style={{ 
+              display: isMobile ? 'flex' : 'flex', 
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'flex-end', 
+              gap: '10px' 
+            }}>
               <button
                 className="nb-btn"
                 type="button"
                 onClick={onClose}
                 disabled={loading}
+                style={{ width: isMobile ? '100%' : 'auto' }}
               >
                 CANCEL
               </button>
@@ -181,6 +197,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                 className="nb-btn nb-btn-primary" 
                 type="submit"
                 disabled={loading}
+                style={{ width: isMobile ? '100%' : 'auto' }}
               >
                 {loading ? 'SAVING...' : 'SAVE SETTINGS'}
               </button>

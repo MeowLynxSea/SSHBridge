@@ -4,6 +4,8 @@ import TunnelStats from './TunnelStats';
 import Settings from './Settings';
 import BandwidthMonitor from './BandwidthMonitor';
 import { formatForDisplay } from '../src/utils/timeUtils';
+import { useMobile } from './ResponsiveLayout';
+import MobileTestGuide from './MobileTestGuide';
 
 interface Tunnel {
   id: number;
@@ -36,6 +38,8 @@ export default function TunnelManager() {
   const [tunnelStatuses, setTunnelStatuses] = useState<Map<number, boolean>>(new Map());
   const [showSettings, setShowSettings] = useState(false);
   const [selectedTunnelForBandwidth, setSelectedTunnelForBandwidth] = useState<Tunnel | null>(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const { isMobile, isSmallMobile } = useMobile();
   const [formData, setFormData] = useState<TunnelFormData>({
     name: '',
     external_port: '',
@@ -186,64 +190,161 @@ export default function TunnelManager() {
       {/* Header */}
       <header className="nb-box" style={{ 
         borderBottom: 'none', 
-        padding: '20px 0', 
+        padding: isSmallMobile ? '15px 0' : '20px 0', 
         boxShadow: 'none',
         position: 'relative'
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 className="text-4xl font-black uppercase">
-              SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
-            </h1>
-            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-              <button 
-                className="nb-btn nb-btn-accent" 
-                onClick={() => {
-                  setEditingTunnel(null);
-                  setFormData({ name: '', external_port: '', max_bandwidth: '' });
-                  setShowForm(true);
-                }}
-              >
-                CREATE TUNNEL
-              </button>
-              <button 
-                className="nb-btn" 
-                onClick={() => setShowSettings(true)}
-                style={{ 
-                  background: 'var(--gray-light)', 
-                  color: 'var(--fg-color)' 
-                }}
-              >
-                SETTINGS
-              </button>
-              <button className="nb-btn nb-btn-glitch" onClick={logout}>
-                LOGOUT
-              </button>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isSmallMobile ? '0 15px' : '0 20px' }}>
+          {/* Mobile-friendly header layout */}
+          {isMobile ? (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h1 className={`${isSmallMobile ? 'text-2xl' : 'text-3xl'} font-black uppercase`}>
+                  SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
+                </h1>
+                <button 
+                  className="nb-btn"
+                  onClick={() => setShowMobileMenu(!showMobileMenu)}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    boxShadow: 'none', 
+                    padding: '5px',
+                    fontSize: '1.2rem',
+                    width: '40px',
+                    height: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {showMobileMenu ? 'X' : '☰'}
+                </button>
+              </div>
+              
+              {/* Mobile Menu */}
+              {showMobileMenu && (
+                <div className="nb-box" style={{ marginBottom: '15px', padding: '15px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <button 
+                      className="nb-btn nb-btn-accent w-full" 
+                      onClick={() => {
+                        setEditingTunnel(null);
+                        setFormData({ name: '', external_port: '', max_bandwidth: '' });
+                        setShowForm(true);
+                        setShowMobileMenu(false);
+                      }}
+                      style={{ fontSize: isSmallMobile ? '0.9rem' : '1rem' }}
+                    >
+                      CREATE TUNNEL
+                    </button>
+                    <button 
+                      className="nb-btn w-full" 
+                      onClick={() => {
+                        setShowSettings(true);
+                        setShowMobileMenu(false);
+                      }}
+                      style={{ 
+                        background: 'var(--gray-light)', 
+                        color: 'var(--fg-color)',
+                        fontSize: isSmallMobile ? '0.9rem' : '1rem'
+                      }}
+                    >
+                      SETTINGS
+                    </button>
+                    <button 
+                      className="nb-btn nb-btn-glitch w-full" 
+                      onClick={() => {
+                        logout();
+                        setShowMobileMenu(false);
+                      }}
+                      style={{ fontSize: isSmallMobile ? '0.9rem' : '1rem' }}
+                    >
+                      LOGOUT
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Mobile Tabs */}
+              <div className="nb-tabs">
+                <button 
+                  className={`nb-tab ${activeTab === 'tunnels' ? 'nb-tab-active' : ''}`}
+                  onClick={() => setActiveTab('tunnels')}
+                  style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
+                >
+                  TUNNELS
+                </button>
+                <button 
+                  className={`nb-tab ${activeTab === 'stats' ? 'nb-tab-active' : ''}`}
+                  onClick={() => setActiveTab('stats')}
+                  style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
+                >
+                  STATISTICS
+                </button>
+              </div>
             </div>
-          </div>
-          
-          {/* Tabs */}
-          <div className="nb-tabs">
-            <button 
-              className={`nb-tab ${activeTab === 'tunnels' ? 'nb-tab-active' : ''}`}
-              onClick={() => setActiveTab('tunnels')}
-            >
-              TUNNELS
-            </button>
-            <button 
-              className={`nb-tab ${activeTab === 'stats' ? 'nb-tab-active' : ''}`}
-              onClick={() => setActiveTab('stats')}
-            >
-              STATISTICS
-            </button>
-          </div>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h1 className="text-4xl font-black uppercase">
+                  SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
+                </h1>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <button 
+                    className="nb-btn nb-btn-accent" 
+                    onClick={() => {
+                      setEditingTunnel(null);
+                      setFormData({ name: '', external_port: '', max_bandwidth: '' });
+                      setShowForm(true);
+                    }}
+                  >
+                    CREATE TUNNEL
+                  </button>
+                  <button 
+                    className="nb-btn" 
+                    onClick={() => setShowSettings(true)}
+                    style={{ 
+                      background: 'var(--gray-light)', 
+                      color: 'var(--fg-color)' 
+                    }}
+                  >
+                    SETTINGS
+                  </button>
+                  <button className="nb-btn nb-btn-glitch" onClick={logout}>
+                    LOGOUT
+                  </button>
+                </div>
+              </div>
+              
+              {/* Tabs */}
+              <div className="nb-tabs">
+                <button 
+                  className={`nb-tab ${activeTab === 'tunnels' ? 'nb-tab-active' : ''}`}
+                  onClick={() => setActiveTab('tunnels')}
+                >
+                  TUNNELS
+                </button>
+                <button 
+                  className={`nb-tab ${activeTab === 'stats' ? 'nb-tab-active' : ''}`}
+                  onClick={() => setActiveTab('stats')}
+                >
+                  STATISTICS
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+      <main style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: isSmallMobile ? '0 15px' : '0 20px' 
+      }}>
         {activeTab === 'tunnels' && (
-          <div style={{ marginTop: '40px' }}>
+          <div style={{ marginTop: isSmallMobile ? '20px' : '40px' }}>
             {error && (
               <div className="nb-alert nb-alert-destructive">
                 {error}
@@ -253,7 +354,7 @@ export default function TunnelManager() {
             {tunnels.length === 0 ? (
               <div className="nb-box nb-card">
                 <div className="nb-card-header">
-                  <h2 className="nb-card-title">NO TUNNELS CONFIGURED</h2>
+                  <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>NO TUNNELS CONFIGURED</h2>
                 </div>
                 <div className="nb-card-body">
                   <p style={{ marginBottom: '20px' }}>
@@ -262,6 +363,7 @@ export default function TunnelManager() {
                   <button 
                     className="nb-btn nb-btn-primary"
                     onClick={() => setShowForm(true)}
+                    style={{ width: isMobile ? '100%' : 'auto' }}
                   >
                     CREATE YOUR FIRST TUNNEL
                   </button>
@@ -270,49 +372,74 @@ export default function TunnelManager() {
             ) : (
               <div className="nb-box nb-card">
                 <div className="nb-card-header">
-                  <h2 className="nb-card-title">YOUR SSH TUNNELS</h2>
+                  <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>YOUR SSH TUNNELS</h2>
                 </div>
                 <div className="nb-card-body">
-                  <table className="nb-table">
-                    <thead>
-                      <tr>
-                        <th>NAME</th>
-                        <th>EXTERNAL PORT</th>
-                        <th>MAX BANDWIDTH</th>
-                        <th>CREATED</th>
-                        <th style={{ textAlign: 'right' }}>ACTIONS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  {isMobile ? (
+                    // Mobile card-based layout
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                       {tunnels.map((tunnel) => (
-                        <tr key={tunnel.id}>
-                          <td className="font-medium">{tunnel.name}</td>
-                          <td>
-                            <span className="nb-badge">{tunnel.external_port}</span>
-                          </td>
-                          <td>
-                            {tunnel.max_bandwidth ? (
-                              <span className="nb-badge" style={{ backgroundColor: 'var(--accent-color)' }}>
-                                {tunnel.max_bandwidth < 1024 * 1024 
-                                  ? `${(tunnel.max_bandwidth / 1024).toFixed(1)}KB/s`
-                                  : `${(tunnel.max_bandwidth / (1024 * 1024)).toFixed(1)}MB/s`
-                                }
+                        <div key={tunnel.id} className="nb-box" style={{ padding: '15px' }}>
+                          <div style={{ marginBottom: '10px' }}>
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              marginBottom: '10px'
+                            }}>
+                              <h3 style={{ 
+                                fontWeight: 'bold', 
+                                fontFamily: 'var(--font-sans)',
+                                fontSize: '1.1rem'
+                              }}>
+                                {tunnel.name}
+                              </h3>
+                              <div 
+                                className="nb-badge"
+                                style={{ 
+                                  backgroundColor: tunnel.is_online ? 'var(--accent-color)' : 'var(--gray-light)',
+                                  color: tunnel.is_online ? 'var(--bg-color)' : 'var(--fg-color)'
+                                }}
+                              >
+                                PORT {tunnel.external_port}
+                              </div>
+                            </div>
+                            
+                            <div style={{ marginBottom: '10px' }}>
+                              <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                Bandwidth: {tunnel.max_bandwidth ? (
+                                  <span className="nb-badge" style={{ 
+                                    backgroundColor: 'var(--accent-color)',
+                                    padding: '2px 6px',
+                                    fontSize: '0.8rem'
+                                  }}>
+                                    {tunnel.max_bandwidth < 1024 * 1024 
+                                      ? `${(tunnel.max_bandwidth / 1024).toFixed(1)}KB/s`
+                                      : `${(tunnel.max_bandwidth / (1024 * 1024)).toFixed(1)}MB/s`
+                                    }
+                                  </span>
+                                ) : (
+                                  <span className="nb-badge" style={{ 
+                                    backgroundColor: 'var(--gray-light)', 
+                                    color: 'var(--fg-color)',
+                                    padding: '2px 6px',
+                                    fontSize: '0.8rem'
+                                  }}>
+                                    Unlimited
+                                  </span>
+                                )}
                               </span>
-                            ) : (
-                              <span className="nb-badge" style={{ backgroundColor: 'var(--gray-light)', color: 'var(--fg-color)' }}>
-                                Unlimited
-                              </span>
-                            )}
-                          </td>
-                          <td>
-                            {formatForDisplay(tunnel.created_at)}
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            </div>
+                            
+                            <div style={{ marginBottom: '15px', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                              Created: {formatForDisplay(tunnel.created_at)}
+                            </div>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                               {tunnel.is_online && (
                                 <button
                                   className="nb-btn"
-                                  style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                  style={{ width: '100%', fontSize: '0.9rem' }}
                                   onClick={() => setSelectedTunnelForBandwidth(tunnel)}
                                 >
                                   BANDWIDTH
@@ -320,62 +447,136 @@ export default function TunnelManager() {
                               )}
                               <button
                                 className="nb-btn"
-                                style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                style={{ width: '100%', fontSize: '0.9rem' }}
                                 onClick={() => handleEdit(tunnel)}
                               >
                                 EDIT
                               </button>
                               <button
                                 className="nb-btn nb-btn-glitch"
-                                style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                style={{ width: '100%', fontSize: '0.9rem' }}
                                 onClick={() => handleDelete(tunnel.id)}
                               >
                                 DELETE
                               </button>
                             </div>
-                          </td>
-                        </tr>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  ) : (
+                    // Desktop table layout
+                    <table className="nb-table">
+                      <thead>
+                        <tr>
+                          <th>NAME</th>
+                          <th>EXTERNAL PORT</th>
+                          <th>MAX BANDWIDTH</th>
+                          <th>CREATED</th>
+                          <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tunnels.map((tunnel) => (
+                          <tr key={tunnel.id}>
+                            <td className="font-medium">{tunnel.name}</td>
+                            <td>
+                              <span className="nb-badge">{tunnel.external_port}</span>
+                            </td>
+                            <td>
+                              {tunnel.max_bandwidth ? (
+                                <span className="nb-badge" style={{ backgroundColor: 'var(--accent-color)' }}>
+                                  {tunnel.max_bandwidth < 1024 * 1024 
+                                    ? `${(tunnel.max_bandwidth / 1024).toFixed(1)}KB/s`
+                                    : `${(tunnel.max_bandwidth / (1024 * 1024)).toFixed(1)}MB/s`
+                                  }
+                                </span>
+                              ) : (
+                                <span className="nb-badge" style={{ backgroundColor: 'var(--gray-light)', color: 'var(--fg-color)' }}>
+                                  Unlimited
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              {formatForDisplay(tunnel.created_at)}
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                {tunnel.is_online && (
+                                  <button
+                                    className="nb-btn"
+                                    style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                    onClick={() => setSelectedTunnelForBandwidth(tunnel)}
+                                  >
+                                    BANDWIDTH
+                                  </button>
+                                )}
+                                <button
+                                  className="nb-btn"
+                                  style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                  onClick={() => handleEdit(tunnel)}
+                                >
+                                  EDIT
+                                </button>
+                                <button
+                                  className="nb-btn nb-btn-glitch"
+                                  style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                  onClick={() => handleDelete(tunnel.id)}
+                                >
+                                  DELETE
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Instructions */}
-            <div className="nb-box nb-card" style={{ marginTop: '30px' }}>
+            <div className="nb-box nb-card" style={{ marginTop: isSmallMobile ? '20px' : '30px' }}>
               <div className="nb-card-header">
-                <h2 className="nb-card-title">HOW TO USE YOUR TUNNELS</h2>
+                <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>HOW TO USE YOUR TUNNELS</h2>
               </div>
               <div className="nb-card-body">
-                <ol style={{ lineHeight: '1.8', paddingLeft: '20px' }}>
+                <ol style={{ lineHeight: isSmallMobile ? '1.6' : '1.8', paddingLeft: '20px' }}>
                   <li style={{ marginBottom: '10px' }}>Connect to this SSH server using your credentials and the -R flag</li>
                   <li style={{ marginBottom: '10px' }}>
-                    Use your assigned external port: 
-                    <code style={{ 
-                      marginLeft: '10px', 
-                      padding: '4px 8px', 
+                    Use your assigned external port:
+                    <div style={{ 
+                      marginTop: '5px',
+                      padding: '8px', 
                       backgroundColor: 'var(--gray-light)', 
                       border: '1px solid var(--fg-color)',
-                      fontFamily: 'monospace'
+                      fontFamily: 'monospace',
+                      fontSize: isSmallMobile ? '0.8rem' : '0.9rem',
+                      wordBreak: 'break-all',
+                      overflowX: 'auto'
                     }}>
                       ssh -R {tunnels.length > 0 ? tunnels.map(t => t.external_port).join(', ') : 'PORT'}:localhost:LOCAL_PORT user@server
-                    </code>
+                    </div>
                   </li>
                   <li style={{ marginBottom: '10px' }}>External users connect to your assigned external port on this SSH server</li>
                   <li style={{ marginBottom: '10px' }}>SSH server forwards traffic to your local service specified in the -R flag</li>
                   <li>
-                    Example: 
-                    <code style={{ 
-                      marginLeft: '10px', 
-                      padding: '4px 8px', 
+                    Example:
+                    <div style={{ 
+                      marginTop: '5px',
+                      padding: '8px', 
                       backgroundColor: 'var(--gray-light)', 
                       border: '1px solid var(--fg-color)',
-                      fontFamily: 'monospace'
+                      fontFamily: 'monospace',
+                      fontSize: isSmallMobile ? '0.8rem' : '0.9rem',
+                      wordBreak: 'break-all'
                     }}>
                       ssh -R 8080:localhost:3000 user@server
-                    </code>, 
-                    then external users access server:8080
+                    </div>
+                    <div style={{ marginTop: '5px', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                      then external users access server:8080
+                    </div>
                   </li>
                 </ol>
               </div>
@@ -384,7 +585,7 @@ export default function TunnelManager() {
         )}
         
         {activeTab === 'stats' && (
-          <div style={{ marginTop: '40px' }}>
+          <div style={{ marginTop: isSmallMobile ? '20px' : '40px' }}>
             <TunnelStats />
           </div>
         )}
@@ -506,6 +707,9 @@ export default function TunnelManager() {
           onClose={() => setSelectedTunnelForBandwidth(null)}
         />
       )}
+
+      {/* Mobile Test Guide */}
+      <MobileTestGuide />
 
     </div>
   );

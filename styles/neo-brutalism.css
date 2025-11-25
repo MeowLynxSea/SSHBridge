@@ -386,13 +386,195 @@ body {
     font-family: var(--font-mono);
     line-height: 1.5;
     overflow-x: hidden;
+    /* 改善移动端的文本渲染 */
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
 }
 
 code, pre {
     font-family: var(--font-mono);
 }
 
-/* 响应式简单处理 */
+/* 移动端优化 - 768px 以下 */
 @media (max-width: 768px) {
-    .grid-3 { grid-template-columns: 1fr; }
+    .grid-3 { 
+        grid-template-columns: 1fr; 
+    }
+    
+    /* 整体布局调整 */
+    body {
+        font-size: 0.9rem;
+    }
+    
+    /* 容器和间距 */
+    .nb-box, .nb-card {
+        padding: 15px;
+    }
+    
+    /* 标题调整 */
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.25rem; }
+    
+    /* 按钮调整 */
+    .nb-btn {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+    }
+    
+    /* 表单元素调整 */
+    .nb-input {
+        padding: 10px;
+    }
+    
+    /* 表格调整 */
+    .nb-table {
+        font-size: 0.8rem;
+    }
+    
+    .nb-table th,
+    .nb-table td {
+        padding: 8px;
+    }
+    
+    /* 模态框调整 */
+    .nb-dialog-card {
+        width: 95%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    /* 徽章调整 */
+    .nb-badge {
+        font-size: 0.8rem;
+        padding: 3px 6px;
+    }
+}
+
+/* 小屏幕设备优化 - 480px 以下 */
+@media (max-width: 480px) {
+    body {
+        font-size: 0.85rem;
+    }
+    
+    /* 容器和间距 */
+    .nb-box, .nb-card {
+        padding: 12px;
+    }
+    
+    /* 标题调整 */
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.35rem; }
+    h3 { font-size: 1.15rem; }
+    
+    /* 按钮调整 */
+    .nb-btn {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        width: 100%;
+    }
+    
+    /* 表格调整 - 变为垂直布局 */
+    .nb-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        font-size: 0.75rem;
+    }
+    
+    .nb-table th,
+    .nb-table td {
+        padding: 6px;
+        min-width: 80px;
+    }
+    
+    /* 标签页调整 */
+    .nb-tab {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+    
+    /* 模态框调整 */
+    .nb-dialog-card {
+        width: 100%;
+        height: 100vh;
+        max-width: none;
+        border-radius: 0;
+        border: none;
+    }
+    
+    /* 加载器调整 */
+    .nb-loader {
+        width: 30px;
+        height: 30px;
+        border-width: 3px;
+    }
+}
+
+/* 横向布局优化 */
+@media (max-width: 767px) and (orientation: landscape) {
+    .nb-dialog-card {
+        width: 90%;
+        max-height: 95vh;
+    }
+}
+
+/* 移动端特定的交互优化 */
+@media (max-width: 768px) {
+    /* 更大的触摸目标 */
+    .nb-checkbox-wrapper {
+        margin: 10px 0;
+    }
+    
+    .nb-checkmark {
+        min-width: 28px;
+        min-height: 28px;
+    }
+    
+    /* 更好的滚动体验 */
+    .nb-dialog-card {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* 移动端专用的间距调整 */
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    /* 卡片间距调整 */
+    .space-y-6 > * + * {
+        margin-top: 1.5rem;
+    }
+    
+    /* 更好的文本换行 */
+    .nb-badge {
+        white-space: nowrap;
+    }
+    
+    /* 防止内容溢出 */
+    .nb-box {
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        word-break: break-word;
+    }
+    
+    /* 移动端专用按钮组优化 */
+    .mobile-button-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    /* 移动端隧道卡片特殊样式 */
+    .tunnel-card {
+        position: relative;
+        margin-bottom: 15px;
+    }
+    
+    /* 确保内容在小屏幕上不会过度压缩 */
+    .responsive-content {
+        min-width: 0; /* 允许flex项目收缩到0宽度 */
+        flex-shrink: 1; /* 允许flex项目收缩 */
+    }
 }
