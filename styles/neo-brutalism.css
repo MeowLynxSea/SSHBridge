@@ -300,6 +300,29 @@ h1, h2, h3, h4, h5, h6 {
     border-color: var(--accent-color);
 }
 
+/* Button - Danger */
+.nb-btn-danger {
+    background: #dc3545;
+    color: var(--bg-color);
+    border-color: var(--fg-color);
+}
+.nb-btn-danger:hover {
+    background: #c82333;
+    color: var(--bg-color);
+    border-color: #c82333;
+}
+
+/* Dark theme for danger button */
+.dark .nb-btn-danger {
+    background: #dc3545;
+    color: var(--bg-color);
+    border-color: var(--border-bg-color);
+}
+.dark .nb-btn-danger:hover {
+    background: #c82333;
+    border-color: #c82333;
+}
+
 /* Form Elements */
 .nb-input {
     width: 100%;

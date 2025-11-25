@@ -5,6 +5,10 @@ import TunnelStats from './TunnelStats';
 import Settings from './Settings';
 import BandwidthMonitor from './BandwidthMonitor';
 import CommandDialog from './CommandDialog';
+import LogoutConfirmDialog from './LogoutConfirmDialog';
+import TunnelFormDialog from './TunnelFormDialog';
+import DeleteConfirmDialog from './DeleteConfirmDialog';
+import Footer from './Footer';
 import { formatForDisplay } from '../src/utils/timeUtils';
 import { useMobile } from './ResponsiveLayout';
 import Tunnel from '../types/Tunnel';
@@ -29,6 +33,9 @@ export default function TunnelManager() {
   const [selectedTunnelForBandwidth, setSelectedTunnelForBandwidth] = useState<Tunnel | null>(null);
   const [selectedTunnelForCommand, setSelectedTunnelForCommand] = useState<Tunnel | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [tunnelToDelete, setTunnelToDelete] = useState<Tunnel | null>(null);
   const [baseTunnelHost, setBaseTunnelHost] = useState<string>('localhost');
   const [baseTunnelPort, setBaseTunnelPort] = useState<string>('22');
   const { isMobile, isSmallMobile } = useMobile();
@@ -143,11 +150,16 @@ export default function TunnelManager() {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm(t('tunnelManager.deleteConfirm'))) return;
+  const handleDelete = (tunnel: Tunnel) => {
+    setTunnelToDelete(tunnel);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!tunnelToDelete) return;
 
     try {
-      const response = await fetch(`/api/tunnels/${id}`, {
+      const response = await fetch(`/api/tunnels/${tunnelToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -162,6 +174,8 @@ export default function TunnelManager() {
     } catch (err) {
       console.error(t('settings.failedToDeleteTunnel'), err);
       setError(t('settings.networkError'));
+    } finally {
+      setTunnelToDelete(null);
     }
   };
 
@@ -247,8 +261,8 @@ export default function TunnelManager() {
                     <button 
                       className="nb-btn w-full" 
                       onClick={() => {
-                        logout();
                         setShowMobileMenu(false);
+                        setShowLogoutConfirm(true);
                       }}
                       style={{ fontSize: isSmallMobile ? '0.9rem' : '1rem' }}
                     >
@@ -300,7 +314,7 @@ export default function TunnelManager() {
                   >
                     {t('tunnelManager.createTunnel')}
                   </button>
-                  <button className="nb-btn" onClick={logout}>
+                  <button className="nb-btn" onClick={() => setShowLogoutConfirm(true)}>
                     {t('tunnelManager.logout')}
                   </button>
                 </div>
@@ -455,9 +469,9 @@ export default function TunnelManager() {
                                 {t('tunnelManager.edit')}
                               </button>
                               <button
-                                className="nb-btn nb-btn-glitch"
+                                className="nb-btn nb-btn-danger"
                                 style={{ width: '100%', fontSize: '0.9rem' }}
-                                onClick={() => handleDelete(tunnel.id)}
+                                onClick={() => handleDelete(tunnel)}
                               >
                                 {t('tunnelManager.delete')}
                               </button>
@@ -528,9 +542,9 @@ export default function TunnelManager() {
                                   {t('tunnelManager.edit')}
                                 </button>
                                 <button
-                                  className="nb-btn nb-btn-glitch"
+                                  className="nb-btn nb-btn-danger"
                                   style={{ padding: '8px 12px', fontSize: '0.8rem' }}
-                                  onClick={() => handleDelete(tunnel.id)}
+                                  onClick={() => handleDelete(tunnel)}
                                 >
                                   {t('tunnelManager.delete')}
                                 </button>
@@ -624,108 +638,23 @@ export default function TunnelManager() {
         )}
       </main>
 
-      {/* Dialog for Create/Edit Tunnel */}
-      {showForm && (
-        <div className="nb-dialog-overlay" style={{ display: 'grid' }}>
-          <div className="nb-dialog-card">
-            <div className="nb-dialog-header">
-              <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: '900', textTransform: 'uppercase' }}>
-                {editingTunnel ? t('tunnelManager.editTunnel') : t('tunnelManager.createNewTunnel')}
-              </h2>
-              <button 
-                className="nb-btn" 
-                style={{ background: 'none', border: 'none', boxShadow: 'none', padding: '5px' }}
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingTunnel(null);
-                  setFormData({ name: '', external_port: '', max_bandwidth: '' });
-                }}
-              >
-                {t('tunnelManager.close')}
-              </button>
-            </div>
-            <div className="nb-dialog-body">
-              <p style={{ marginBottom: '20px' }}>
-                {editingTunnel 
-                  ? t('tunnelManager.updateTunnel')
-                  : t('tunnelManager.createTunnelDescription')
-                }
-              </p>
-              
-              {error && (
-                <div className="nb-alert nb-alert-destructive">
-                  {error}
-                </div>
-              )}
-              
-              <form onSubmit={handleSubmit}>
-                <div className="form-group" style={{ marginBottom: '20px' }}>
-                  <label className="nb-label" htmlFor="name">
-                    {t('tunnelManager.tunnelName')}
-                  </label>
-                  <input
-                    className="nb-input"
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder={t('tunnelManager.tunnelNamePlaceholder')}
-                    required
-                  />
-                </div>
-                
-                <div className="form-group" style={{ marginBottom: '20px' }}>
-                  <label className="nb-label" htmlFor="external_port">
-                    {t('tunnelManager.externalPortRange')}
-                  </label>
-                  <input
-                    className="nb-input"
-                    id="external_port"
-                    type="number"
-                    value={formData.external_port}
-                    onChange={(e) => setFormData({ ...formData, external_port: e.target.value })}
-                    placeholder={t('tunnelManager.portPlaceholder')}
-                    required
-                  />
-                </div>
-                
-                <div className="form-group" style={{ marginBottom: '20px' }}>
-                  <label className="nb-label" htmlFor="max_bandwidth">
-                    {t('tunnelManager.maxBandwidthOptional')}
-                  </label>
-                  <input
-                    className="nb-input"
-                    id="max_bandwidth"
-                    type="number"
-                    value={formData.max_bandwidth}
-                    onChange={(e) => setFormData({ ...formData, max_bandwidth: e.target.value })}
-                    placeholder={t('tunnelManager.bandwidthPlaceholder')}
-                  />
-                  <small style={{ color: 'var(--gray-medium)', display: 'block', marginTop: '5px' }}>
-                    {t('tunnelManager.bandwidthDescription')}
-                  </small>
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button
-                    className="nb-btn"
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingTunnel(null);
-                      setFormData({ name: '', external_port: '', max_bandwidth: '' });
-                    }}
-                  >
-                    {t('general.cancel')}
-                  </button>
-                  <button className="nb-btn nb-btn-primary" type="submit">
-                    {editingTunnel ? t('tunnelManager.edit') : t('tunnelManager.create')} {t('tunnelManager.tunnel')}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Footer */}
+      <Footer />
+
+      {/* Tunnel Form Dialog */}
+      <TunnelFormDialog
+        isOpen={showForm}
+        editingTunnel={editingTunnel}
+        formData={formData}
+        error={error}
+        onClose={() => {
+          setShowForm(false);
+          setEditingTunnel(null);
+        }}
+        onSubmit={handleSubmit}
+        onFormDataChange={setFormData}
+        onErrorChange={setError}
+      />
       {/* Bandwidth Monitor Dialog */}
       {selectedTunnelForBandwidth && (
         <BandwidthMonitor
@@ -746,6 +675,24 @@ export default function TunnelManager() {
           onClose={() => setSelectedTunnelForCommand(null)}
         />
       )}
+
+      {/* Logout Confirmation Dialog */}
+      <LogoutConfirmDialog
+        isOpen={showLogoutConfirm}
+        onLogout={logout}
+        onClose={() => setShowLogoutConfirm(false)}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={showDeleteConfirm}
+        tunnel={tunnelToDelete}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setTunnelToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+      />
 
 
 

@@ -238,14 +238,6 @@ export default function Settings({ isOpen = true }: SettingsProps) {
               justifyContent: 'flex-end', 
               gap: '10px' 
             }}>
-              <button
-                className="nb-btn"
-                type="button"
-                disabled={loading}
-                style={{ width: isMobile ? '100%' : 'auto' }}
-              >
-                {t('general.cancel')}
-              </button>
               <button 
                 className="nb-btn nb-btn-primary" 
                 type="submit"

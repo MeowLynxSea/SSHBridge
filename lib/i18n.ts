@@ -109,6 +109,8 @@ const resources = {
         command: "COMMAND",
         commandCopied: "SSH command copied to clipboard!",
         failedToCopyCommand: "Failed to copy command to clipboard",
+        logoutConfirmTitle: "CONFIRM LOGOUT",
+        logoutConfirmMessage: "Are you sure you want to logout? You will need to sign in again to access your tunnels.",
         commandDialog: {
           title: "SSH COMMAND GENERATOR",
           description: "Generate SSH command for tunnel '{{tunnelName}}' (Port: {{externalPort}})",
@@ -281,6 +283,8 @@ const resources = {
         command: "指令",
         commandCopied: "SSH指令已复制到剪贴板！",
         failedToCopyCommand: "复制指令到剪贴板失败",
+        logoutConfirmTitle: "确认退出登录",
+        logoutConfirmMessage: "确定要退出登录吗？您需要重新登录才能访问您的隧道。",
         commandDialog: {
           title: "SSH指令生成器",
           description: "为隧道'{{tunnelName}}'生成SSH指令 (端口: {{externalPort}})",
@@ -454,6 +458,8 @@ const resources = {
         command: "COMANDO",
         commandCopied: "¡Comando SSH copiado al portapapeles!",
         failedToCopyCommand: "Error al copiar comando al portapapeles",
+        logoutConfirmTitle: "CONFIRMAR CIERRE DE SESIÓN",
+        logoutConfirmMessage: "¿Está seguro de que quiere cerrar la sesión? Necesitará iniciar sesión nuevamente para acceder a sus túneles.",
         commandDialog: {
           title: "GENERADOR DE COMANDOS SSH",
           description: "Generar comando SSH para túnel '{{tunnelName}}' (Puerto: {{externalPort}})",
@@ -627,6 +633,8 @@ const resources = {
         command: "BEFEHL",
         commandCopied: "SSH-Befehl in die Zwischenablage kopiert!",
         failedToCopyCommand: "Fehler beim Kopieren des Befehls in die Zwischenablage",
+        logoutConfirmTitle: "ABMELDUNG BESTÄTIGEN",
+        logoutConfirmMessage: "Möchten Sie sich wirklich abmelden? Sie müssen sich erneut anmelden, um auf Ihre Tunnel zuzugreifen.",
         commandDialog: {
           title: "SSH-BEFEHLSGENERATOR",
           description: "SSH-Befehl für Tunnel '{{tunnelName}}' generieren (Port: {{externalPort}})",
@@ -799,6 +807,8 @@ const resources = {
         command: "コマンド",
         commandCopied: "SSHコマンドをクリップボードにコピーしました！",
         failedToCopyCommand: "コマンドのクリップボードへのコピーに失敗しました",
+        logoutConfirmTitle: "ログアウトの確認",
+        logoutConfirmMessage: "ログアウトしてもよろしいですか？トンネルにアクセスするには、再度サインインする必要があります。",
         commandDialog: {
           title: "SSHコマンドジェネレーター",
           description: "トンネル'{{tunnelName}}'のSSHコマンドを生成します (ポート: {{externalPort}})",
@@ -971,6 +981,8 @@ const resources = {
         command: "КОМАНДА",
         commandCopied: "Команда SSH скопирована в буфер обмена!",
         failedToCopyCommand: "Не удалось скопировать команду в буфер обмена",
+        logoutConfirmTitle: "ПОДТВЕРЖДЕНИЕ ВЫХОДА",
+        logoutConfirmMessage: "Вы уверены, что хотите выйти? Вам потребуется снова войти для доступа к вашим туннелям.",
         commandDialog: {
           title: "ГЕНЕРАТОР КОМАНД SSH",
           description: "Сгенерировать команду SSH для туннеля '{{tunnelName}}' (Порт: {{externalPort}})",
@@ -1143,6 +1155,8 @@ const resources = {
         command: "أمر",
         commandCopied: "تم نسخ أمر SSH إلى الحافظة!",
         failedToCopyCommand: "فشل في نسخ الأمر إلى الحافظة",
+        logoutConfirmTitle: "تأكيد تسجيل الخروج",
+        logoutConfirmMessage: "هل أنت متأكد من أنك تريد تسجيل الخروج؟ ستحتاج إلى تسجيل الدخول مرة أخرى للوصول إلى أنفاقك.",
         commandDialog: {
           title: "مولد أوامر SSH",
           description: "إنشاء أمر SSH للنفق '{{tunnelName}}' (المنفذ: {{externalPort}})",
@@ -1314,6 +1328,8 @@ const resources = {
         command: "COMMANDE",
         commandCopied: "Commande SSH copiée dans le presse-papiers !",
         failedToCopyCommand: "Échec de la copie de la commande dans le presse-papiers",
+        logoutConfirmTitle: "CONFIRMER LA DÉCONNEXION",
+        logoutConfirmMessage: "Êtes-vous sûr de vouloir vous déconnecter ? Vous devrez vous reconnecter pour accéder à vos tunnels.",
         commandDialog: {
           title: "GÉNÉRATEUR DE COMMANDES SSH",
           description: "Générer une commande SSH pour le tunnel '{{tunnelName}}' (Port: {{externalPort}})",
