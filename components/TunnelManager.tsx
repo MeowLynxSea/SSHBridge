@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
 import TunnelStats from './TunnelStats';
@@ -21,6 +22,7 @@ interface TunnelFormData {
 }
 
 export default function TunnelManager() {
+  const router = useRouter();
   const { t } = useTranslation();
   const { token, logout, user } = useAuth();
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
@@ -250,6 +252,16 @@ export default function TunnelManager() {
                       className="nb-btn w-full" 
                       onClick={() => {
                         setShowMobileMenu(false);
+                        router.push('/account');
+                      }}
+                      style={{ fontSize: isSmallMobile ? '0.9rem' : '1rem' }}
+                    >
+                      {t('tunnelManager.accountManagement')}
+                    </button>
+                    <button 
+                      className="nb-btn w-full" 
+                      onClick={() => {
+                        setShowMobileMenu(false);
                         setShowLogoutConfirm(true);
                       }}
                       style={{ fontSize: isSmallMobile ? '0.9rem' : '1rem' }}
@@ -292,6 +304,9 @@ export default function TunnelManager() {
                   SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
                 </h1>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <button className="nb-btn" onClick={() => router.push('/account')}>
+                    {t('tunnelManager.accountManagement')}
+                  </button>
                   <button className="nb-btn" onClick={() => setShowLogoutConfirm(true)}>
                     {t('tunnelManager.logout')}
                   </button>
@@ -690,6 +705,8 @@ export default function TunnelManager() {
         }}
         onConfirm={confirmDelete}
       />
+
+
 
 
 

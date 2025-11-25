@@ -346,6 +346,20 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 4px 4px 0 var(--accent-color), 0 0 0 2px var(--accent-color);
 }
 
+/* 密码输入框预览按钮样式 - 支持明暗模式 */
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-caps-lock-indicator,
+input[type="password"]::-webkit-reveal-password-button {
+    filter: invert(1);
+}
+
+/* 暗色主题下的密码预览按钮 */
+.dark input[type="password"]::-webkit-credentials-auto-fill-button,
+.dark input[type="password"]::-webkit-caps-lock-indicator,
+.dark input[type="password"]::-webkit-reveal-password-button {
+    filter: none;
+}
+
 /* 暗色主题下的盒子 */
 .dark .nb-box {
     background: var(--bg-color); /* 深灰色背景 */

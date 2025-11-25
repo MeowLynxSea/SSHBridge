@@ -994,6 +994,33 @@ class Database {
       return false;
     }
   }
+
+  async getSession(token: string): Promise<Session | null> {
+    const { get } = promisifyDb(this.db);
+    const row = await get('SELECT * FROM sessions WHERE token = ? AND expires_at > datetime("now")', [token]);
+    return row ? this.mapRowToSession(row) : null;
+  }
+
+  async updateUserPassword(userId: number, hashedPassword: string): Promise<boolean> {
+    const { run } = promisifyDb(this.db);
+    try {
+      await run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId]);
+      return true;
+    } catch (error) {
+      console.error('Error updating user password:', error);
+      return false;
+    }
+  }
+
+  private mapRowToSession(row: Row): Session {
+    return {
+      id: Number(row.id),
+      user_id: Number(row.user_id),
+      token: String(row.token),
+      expires_at: parseDatabaseDate(String(row.expires_at)).toISOString(),
+      created_at: parseDatabaseDate(String(row.created_at)).toISOString()
+    };
+  }
 }
 
 // Export a function that returns the singleton instance

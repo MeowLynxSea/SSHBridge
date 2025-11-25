@@ -9,8 +9,21 @@
  * @returns Date对象（UTC）
  */
 export function parseDatabaseDate(dateString: string): Date {
+  // 检查是否为有效日期字符串
+  if (!dateString || dateString === 'Invalid Date') {
+    // 返回当前时间作为默认值
+    return new Date();
+  }
+  
   // SQLite的CURRENT_TIMESTAMP是UTC时间，添加'Z'后缀明确表示UTC
-  return new Date(dateString + 'Z');
+  const date = new Date(dateString + 'Z');
+  
+  // 检查日期是否有效
+  if (isNaN(date.getTime())) {
+    return new Date();
+  }
+  
+  return date;
 }
 
 /**
