@@ -4,6 +4,26 @@ import { getCurrentTime, formatDuration } from './utils/timeUtils';
 import { TcpServerManager } from './tcpServerManager';
 import ssh2 from 'ssh2';
 
+// Extend ssh2 types for our custom properties
+declare module 'ssh2' {
+  interface Connection {
+    _sshbForwardError?: { message: string; details: string };
+    _sshbTunnelReplaced?: { message: string; details: string };
+    _pendingPortForwards?: number;
+    _processedPortForwards?: number;
+    _connectionStartTime?: string; // ISO string when connection was established
+  }
+  
+  interface Session {
+    _showForwardError?: boolean;
+    _showTunnelReplaced?: boolean;
+  }
+  
+  interface Channel {
+    _conn?: Connection; // Reference to the parent connection
+  }
+}
+
 // Timer type for compatibility
 interface Timer {
   ref(): Timer;
@@ -83,6 +103,9 @@ export class SSHBridgeServer {
 
   private handleAuthenticatedConnection(conn: SSH2Connection, user: UserData) {
     console.log(`User ${user.username} authenticated`);
+    
+    // Store connection start time
+    conn._connectionStartTime = new Date().toISOString();
     
     // Initialize port forward request tracking
     conn._pendingPortForwards = 0;
@@ -730,7 +753,8 @@ export class SSHBridgeServer {
       } else {
         for (const tunnel of activeTunnels) {
           const stats = statsMap.get(tunnel.id);
-          const duration = stats ? formatDuration(stats.updated_at) : 'N/A';
+          // Use connection start time instead of stats.updated_at
+          const duration = conn._connectionStartTime ? formatDuration(conn._connectionStartTime) : 'N/A';
           const activeConnections = stats ? stats.active_connections.toString() : '0';
           
           // Calculate current session traffic

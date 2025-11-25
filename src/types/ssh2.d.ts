@@ -14,6 +14,13 @@ declare module 'ssh2' {
     on(event: 'error' | 'end', callback: () => void): void;
     forwardOut(srcAddr: string, srcPort: number, destAddr: string, destPort: number, callback: (err: Error, channel: Channel) => void): void;
     end(): void;
+    
+    // Custom properties for SSHBridge
+    _sshbForwardError?: { message: string; details: string };
+    _sshbTunnelReplaced?: { message: string; details: string };
+    _pendingPortForwards?: number;
+    _processedPortForwards?: number;
+    _connectionStartTime?: string; // ISO string when connection was established
   }
   
   export interface AuthContext {
@@ -30,6 +37,10 @@ declare module 'ssh2' {
     on(event: 'shell', callback: (accept: () => Channel, reject: () => void) => void): void;
     on(event: 'channel', callback: (accept: () => Channel, reject: () => void, info: any) => void): void;
     on(event: 'error', callback: (err: Error) => void): void;
+    
+    // Custom properties for SSHBridge
+    _showForwardError?: boolean;
+    _showTunnelReplaced?: boolean;
   }
   
   export interface PtyInfo {
@@ -47,6 +58,9 @@ declare module 'ssh2' {
     close(): void;
     end(): void;
     eof(): void; // Send EOF signal to indicate no more data will be sent
+    
+    // Custom properties for SSHBridge
+    _conn?: Connection; // Reference to the parent connection
   }
   
   export interface TCPForwardingInfo {

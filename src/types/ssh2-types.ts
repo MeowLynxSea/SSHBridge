@@ -60,6 +60,7 @@ export interface SSH2Connection {
     message: string;
     details: string;
   };
+  _connectionStartTime?: string; // ISO string when connection was established
   remoteAddress: string;
 }
 
