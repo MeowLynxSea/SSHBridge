@@ -562,9 +562,52 @@ h1, h2, h3, h4, h5, h6 {
     height: 100%;
     background: rgba(255, 85, 0, 0.9); /* 橙色半透明 */
     z-index: 999;
-    display: none;
+    display: grid;
     place-items: center;
     backdrop-filter: grayscale(100%) contrast(1.2);
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+    pointer-events: none;
+}
+
+/* Dialog open animation */
+.nb-dialog-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Dialog closed animation */
+.nb-dialog-closed {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Dialog card animation */
+.nb-dialog-card {
+    background: var(--bg-color);
+    border: 3px solid var(--fg-color);
+    padding: 0;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 10px 10px 0 var(--fg-color);
+    transform: scale(0.9) translateY(-20px);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+}
+
+/* Dialog card open animation */
+.nb-dialog-card-open {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Dialog card closed animation */
+.nb-dialog-card-closed {
+    transform: scale(0.9) translateY(-20px);
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* 暗色主题下的模态框背景 */
@@ -590,15 +633,6 @@ h1, h2, h3, h4, h5, h6 {
     background: var(--bg-color); /* 深灰色背景 */
     border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
     box-shadow: 10px 10px 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
-}
-
-.nb-dialog-card {
-    background: var(--bg-color);
-    border: 3px solid var(--fg-color);
-    padding: 0;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 10px 10px 0 var(--fg-color);
 }
 
 .nb-dialog-header {

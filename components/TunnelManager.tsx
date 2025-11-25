@@ -247,18 +247,6 @@ export default function TunnelManager() {
                 <div className="nb-box" style={{ marginBottom: '15px', padding: '15px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <button 
-                      className="nb-btn nb-btn-accent w-full" 
-                      onClick={() => {
-                        setEditingTunnel(null);
-                        setFormData({ name: '', external_port: '', max_bandwidth: '' });
-                        setShowForm(true);
-                        setShowMobileMenu(false);
-                      }}
-                      style={{ fontSize: isSmallMobile ? '0.9rem' : '1rem' }}
-                    >
-                      {t('tunnelManager.createTunnel')}
-                    </button>
-                    <button 
                       className="nb-btn w-full" 
                       onClick={() => {
                         setShowMobileMenu(false);
@@ -273,7 +261,7 @@ export default function TunnelManager() {
               )}
               
               {/* Mobile Tabs */}
-              <div className="nb-tabs">
+              <div style={{ marginTop: '20px' }} className="nb-tabs">
                 <button 
                   className={`nb-tab ${activeTab === 'tunnels' ? 'nb-tab-active' : ''}`}
                   onClick={() => setActiveTab('tunnels')}
@@ -304,16 +292,6 @@ export default function TunnelManager() {
                   SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
                 </h1>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                  <button 
-                    className="nb-btn nb-btn-accent" 
-                    onClick={() => {
-                      setEditingTunnel(null);
-                      setFormData({ name: '', external_port: '', max_bandwidth: '' });
-                      setShowForm(true);
-                    }}
-                  >
-                    {t('tunnelManager.createTunnel')}
-                  </button>
                   <button className="nb-btn" onClick={() => setShowLogoutConfirm(true)}>
                     {t('tunnelManager.logout')}
                   </button>
@@ -321,7 +299,7 @@ export default function TunnelManager() {
               </div>
               
               {/* Tabs */}
-              <div className="nb-tabs">
+              <div style={{ marginTop: '25px' }} className="nb-tabs">
                 <button 
                   className={`nb-tab ${activeTab === 'tunnels' ? 'nb-tab-active' : ''}`}
                   onClick={() => setActiveTab('tunnels')}
@@ -380,8 +358,25 @@ export default function TunnelManager() {
               </div>
             ) : (
               <div className="nb-box nb-card">
-                <div className="nb-card-header">
+                <div className="nb-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>{t('tunnelManager.yourSshTunnels')}</h2>
+                  <button 
+                    className="nb-btn"
+                    onClick={() => {
+                      setEditingTunnel(null);
+                      setFormData({ name: '', external_port: '', max_bandwidth: '' });
+                      setShowForm(true);
+                    }}
+                    style={{ 
+                      fontSize: isSmallMobile ? '0.75rem' : '1rem',
+                      padding: isSmallMobile ? '4px 8px' : undefined,
+                      minWidth: isSmallMobile ? '0' : undefined,
+                      width: isSmallMobile ? 'auto' : undefined,
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {isSmallMobile ? '创建' : t('tunnelManager.createTunnel')}
+                  </button>
                 </div>
                 <div className="nb-card-body">
                   {isMobile ? (
@@ -461,20 +456,22 @@ export default function TunnelManager() {
                                   {t('tunnelManager.bandwidthMonitor')}
                                 </button>
                               )}
-                              <button
-                                className="nb-btn"
-                                style={{ width: '100%', fontSize: '0.9rem' }}
-                                onClick={() => handleEdit(tunnel)}
-                              >
-                                {t('tunnelManager.edit')}
-                              </button>
-                              <button
-                                className="nb-btn nb-btn-danger"
-                                style={{ width: '100%', fontSize: '0.9rem' }}
-                                onClick={() => handleDelete(tunnel)}
-                              >
-                                {t('tunnelManager.delete')}
-                              </button>
+                              <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                  className="nb-btn"
+                                  style={{ flex: 1, fontSize: '0.9rem' }}
+                                  onClick={() => handleEdit(tunnel)}
+                                >
+                                  {t('tunnelManager.edit')}
+                                </button>
+                                <button
+                                  className="nb-btn nb-btn-danger"
+                                  style={{ flex: 1, fontSize: '0.9rem' }}
+                                  onClick={() => handleDelete(tunnel)}
+                                >
+                                  {t('tunnelManager.delete')}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>

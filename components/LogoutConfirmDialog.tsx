@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from './ThemeContext';
 import { useMobile } from './ResponsiveLayout';
+import Modal from './Modal';
 
 interface LogoutConfirmDialogProps {
   isOpen: boolean;
@@ -15,32 +15,23 @@ export default function LogoutConfirmDialog({
   onClose 
 }: LogoutConfirmDialogProps) {
   const { t } = useTranslation();
-  const { effectiveTheme } = useTheme();
-  const { isMobile, isSmallMobile } = useMobile();
+  const { isSmallMobile } = useMobile();
 
   if (!isOpen) return null;
 
   return (
-    <div className="nb-dialog-overlay" style={{ display: 'grid' }}>
-      <div 
-        className="nb-dialog-card" 
-        data-theme={effectiveTheme}
-        style={{ 
-          margin: isMobile ? '0 10px' : 'auto',
-          maxWidth: isSmallMobile ? '95vw' : '500px'
-        }}
-      >
-        <div className="nb-dialog-header">
-          <h2 style={{ 
-            fontFamily: 'var(--font-sans)', 
-            fontWeight: '900', 
-            textTransform: 'uppercase',
-            fontSize: isSmallMobile ? '1.2rem' : '1.5rem'
-          }}>
-            {t('tunnelManager.logoutConfirmTitle')}
-          </h2>
-        </div>
-        <div className="nb-dialog-body">
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <div className="nb-dialog-header">
+        <h2 style={{ 
+          fontFamily: 'var(--font-sans)', 
+          fontWeight: '900', 
+          textTransform: 'uppercase',
+          fontSize: isSmallMobile ? '1.2rem' : '1.5rem'
+        }}>
+          {t('tunnelManager.logoutConfirmTitle')}
+        </h2>
+      </div>
+      <div className="nb-dialog-body">
           <p style={{ 
             marginBottom: '20px',
             fontSize: isSmallMobile ? '0.9rem' : '1rem'
@@ -78,7 +69,6 @@ export default function LogoutConfirmDialog({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

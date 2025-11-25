@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import Modal from './Modal';
 
 interface Tunnel {
   id: number;
@@ -78,14 +79,13 @@ export default function CommandDialog({
   };
 
   return (
-    <div className="nb-dialog-overlay" style={{ display: 'grid' }}>
-      <div className="nb-dialog-card">
-        <div className="nb-dialog-header">
-          <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: '900', textTransform: 'uppercase' }}>
-            {t('tunnelManager.commandDialog.title')}
-          </h2>
-        </div>
-        <div className="nb-dialog-body">
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <div className="nb-dialog-header">
+        <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: '900', textTransform: 'uppercase' }}>
+          {t('tunnelManager.commandDialog.title')}
+        </h2>
+      </div>
+      <div className="nb-dialog-body">
           <p style={{ marginBottom: '20px' }}>
             {t('tunnelManager.commandDialog.description', { tunnelName: tunnel.name, externalPort: tunnel.external_port })}
           </p>
@@ -180,7 +180,6 @@ export default function CommandDialog({
             </form>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
