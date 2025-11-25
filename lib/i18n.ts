@@ -102,7 +102,27 @@ const resources = {
         bandwidthUtilization: "BANDWIDTH UTILIZATION",
         limited: "Limited",
         close: "CLOSE",
-        tunnel: "TUNNEL"
+        tunnel: "TUNNEL",
+        command: "COMMAND",
+        commandCopied: "SSH command copied to clipboard!",
+        failedToCopyCommand: "Failed to copy command to clipboard",
+        commandDialog: {
+          title: "SSH COMMAND GENERATOR",
+          description: "Generate SSH command for tunnel '{{tunnelName}}' (Port: {{externalPort}})",
+          localIP: "Local IP Address",
+          localIPPlaceholder: "e.g., 127.0.0.1 or localhost",
+          localIPDescription: "The IP address of your local service that will be exposed through the tunnel",
+          localPort: "Local Port",
+          localPortPlaceholder: "e.g., 3000",
+          localPortDescription: "The port of your local service that will be exposed through the tunnel",
+          copyCommand: "COPY COMMAND",
+          success: "Command copied successfully!",
+          done: "DONE",
+          localIPRequired: "Local IP is required",
+          localPortRequired: "Local Port is required",
+          invalidPort: "Please enter a valid port number (1-65535)",
+          copyFailed: "Failed to copy command to clipboard"
+        }
       },
       settings: {
         title: "SETTINGS",
@@ -251,7 +271,27 @@ const resources = {
         bandwidthUtilization: "带宽利用率",
         limited: "受限",
         close: "关闭",
-        tunnel: "隧道"
+        tunnel: "隧道",
+        command: "指令",
+        commandCopied: "SSH指令已复制到剪贴板！",
+        failedToCopyCommand: "复制指令到剪贴板失败",
+        commandDialog: {
+          title: "SSH指令生成器",
+          description: "为隧道'{{tunnelName}}'生成SSH指令 (端口: {{externalPort}})",
+          localIP: "本地IP地址",
+          localIPPlaceholder: "例如：127.0.0.1或localhost",
+          localIPDescription: "将通过隧道暴露的本地服务的IP地址",
+          localPort: "本地端口",
+          localPortPlaceholder: "例如：3000",
+          localPortDescription: "将通过隧道暴露的本地服务的端口",
+          copyCommand: "复制指令",
+          success: "指令复制成功！",
+          done: "完成",
+          localIPRequired: "本地IP是必需的",
+          localPortRequired: "本地端口是必需的",
+          invalidPort: "请输入有效的端口号（1-65535）",
+          copyFailed: "复制指令到剪贴板失败"
+        }
       },
       settings: {
         title: "设置",
@@ -401,7 +441,27 @@ const resources = {
         bandwidthUtilization: "UTILIZACIÓN DE ANCHO DE BANDA",
         limited: "Limitado",
         close: "CERRAR",
-        tunnel: "TÚNEL"
+        tunnel: "TÚNEL",
+        command: "COMANDO",
+        commandCopied: "¡Comando SSH copiado al portapapeles!",
+        failedToCopyCommand: "Error al copiar comando al portapapeles",
+        commandDialog: {
+          title: "GENERADOR DE COMANDOS SSH",
+          description: "Generar comando SSH para túnel '{{tunnelName}}' (Puerto: {{externalPort}})",
+          localIP: "Dirección IP Local",
+          localIPPlaceholder: "ej: 127.0.0.1 o localhost",
+          localIPDescription: "La dirección IP de su servicio local que se expondrá a través del túnel",
+          localPort: "Puerto Local",
+          localPortPlaceholder: "ej: 3000",
+          localPortDescription: "El puerto de su servicio local que se expondrá a través del túnel",
+          copyCommand: "COPIAR COMANDO",
+          success: "¡Comando copiado exitosamente!",
+          done: "HECHO",
+          localIPRequired: "La IP local es requerida",
+          localPortRequired: "El puerto local es requerido",
+          invalidPort: "Por favor ingrese un número de puerto válido (1-65535)",
+          copyFailed: "Error al copiar comando al portapapeles"
+        }
       },
       settings: {
         title: "CONFIGURACIÓN",
@@ -551,7 +611,27 @@ const resources = {
         bandwidthUtilization: "BANDBREITEN-AUSLASTUNG",
         limited: "Begrenzt",
         close: "SCHLIESSEN",
-        tunnel: "TUNNEL"
+        tunnel: "TUNNEL",
+        command: "BEFEHL",
+        commandCopied: "SSH-Befehl in die Zwischenablage kopiert!",
+        failedToCopyCommand: "Fehler beim Kopieren des Befehls in die Zwischenablage",
+        commandDialog: {
+          title: "SSH-BEFEHLSGENERATOR",
+          description: "SSH-Befehl für Tunnel '{{tunnelName}}' generieren (Port: {{externalPort}})",
+          localIP: "Lokale IP-Adresse",
+          localIPPlaceholder: "z.B.: 127.0.0.1 oder localhost",
+          localIPDescription: "Die IP-Adresse Ihres lokalen Dienstes, der über den Tunnel exposed wird",
+          localPort: "Lokaler Port",
+          localPortPlaceholder: "z.B.: 3000",
+          localPortDescription: "Der Port Ihres lokalen Dienstes, der über den Tunnel exposed wird",
+          copyCommand: "BEFEHL KOPIEREN",
+          success: "Befehl erfolgreich kopiert!",
+          done: "FERTIG",
+          localIPRequired: "Lokale IP ist erforderlich",
+          localPortRequired: "Lokaler Port ist erforderlich",
+          invalidPort: "Bitte geben Sie eine gültige Portnummer ein (1-65535)",
+          copyFailed: "Fehler beim Kopieren des Befehls in die Zwischenablage"
+        }
       },
       settings: {
         title: "EINSTELLUNGEN",
@@ -700,7 +780,27 @@ const resources = {
         bandwidthUtilization: "帯域利用率",
         limited: "制限付き",
         close: "閉じる",
-        tunnel: "トンネル"
+        tunnel: "トンネル",
+        command: "コマンド",
+        commandCopied: "SSHコマンドをクリップボードにコピーしました！",
+        failedToCopyCommand: "コマンドのクリップボードへのコピーに失敗しました",
+        commandDialog: {
+          title: "SSHコマンドジェネレーター",
+          description: "トンネル'{{tunnelName}}'のSSHコマンドを生成します (ポート: {{externalPort}})",
+          localIP: "ローカルIPアドレス",
+          localIPPlaceholder: "例: 127.0.0.1またはlocalhost",
+          localIPDescription: "トンネルを介して公開されるローカルサービスのIPアドレス",
+          localPort: "ローカルポート",
+          localPortPlaceholder: "例: 3000",
+          localPortDescription: "トンネルを介して公開されるローカルサービスのポート",
+          copyCommand: "コマンドをコピー",
+          success: "コマンドが正常にコピーされました！",
+          done: "完了",
+          localIPRequired: "ローカルIPが必要です",
+          localPortRequired: "ローカルポートが必要です",
+          invalidPort: "有効なポート番号を入力してください（1-65535）",
+          copyFailed: "コマンドをクリップボードにコピーできませんでした"
+        }
       },
       settings: {
         title: "設定",
@@ -849,7 +949,27 @@ const resources = {
         bandwidthUtilization: "ИСПОЛЬЗОВАНИЕ ПРОПУСКНОЙ СПОСОБНОСТИ",
         limited: "Ограничено",
         close: "ЗАКРЫТЬ",
-        tunnel: "ТУННЕЛЬ"
+        tunnel: "ТУННЕЛЬ",
+        command: "КОМАНДА",
+        commandCopied: "Команда SSH скопирована в буфер обмена!",
+        failedToCopyCommand: "Не удалось скопировать команду в буфер обмена",
+        commandDialog: {
+          title: "ГЕНЕРАТОР КОМАНД SSH",
+          description: "Сгенерировать команду SSH для туннеля '{{tunnelName}}' (Порт: {{externalPort}})",
+          localIP: "Локальный IP-адрес",
+          localIPPlaceholder: "напр.: 127.0.0.1 или localhost",
+          localIPDescription: "IP-адрес вашей локальной службы, которая будет доступна через туннель",
+          localPort: "Локальный порт",
+          localPortPlaceholder: "напр.: 3000",
+          localPortDescription: "Порт вашей локальной службы, которая будет доступна через туннель",
+          copyCommand: "СКОПИРОВАТЬ КОМАНДУ",
+          success: "Команда успешно скопирована!",
+          done: "ГОТОВО",
+          localIPRequired: "Требуется локальный IP",
+          localPortRequired: "Требуется локальный порт",
+          invalidPort: "Пожалуйста, введите действительный номер порта (1-65535)",
+          copyFailed: "Не удалось скопировать команду в буфер обмена"
+        }
       },
       settings: {
         title: "НАСТРОЙКИ",
@@ -998,7 +1118,27 @@ const resources = {
         bandwidthUtilization: "استخدام النطاق الترددي",
         limited: "محدود",
         close: "إغلاق",
-        tunnel: "نفق"
+        tunnel: "نفق",
+        command: "أمر",
+        commandCopied: "تم نسخ أمر SSH إلى الحافظة!",
+        failedToCopyCommand: "فشل في نسخ الأمر إلى الحافظة",
+        commandDialog: {
+          title: "مولد أوامر SSH",
+          description: "إنشاء أمر SSH للنفق '{{tunnelName}}' (المنفذ: {{externalPort}})",
+          localIP: "عنوان IP المحلي",
+          localIPPlaceholder: "مثال: 127.0.0.1 أو localhost",
+          localIPDescription: "عنوان IP لخدمتك المحلية التي ستكون متاحة عبر النفق",
+          localPort: "المنفذ المحلي",
+          localPortPlaceholder: "مثال: 3000",
+          localPortDescription: "منفذ خدمتك المحلية التي ستكون متاحة عبر النفق",
+          copyCommand: "نسخ الأمر",
+          success: "تم نسخ الأمر بنجاح!",
+          done: "تم",
+          localIPRequired: "مطلوب IP محلي",
+          localPortRequired: "مطلوب منفذ محلي",
+          invalidPort: "الرجاء إدخال رقم منفذ صالح (1-65535)",
+          copyFailed: "فشل في نسخ الأمر إلى الحافظة"
+        }
       },
       settings: {
         title: "الإعدادات",
@@ -1146,7 +1286,27 @@ const resources = {
         bandwidthUtilization: "UTILISATION DE LA BANDE PASSANTE",
         limited: "Limité",
         close: "FERMER",
-        tunnel: "TUNNEL"
+        tunnel: "TUNNEL",
+        command: "COMMANDE",
+        commandCopied: "Commande SSH copiée dans le presse-papiers !",
+        failedToCopyCommand: "Échec de la copie de la commande dans le presse-papiers",
+        commandDialog: {
+          title: "GÉNÉRATEUR DE COMMANDES SSH",
+          description: "Générer une commande SSH pour le tunnel '{{tunnelName}}' (Port: {{externalPort}})",
+          localIP: "Adresse IP Locale",
+          localIPPlaceholder: "ex: 127.0.0.1 ou localhost",
+          localIPDescription: "L'adresse IP de votre service local qui sera exposé via le tunnel",
+          localPort: "Port Local",
+          localPortPlaceholder: "ex: 3000",
+          localPortDescription: "Le port de votre service local qui sera exposé via le tunnel",
+          copyCommand: "COPIER LA COMMANDE",
+          success: "Commande copiée avec succès !",
+          done: "TERMINÉ",
+          localIPRequired: "L'IP locale est requise",
+          localPortRequired: "Le port local est requis",
+          invalidPort: "Veuillez entrer un numéro de port valide (1-65535)",
+          copyFailed: "Échec de la copie de la commande dans le presse-papiers"
+        }
       },
       settings: {
         title: "PARAMÈTRES",

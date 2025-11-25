@@ -4,22 +4,10 @@ import { useAuth } from './AuthContext';
 import TunnelStats from './TunnelStats';
 import Settings from './Settings';
 import BandwidthMonitor from './BandwidthMonitor';
+import CommandDialog from './CommandDialog';
 import { formatForDisplay } from '../src/utils/timeUtils';
 import { useMobile } from './ResponsiveLayout';
-
-
-interface Tunnel {
-  id: number;
-  user_id: number;
-  name: string;
-  external_port: number;
-  max_bandwidth?: number;
-  created_at: string;
-  is_online?: boolean;
-}
-
-
-
+import Tunnel from '../types/Tunnel';
 
 
 interface TunnelFormData {
@@ -30,7 +18,7 @@ interface TunnelFormData {
 
 export default function TunnelManager() {
   const { t } = useTranslation();
-  const { token, logout } = useAuth();
+  const { token, logout, user } = useAuth();
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -39,7 +27,10 @@ export default function TunnelManager() {
   const [activeTab, setActiveTab] = useState<'tunnels' | 'stats' | 'settings'>('tunnels');
   const [tunnelStatuses, setTunnelStatuses] = useState<Map<number, boolean>>(new Map());
   const [selectedTunnelForBandwidth, setSelectedTunnelForBandwidth] = useState<Tunnel | null>(null);
+  const [selectedTunnelForCommand, setSelectedTunnelForCommand] = useState<Tunnel | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [baseTunnelHost, setBaseTunnelHost] = useState<string>('localhost');
+  const [baseTunnelPort, setBaseTunnelPort] = useState<string>('22');
   const { isMobile, isSmallMobile } = useMobile();
   const [formData, setFormData] = useState<TunnelFormData>({
     name: '',
@@ -97,6 +88,7 @@ export default function TunnelManager() {
 
   useEffect(() => {
     fetchTunnels();
+    fetchBaseTunnelHost();
     // Set up interval to fetch tunnel statuses
     const interval = setInterval(fetchTunnelStatuses, 5000);
     return () => clearInterval(interval);
@@ -170,6 +162,19 @@ export default function TunnelManager() {
     } catch (err) {
       console.error(t('settings.failedToDeleteTunnel'), err);
       setError(t('settings.networkError'));
+    }
+  };
+
+  const fetchBaseTunnelHost = async () => {
+    try {
+      const response = await fetch('/api/config/base-tunnel-host');
+      if (response.ok) {
+        const data = await response.json();
+        setBaseTunnelHost(data.baseTunnelHost);
+        setBaseTunnelPort(data.baseTunnelPort);
+      }
+    } catch (err) {
+      console.error('Failed to fetch base tunnel host and port:', err);
     }
   };
 
@@ -426,6 +431,13 @@ export default function TunnelManager() {
                             </div>
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <button
+                                className="nb-btn"
+                                style={{ width: '100%', fontSize: '0.9rem' }}
+                                onClick={() => setSelectedTunnelForCommand(tunnel)}
+                              >
+                                {t('tunnelManager.command')}
+                              </button>
                               {tunnel.is_online && (
                                 <button
                                   className="nb-btn"
@@ -492,6 +504,13 @@ export default function TunnelManager() {
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button
+                                  className="nb-btn"
+                                  style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                  onClick={() => setSelectedTunnelForCommand(tunnel)}
+                                >
+                                  {t('tunnelManager.command')}
+                                </button>
                                 {tunnel.is_online && (
                                   <button
                                     className="nb-btn"
@@ -695,6 +714,18 @@ export default function TunnelManager() {
           tunnel={selectedTunnelForBandwidth}
           isOpen={!!selectedTunnelForBandwidth}
           onClose={() => setSelectedTunnelForBandwidth(null)}
+        />
+      )}
+      
+      {/* Command Dialog */}
+      {selectedTunnelForCommand && user && (
+        <CommandDialog
+          tunnel={selectedTunnelForCommand}
+          username={user.username}
+          baseTunnelHost={baseTunnelHost}
+          baseTunnelPort={baseTunnelPort}
+          isOpen={!!selectedTunnelForCommand}
+          onClose={() => setSelectedTunnelForCommand(null)}
         />
       )}
 
