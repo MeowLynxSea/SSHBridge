@@ -300,6 +300,7 @@ export class TcpServerManager {
         }
         
         await this.cleanupConnection(tcpConnectionId, tunnelId, connectionId, bytesReceived, bytesSent);
+        socket.destroy(); // Ensure socket is fully closed
       });
       
       socket.on('timeout', async () => {
@@ -473,9 +474,9 @@ export class TcpServerManager {
       socket.destroy();
     });
 
-    socket.on('error', (err: Error) => {
+    socket.on('error', async (err: Error) => {
       console.error(`Target connection error: ${err.message}`);
-      this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
+      await this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
       
       // Close the channel but do NOT affect the SSH connection itself
       try {
@@ -485,7 +486,7 @@ export class TcpServerManager {
       }
     });
 
-    channel.on('close', () => {
+    channel.on('close', async () => {
       if (connectionClosed) return; // Prevent multiple close operations
       connectionClosed = true;
       
@@ -496,15 +497,15 @@ export class TcpServerManager {
       }
       
       // CRITICAL: Use cleanupConnection to ensure counters are updated
-      this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
+      await this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
     });
     
-    channel.on('error', (err: Error) => {
+    channel.on('error', async (err: Error) => {
       if (connectionClosed) return; // Prevent multiple close operations
       connectionClosed = true;
       
       console.error(`Channel error in direct-tcpip: ${err.message}`);
-      this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
+      await this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
       
       // Close the socket but do NOT affect the SSH connection itself
       try {
@@ -514,7 +515,7 @@ export class TcpServerManager {
       }
     });
 
-    socket.on('close', () => {
+    socket.on('close', async () => {
       if (connectionClosed) return; // Prevent multiple close operations
       connectionClosed = true;
       
@@ -528,10 +529,10 @@ export class TcpServerManager {
       }
       
       // Use standard cleanup method to ensure consistency
-      this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
+      await this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
     });
 
-    socket.on('end', () => {
+    socket.on('end', async () => {
       if (connectionClosed) return; // Prevent multiple close operations
       connectionClosed = true;
       
@@ -544,7 +545,7 @@ export class TcpServerManager {
       }
       
       // CRITICAL: Use cleanupConnection to ensure counters are updated
-      this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
+      await this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
     });
 
     channel.on('end', () => {
@@ -702,23 +703,25 @@ export class TcpServerManager {
       
       // Remove connection from tracking set
       const connections = this.connections.get(tunnelConnectionKey);
+      let wasInSet = false;
       if (connections) {
-        connections.delete(tcpConnectionId);
+        wasInSet = connections.delete(tcpConnectionId);
+        // Clean up empty connection sets
+        if (connections.size === 0) {
+          this.connections.delete(tunnelConnectionKey);
+        }
       }
       
-      // Use atomic operation to decrement connection counter for this specific tunnel-connection combination
-      this.atomicDecrementConnection(tunnelId, sshConnectionId);
-      
-      // Update database
-      await this.updateTunnelConnectionCount(tunnelId);
+      // Only decrement counter if connection was actually in the set
+      if (wasInSet) {
+        this.atomicDecrementConnection(tunnelId, sshConnectionId);
+        
+        // Update database
+        await this.updateTunnelConnectionCount(tunnelId);
+      }
     } catch (error) {
       console.error(`Error in cleanupConnection for ${tcpConnectionId}:`, error);
-      // Ensure connection count is still updated even if stats update fails
-      try {
-        this.atomicDecrementConnection(tunnelId, sshConnectionId);
-      } catch (decrementError) {
-        console.error(`Critical: Failed to decrement connection count:`, decrementError);
-      }
+      // Don't attempt to decrement here as it might cause double counting
     }
   }
 
@@ -766,14 +769,9 @@ export class TcpServerManager {
     // Log connection count changes for debugging
     console.log(`[Tunnel ${tunnelId}:${sshConnectionId}] Connection count: ${current} -> ${newCount} (-1)`);
     
-    // Clean up empty connection sets
-    const connections = this.connections.get(tunnelConnectionKey);
-    if (connections && connections.size === 0) {
-      this.connections.delete(tunnelConnectionKey);
-      // Also clean up connection counter if it's 0
-      if (newCount === 0) {
-        this.connectionCounters.delete(tunnelConnectionKey);
-      }
+    // Clean up counter if it's 0 to prevent memory leaks
+    if (newCount === 0) {
+      this.connectionCounters.delete(tunnelConnectionKey);
     }
     
     return newCount;
