@@ -60,7 +60,7 @@ function createConnection(id) {
     socket.interval = interval;
   });
   
-  socket.on('data', (data) => {
+  socket.on('data', () => {
     messagesReceived++;
     if (messagesReceived % 100 === 0) {
       console.log(`Received ${messagesReceived} messages total`);

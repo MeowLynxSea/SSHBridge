@@ -20,7 +20,7 @@ export interface BandwidthConfig {
 
 export class IntegratedRateLimiter {
   private buckets: Map<string, TokenBucket> = new Map();
-  private refillInterval: NodeJS.Timeout | null = null;
+  private refillInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     // Refill tokens every 100ms for smooth rate limiting
@@ -31,9 +31,10 @@ export class IntegratedRateLimiter {
 
   /**
    * Initialize or update a bandwidth bucket
+   * @param bucketKey Unique key for this tunnel-connection combination (e.g., "tunnelId:connectionId")
    */
-  initBucket(tunnelId: number, config: BandwidthConfig, direction: 'upload' | 'download'): void {
-    const key = this.getBucketKey(tunnelId, direction);
+  initBucket(bucketKey: string, config: BandwidthConfig, direction: 'upload' | 'download'): void {
+    const key = `${bucketKey}:${direction}`;
     const capacity = Math.floor(config.maxBandwidth * config.burstFactor);
     const now = Date.now();
 
@@ -50,7 +51,7 @@ export class IntegratedRateLimiter {
         tokens: capacity, // Start full to allow burst
         refillRate: config.maxBandwidth,
         lastRefill: now,
-        tunnelId,
+        tunnelId: parseInt(bucketKey.split(':')[0], 10), // Extract tunnel ID from key
         direction
       });
     }
@@ -95,8 +96,8 @@ export class IntegratedRateLimiter {
    * Synchronous write with rate limiting
    * Actually blocks data transmission until tokens are available
    */
-  async writeWithRateLimit(tunnelId: number, data: Buffer, direction: 'upload' | 'download'): Promise<void> {
-    const key = this.getBucketKey(tunnelId, direction);
+  async writeWithRateLimit(bucketKey: string, data: Buffer, direction: 'upload' | 'download'): Promise<void> {
+    const key = `${bucketKey}:${direction}`;
     const bucket = this.buckets.get(key);
     
     if (!bucket) {
@@ -125,9 +126,10 @@ export class IntegratedRateLimiter {
 
   /**
    * Try to consume tokens for immediate sending (backwards compatibility)
+   * @param bucketKey Unique key for this tunnel-connection combination
    */
-  consume(tunnelId: number, bytes: number, direction: 'upload' | 'download'): boolean {
-    const key = this.getBucketKey(tunnelId, direction);
+  consume(bucketKey: string, bytes: number, direction: 'upload' | 'download'): boolean {
+    const key = `${bucketKey}:${direction}`;
     const bucket = this.buckets.get(key);
     
     if (!bucket) {
@@ -144,21 +146,23 @@ export class IntegratedRateLimiter {
 
   /**
    * Legacy shapeTraffic method - now uses improved rate limiting
+   * @param bucketKey Unique key for this tunnel-connection combination
    */
-  async shapeTraffic(tunnelId: number, data: Buffer, direction: 'upload' | 'download'): Promise<void> {
-    await this.writeWithRateLimit(tunnelId, data, direction);
+  async shapeTraffic(bucketKey: string, data: Buffer, direction: 'upload' | 'download'): Promise<void> {
+    await this.writeWithRateLimit(bucketKey, data, direction);
   }
 
   /**
    * Remove bandwidth bucket
+   * @param bucketKey Unique key for this tunnel-connection combination
    */
-  removeBucket(tunnelId: number, direction?: 'upload' | 'download'): void {
+  removeBucket(bucketKey: string, direction?: 'upload' | 'download'): void {
     if (direction) {
-      const key = this.getBucketKey(tunnelId, direction);
+      const key = `${bucketKey}:${direction}`;
       this.buckets.delete(key);
     } else {
-      this.buckets.delete(this.getBucketKey(tunnelId, 'upload'));
-      this.buckets.delete(this.getBucketKey(tunnelId, 'download'));
+      this.buckets.delete(`${bucketKey}:upload`);
+      this.buckets.delete(`${bucketKey}:download`);
     }
   }
 
@@ -197,14 +201,15 @@ export class IntegratedRateLimiter {
 
   /**
    * Get bucket statistics
+   * @param bucketKey Unique key for this tunnel-connection combination
    */
-  getBucketStats(tunnelId: number, direction: 'upload' | 'download'): {
+  getBucketStats(bucketKey: string, direction: 'upload' | 'download'): {
     tokens: number;
     capacity: number;
     refillRate: number;
     utilization: number;
   } | null {
-    const key = this.getBucketKey(tunnelId, direction);
+    const key = `${bucketKey}:${direction}`;
     const bucket = this.buckets.get(key);
     
     if (!bucket) {

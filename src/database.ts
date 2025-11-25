@@ -371,14 +371,20 @@ class Database {
   }
 
   private mapRowToTunnel(row: Row): Tunnel {
-    return {
+    const tunnel: Tunnel = {
       id: Number(row.id),
       user_id: Number(row.user_id),
       name: String(row.name),
       external_port: Number(row.external_port),
-      max_bandwidth: row.max_bandwidth ? Number(row.max_bandwidth) : undefined,
       created_at: parseDatabaseDate(String(row.created_at)).toISOString()
     };
+    
+    // 只在有值时设置可选属性
+    if (row.max_bandwidth !== null && row.max_bandwidth !== undefined) {
+      tunnel.max_bandwidth = Number(row.max_bandwidth);
+    }
+    
+    return tunnel;
   }
 
   async createSession(userId: number): Promise<string> {

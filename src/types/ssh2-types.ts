@@ -61,6 +61,7 @@ export interface SSH2Connection {
     details: string;
   };
   _connectionStartTime?: string; // ISO string when connection was established
+  _connectionId?: string; // Unique ID for this SSH connection
   remoteAddress: string;
 }
 

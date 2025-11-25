@@ -62,7 +62,8 @@ function createConnection(id) {
   
   socket.on('close', () => {
     closedCount++;
-    const connectionDuration = performance.now() - connectionStart;
+    // 预留用于未来的连接时间统计
+    // const connectionDuration = performance.now() - connectionStart;
     
     // Remove from active connections
     connections = connections.filter(conn => conn.id !== id);

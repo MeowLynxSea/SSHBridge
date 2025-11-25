@@ -1,7 +1,9 @@
 import { SSH2Connection, SSH2Session, SSH2Channel, SSH2PtyInfo, SSH2Server, SSH2AuthContext, SSH2RequestData, SSH2ForwardData, UserData, RemoteForwardInfo, ActiveTunnelInfo } from './types/ssh2-types';
 import { Database, Tunnel } from './database';
-import { getCurrentTime, formatDuration } from './utils/timeUtils';
+// Time utilities are used in components, not here
 import { TcpServerManager } from './tcpServerManager';
+import { CUIManager } from './cui/CUIManager';
+import { CUIDataProvider } from './cui/types';
 import ssh2 from 'ssh2';
 
 // Extend ssh2 types for our custom properties
@@ -12,6 +14,7 @@ declare module 'ssh2' {
     _pendingPortForwards?: number;
     _processedPortForwards?: number;
     _connectionStartTime?: string; // ISO string when connection was established
+    _connectionId?: string; // Unique ID for this SSH connection
   }
   
   interface Session {
@@ -24,14 +27,7 @@ declare module 'ssh2' {
   }
 }
 
-// Timer type for compatibility
-interface Timer {
-  ref(): Timer;
-  unref(): Timer;
-}
-
-declare function setInterval(callback: () => void, ms: number): Timer;
-declare function clearInterval(intervalId: Timer): void;
+// Timer declarations are available globally
 
 import './types/ssh2.d';
 
@@ -41,14 +37,14 @@ export interface SSHServerConfig {
   hostKey: string;
 }
 
-export class SSHBridgeServer {
+export class SSHBridgeServer implements CUIDataProvider {
   private sshServer: SSH2Server;
   private database: Database;
   private config: SSHServerConfig;
   private tunnels: Map<string, { connection: SSH2Connection; tunnel: Tunnel }> = new Map();
   private remoteForwards: Map<string, RemoteForwardInfo> = new Map();
   private ptyInfo: SSH2PtyInfo | null = null;
-  private currentChannel: SSH2Channel | null = null;
+  // 移除全局 currentChannel，改为每个 CUI 自己跟踪连接
   private activeTunnels: Map<number, ActiveTunnelInfo> = new Map();
   private tcpServerManager: TcpServerManager;
 
@@ -106,6 +102,10 @@ export class SSHBridgeServer {
     
     // Store connection start time
     conn._connectionStartTime = new Date().toISOString();
+    
+    // Generate unique connection ID
+    conn._connectionId = `${user.username}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`Generated connection ID: ${conn._connectionId} for user ${user.username}`);
     
     // Initialize port forward request tracking
     conn._pendingPortForwards = 0;
@@ -202,7 +202,8 @@ export class SSHBridgeServer {
               matchingTunnel.id, 
               user.id, 
               user.username, 
-              conn
+              conn,
+              conn._connectionId!
             );
             
             // Start the TCP server
@@ -338,9 +339,8 @@ export class SSHBridgeServer {
         
         const channel: SSH2Channel = accept();
         
-        // Store reference to channel and connection
-        this.currentChannel = channel;
-        channel._conn = conn; // Store connection reference for later use
+        // Store channel reference on itself for later use
+        channel._conn = conn;
         
         // Check if there was a forward error (from either connection or session)
         const forwardError = conn._sshbForwardError || (session._showForwardError ? conn._sshbForwardError : null);
@@ -381,110 +381,27 @@ export class SSHBridgeServer {
           return;
         }
         
-        // Set up a basic shell environment
-        channel.write(`Welcome to SSHBridge Server!\r\n`);
-        channel.write(`You are authenticated as ${user.username}\r\n`);
-        channel.write(`Available commands:\r\n`);
-        channel.write(`  help     - Show this help message\r\n`);
-        channel.write(`  tunnels  - List your active tunnels\r\n`);
-        channel.write(`  status   - Show real-time tunnel status (Press Ctrl+C to exit)\r\n`);
-        channel.write(`  exit     - Disconnect from server\r\n`);
-        channel.write(`\r\nSSHBridge> `);
+        // 显示欢迎信息，等待用户按键进入CUI
+        channel.write(`\x1b[2J\x1b[H`); // 清屏
+        channel.write(`╔══════════════════════════════════════════════════════════════╗\r\n`);
+        channel.write(`║                    SSHBridge 管理系统                        ║\r\n`);
+        channel.write(`║                                                              ║\r\n`);
+        channel.write(`║  欢迎使用 SSHBridge！                                        ║\r\n`);
+        channel.write(`║  用户: ${user.username.padEnd(45)}         ║\r\n`);
+        channel.write(`║                                                              ║\r\n`);
+        channel.write(`║  按任意键进入管理界面...                                     ║\r\n`);
+        channel.write(`╚══════════════════════════════════════════════════════════════╝\r\n`);
         
-        let inputBuffer = '';
-        
-        channel.on('data', async (data: Buffer) => {
-          const str = data.toString();
+        // 等待用户按键
+        let cuiStarted = false;
+        channel.on('data', async (_data: Buffer) => {
+          if (cuiStarted) return; // 防止重复启动
           
-          for (const char of str) {
-            const charCode = char.charCodeAt(0);
-            
-            // Handle Enter key (CR/LF)
-            if (charCode === 13 || charCode === 10) {
-              channel.write('\r\n');
-              const command = inputBuffer.trim();
-              
-              if (command === 'exit') {
-                channel.write('Goodbye!\r\n');
-                channel.end();
-                conn.end();
-                return;
-              } else if (command === 'help') {
-                channel.write(`Available commands:\r\n`);
-                channel.write(`  help     - Show this help message\r\n`);
-                channel.write(`  tunnels  - List your active tunnels\r\n`);
-                channel.write(`  status   - Show real-time tunnel status (Press Ctrl+C to exit)\r\n`);
-                channel.write(`  exit     - Disconnect from server\r\n`);
-              } else if (command === 'tunnels') {
-                // Get all configured tunnels for user
-                const allTunnels = await this.database.getTunnelsByUserId(user.id);
-                
-                // Get active remote port forwards (ssh -R)
-                const activeRemoteForwards = Array.from(this.remoteForwards.entries())
-                  .filter(([, value]) => value.connection === conn)
-                  .map(([, value]) => ({ bindAddr: value.bindAddr, bindPort: value.bindPort }));
-                
-                // Get active remote forward ports
-                const activeRemotePorts = new Set(
-                  activeRemoteForwards.map(rf => rf.bindPort.toString())
-                );
-                  
-                  // Display tunnels with status
-                  channel.write('Tunnels (external ports assigned to you):\r\n');
-                  if (allTunnels.length === 0) {
-                    channel.write('  No configured tunnels\r\n');
-                  } else {
-                    allTunnels.forEach((tunnel: Tunnel) => {
-                      // A tunnel is active if SSH client has set up remote port forwarding (ssh -R)
-                      const isActive = activeRemotePorts.has(tunnel.external_port.toString());
-                      const status = isActive ? '[ACTIVE]' : '[INACTIVE]';
-                      
-                      channel.write(`  ${status} ${tunnel.name}: external:${tunnel.external_port}\r\n`);
-                    });
-                  }
-                
-                // Display remote port forwards that don't overlap with configured external tunnels
-                const nonOverlappingForwards = activeRemoteForwards.filter((rf: { bindAddr: string; bindPort: number }) => 
-                  !allTunnels.some((tunnel: Tunnel) => tunnel.external_port === rf.bindPort)
-                );
-                
-                if (nonOverlappingForwards.length > 0) {
-                  channel.write('\r\nRemote port forwards (client -> server):\r\n');
-                  nonOverlappingForwards.forEach((rf: { bindAddr: string; bindPort: number }) => {
-                    channel.write(`  [ACTIVE] client:${rf.bindPort} -> server:${rf.bindAddr}\r\n`);
-                  });
-                }
-              } else if (command === 'status') {
-                // Enter status mode
-                await this.showTunnelStatus(channel, conn, user);
-                return; // Return early to avoid showing prompt
-              } else if (command) {
-                channel.write(`Unknown command: ${command}\r\n`);
-                channel.write(`Type 'help' for available commands.\r\n`);
-              }
-              
-              inputBuffer = '';
-              channel.write(`\r\nSSHBridge> `);
-            } 
-            // Handle Backspace/Delete
-            else if (charCode === 8 || charCode === 127) {
-              if (inputBuffer.length > 0) {
-                inputBuffer = inputBuffer.slice(0, -1);
-                channel.write('\b \b');
-              }
-            }
-            // Handle Ctrl+C (ETX)
-            else if (charCode === 3) {
-              channel.write('^C\r\n');
-              inputBuffer = '';
-              channel.write(`SSHBridge> `);
-            }
-            // Handle other printable characters
-            else if (charCode >= 32 && charCode <= 126) {
-              inputBuffer += char;
-              channel.write(char);
-            }
-          }
+          cuiStarted = true;
+          // 将当前连接引用传递给 CUI，而不是依赖全局状态
+          const cuiManager = new CUIManager(channel, conn, this.database, user, this);
+          await cuiManager.start();
+          // CUIManager会处理所有后续交互，包括退出
         });
 
         channel.on('close', () => {
@@ -544,7 +461,7 @@ export class SSHBridgeServer {
         return;
       }
 
-      await this.tcpServerManager.handleDirectTcpip(conn, tunnel, user, info, accept);
+      await this.tcpServerManager.handleDirectTcpip(conn, tunnel, user, info, accept, conn._connectionId!);
     } catch (error) {
       console.error('Error handling direct-tcpip:', error);
     }
@@ -673,155 +590,127 @@ export class SSHBridgeServer {
     }
   }
 
-  // Show real-time tunnel status in a table format
-  private async showTunnelStatus(channel: SSH2Channel, conn: SSH2Connection, user: UserData): Promise<void> {
-    let statusInterval: Timer | null = null;
-    let isStatusMode = true;
-    
-    // Get user's specific refresh interval
-    const userRefreshInterval = await this.database.getUserRefreshInterval(user.id);
-    
-    // Function to clear screen and move cursor to top-left
-    const clearScreen = () => {
-      // ANSI escape codes to clear screen and move cursor
-      channel.write('\x1b[2J\x1b[H');
+  // 实现CUIDataProvider接口
+  async getActiveRemoteForwards(connection?: SSH2Connection): Promise<Map<string, {
+    bindAddr: string;
+    bindPort: number;
+    connection: SSH2Connection;
+    user: {
+      id: number;
+      username: string;
     };
-    
-    // Function to format bytes for human-readable display
-    const formatBytes = (bytes: number): string => {
-      if (bytes === 0) return '0 B';
-      const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    };
-    
-
-    
-      // Function to render the status table
-      const renderStatusTable = async () => {
-        if (!isStatusMode) return;
-        
-        clearScreen();
-        channel.write(`\x1b[1mSSHBridge Tunnel Status Monitor\x1b[0m\r\n`);
-        channel.write(`User: ${user.username} | Showing current session tunnels only | Press Ctrl+C to exit\r\n`);
-        channel.write(`Last updated: ${getCurrentTime()}\r\n`);
-        channel.write(`\r\n`);
-      
-      // Get active remote port forwards for this connection
-      const activeRemoteForwards = Array.from(this.remoteForwards.entries())
-        .filter(([, value]) => value.connection === conn)
-        .map(([, value]) => ({ bindAddr: value.bindAddr, bindPort: value.bindPort }));
-      
-      // Get active remote forward ports
-      const activeRemotePorts = new Set(
-        activeRemoteForwards.map(rf => rf.bindPort.toString())
-      );
-      
-      // Get all tunnels for user
-      const allTunnels = await this.database.getTunnelsByUserId(user.id);
-      const tunnelStats = await this.database.getTunnelStatsByUserId(user.id);
-      
-      // Create a map of tunnel stats for quick lookup
-      interface TunnelStat {
-        tunnel_id: number;
-        updated_at: string;
-        active_connections: number;
-        current_bytes_received: number;
-        current_bytes_sent: number;
+  }>> {
+    // 如果指定了连接，只返回属于该连接的转发
+    if (connection) {
+      const result = new Map();
+      for (const [key, value] of this.remoteForwards.entries()) {
+        if (value.connection === connection) {
+          result.set(key, value);
+        }
       }
-      const statsMap = new Map<number, TunnelStat>();
-      tunnelStats.forEach(stat => {
-        statsMap.set(stat.tunnel_id, stat);
+      return result;
+    }
+    
+    // 否则返回所有
+    return this.remoteForwards;
+  }
+  
+  async getActiveTunnels(connection?: SSH2Connection): Promise<Array<{
+    id: number;
+    name: string;
+    port: number;
+    activeConnections: number;
+    sessionBytes: number;
+  }>> {
+    const result: Array<{
+      id: number;
+      name: string;
+      port: number;
+      activeConnections: number;
+      sessionBytes: number;
+    }> = [];
+    
+    for (const [tunnelId, activeTunnel] of this.activeTunnels.entries()) {
+      // 如果指定了连接，只返回属于该连接的隧道
+      if (connection && activeTunnel.connection !== connection) {
+        continue;
+      }
+      
+      const allStats = await this.database.getAllTunnelStats();
+      const stats = allStats.find(stat => stat.tunnel_id === tunnelId);
+      
+      result.push({
+        id: tunnelId,
+        name: activeTunnel.tunnel.name,
+        port: activeTunnel.port,
+        activeConnections: stats?.active_connections || 0,
+        sessionBytes: (stats?.current_bytes_received || 0) + (stats?.current_bytes_sent || 0)
       });
+    }
+    
+    return result;
+  }
+
+  async getAllTunnelStatuses(userId: number, currentConnection?: SSH2Connection): Promise<Array<{
+    id: number;
+    name: string;
+    external_port: number;
+    status: string;
+    statusColor: string;
+    displayStatus: string;
+  }>> {
+    // 获取用户的所有隧道
+    const userTunnels = await this.database.getTunnelsByUserId(userId);
+    const result: Array<{
+      id: number;
+      name: string;
+      external_port: number;
+      status: string;
+      statusColor: string;
+      displayStatus: string;
+    }> = [];
+    
+    for (const tunnel of userTunnels) {
+      let status = 'INACTIVE';
+      let statusColor = '\x1b[31m'; // 红色
       
-      // Filter to only show tunnels that are currently active in this session
-      const activeTunnels = allTunnels.filter(tunnel => 
-        activeRemotePorts.has(tunnel.external_port.toString())
-      );
+      // 检查隧道是否被当前连接占用
+      const isTunnelActiveForCurrentConnection = Array.from(this.activeTunnels.entries())
+        .some(([, activeTunnel]) => 
+          activeTunnel.tunnel.id === tunnel.id && activeTunnel.connection === currentConnection
+        );
       
-      // Draw table header
-      const header = `┌─────────────┬──────────────────────────┬───────────────┬──────────────┬────────────────────────────┐\r\n` +
-                   `│ \x1b[1mSTATUS.   \x1b[0m  │ \x1b[1mTUNNEL NAME\x1b[0m              │ \x1b[1mDURATION\x1b[0m      │ \x1b[1mACTIVE CONNS \x1b[0m│ \x1b[1mSESSION TRAFFIC\x1b[0m            │\r\n` +
-                   `├─────────────┼──────────────────────────┼───────────────┼──────────────┼────────────────────────────┤\r\n`;
-      channel.write(header);
+      // 检查隧道是否被其他连接占用
+      const isTunnelActiveForOtherConnection = Array.from(this.activeTunnels.entries())
+        .some(([, activeTunnel]) => 
+          activeTunnel.tunnel.id === tunnel.id && activeTunnel.connection !== currentConnection
+        );
       
-      // Display each active tunnel's status
-      if (activeTunnels.length === 0) {
-        const emptyRow = `│             │ No active tunnels in current session                                     │\r\n`;
-        channel.write(emptyRow);
-      } else {
-        for (const tunnel of activeTunnels) {
-          const stats = statsMap.get(tunnel.id);
-          // Use connection start time instead of stats.updated_at
-          const duration = conn._connectionStartTime ? formatDuration(conn._connectionStartTime) : 'N/A';
-          const activeConnections = stats ? stats.active_connections.toString() : '0';
-          
-          // Calculate current session traffic
-          let sessionTraffic = '0 B';
-          if (stats) {
-            const totalBytes = stats.current_bytes_received + stats.current_bytes_sent;
-            sessionTraffic = formatBytes(totalBytes);
-          }
-          
-          // Format table row with proper spacing
-          // STATUS (11 chars with ANSI codes): "ACTIVE"
-          const statusText = 'ACTIVE';
-          const row = `│ \x1b[32m${statusText}\x1b[0m` + 
-                     ' '.repeat(11 - statusText.length) + ' │ ' +
-                     tunnel.name.padEnd(24) + ' │ ' +
-                     duration.padEnd(13) + ' │ ' +
-                     activeConnections.padEnd(12) + ' │ ' +
-                     sessionTraffic.padEnd(26) + ' │\r\n';
-          channel.write(row);
-        }
+      // 检查远程端口转发
+      const hasRemoteForward = Array.from(this.remoteForwards.entries())
+        .some(([, value]) => 
+          value.bindPort === tunnel.external_port && value.connection === currentConnection
+        );
+      
+      if (isTunnelActiveForCurrentConnection || hasRemoteForward) {
+        status = 'ACTIVE';
+        statusColor = '\x1b[32m'; // 绿色
+      } else if (isTunnelActiveForOtherConnection) {
+        status = 'OCCUPIED';
+        statusColor = '\x1b[34m'; // 蓝色
       }
       
-      // Draw table footer
-      const footer = `└─────────────┴──────────────────────────┴───────────────┴──────────────┴────────────────────────────┘\r\n`;
-      channel.write(footer);
-      channel.write(`\r\nActive tunnels in current session: ${activeTunnels.length}\r\n`);
-    };
+      result.push({
+        id: tunnel.id,
+        name: tunnel.name,
+        external_port: tunnel.external_port,
+        status,
+        statusColor,
+        displayStatus: statusColor + status.padEnd(11) + '\x1b[0m'
+      });
+    }
     
-    // Initial render
-    renderStatusTable();
-    
-    // Set up interval to refresh the table using the user's specific interval
-    statusInterval = setInterval(() => {
-      renderStatusTable();
-    }, userRefreshInterval);
-    
-    // Override the data handler to catch Ctrl+C
-    const originalDataHandler = channel.listeners('data')[0];
-    channel.removeAllListeners('data');
-    
-    channel.on('data', (data: Buffer) => {
-      const str = data.toString();
-      
-      // Check for Ctrl+C (ETX character)
-      if (str.includes('\x03')) {
-        // Exit status mode
-        isStatusMode = false;
-        
-        // Clear interval
-        if (statusInterval) {
-          clearInterval(statusInterval);
-          statusInterval = null;
-        }
-        
-        // Restore original data handler
-        channel.removeAllListeners('data');
-        channel.on('data', originalDataHandler);
-        
-        // Show exit message and prompt
-        clearScreen();
-        channel.write('Exited status monitor.\r\n');
-        channel.write(`\r\nSSHBridge> `);
-        return;
-      }
-      
-      // In status mode, ignore all other input
-    });
+    return result;
   }
 
   start(callback?: () => void) {
