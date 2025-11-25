@@ -14,7 +14,7 @@ interface Tunnel {
 }
 
 interface Database {
-  updateSessionStats(tunnelId: number, bytesReceived: number, bytesSent: number): void;
+  updateSessionStats(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections?: number): void;
   updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections: number): void;
   updateTunnelConnections(tunnelId: number, connections: number): void;
   getTunnelById(id: number): Promise<Tunnel | null>;
@@ -154,11 +154,11 @@ export class TcpServerManager {
     }
     this.connections.get(tunnelId)!.add(connectionId);
     
-    // Update connection counter
-    this.connectionCounters.set(tunnelId, currentCount + 1);
+    // Use atomic operation to increment connection counter
+    this.atomicIncrementConnection(tunnelId);
     
     // Update active connections count
-    this.updateTunnelConnectionCount(tunnelId);
+    await this.updateTunnelConnectionCount(tunnelId);
     
     // Track data transfer for statistics
     let bytesReceived = 0;
@@ -177,7 +177,7 @@ export class TcpServerManager {
       async (err: Error | null, channel: SSH2Channel) => {
         if (err) {
           console.error(`Error opening channel: ${err.message}`);
-          this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
+          await this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
           socket.end();
           return;
         }
@@ -202,7 +202,8 @@ export class TcpServerManager {
             bytesReceived += data.length;
             
             // Update session stats in real-time for rate calculation
-            this.database.updateSessionStats(tunnelId, data.length, 0);
+            const currentConnections = this.connectionCounters.get(tunnelId) || 0;
+            this.database.updateSessionStats(tunnelId, data.length, 0, currentConnections);
             
             // Apply bandwidth limit BEFORE sending data
             if (tunnel?.max_bandwidth) {
@@ -268,7 +269,7 @@ export class TcpServerManager {
           setImmediate(processDownloadQueue);
         });
       
-      socket.on('close', () => {
+      socket.on('close', async () => {
         if (connectionClosed) return; // Prevent multiple close operations
         connectionClosed = true;
         
@@ -282,10 +283,10 @@ export class TcpServerManager {
           // Channel might already be closed, ignore error
         }
         
-        this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
+        await this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
       });
       
-      socket.on('timeout', () => {
+      socket.on('timeout', async () => {
         if (connectionClosed) return; // Prevent multiple close operations
         connectionClosed = true;
         
@@ -297,15 +298,18 @@ export class TcpServerManager {
         } catch {
           // Channel might already be closed, ignore error
         }
+        
+        // CRITICAL: Use cleanupConnection to ensure counters are updated
+        await this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
         socket.destroy();
       });
       
-      socket.on('error', (err?: Error) => {
+      socket.on('error', async (err?: Error) => {
         if (connectionClosed) return; // Prevent multiple close operations
         connectionClosed = true;
         
         console.error(`Socket error: ${err?.message || 'unknown'}`);
-        this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
+        await this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
         
         // Close the channel but do NOT affect the SSH connection itself
         try {
@@ -317,7 +321,7 @@ export class TcpServerManager {
         }
       });
       
-      channel.on('close', () => {
+      channel.on('close', async () => {
         if (connectionClosed) return; // Prevent multiple close operations
         connectionClosed = true;
         
@@ -327,14 +331,17 @@ export class TcpServerManager {
         } catch {
           // Socket might already be closed, ignore error
         }
+        
+        // CRITICAL: Use cleanupConnection to ensure counters are updated
+        await this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
       });
       
-      channel.on('error', (err: Error) => {
+      channel.on('error', async (err: Error) => {
         if (connectionClosed) return; // Prevent multiple close operations
         connectionClosed = true;
         
         console.error(`Channel error: ${err.message}`);
-        this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
+        await this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
         
         // Close the socket but do NOT affect the SSH connection itself
         try {
@@ -390,12 +397,11 @@ export class TcpServerManager {
     }
     this.connections.get(tunnel.id)!.add(connectionId);
     
-    // Update connection counter
-    const currentCount = this.connectionCounters.get(tunnel.id) || 0;
-    this.connectionCounters.set(tunnel.id, currentCount + 1);
+    // Use atomic operation to increment connection counter
+    this.atomicIncrementConnection(tunnel.id);
     
     // Update active connections count
-    this.updateTunnelConnectionCount(tunnel.id);
+    await this.updateTunnelConnectionCount(tunnel.id);
     
     // Track data transfer for statistics
     let totalBytesReceived = 0;
@@ -456,11 +462,17 @@ export class TcpServerManager {
     });
 
     channel.on('close', () => {
+      if (connectionClosed) return; // Prevent multiple close operations
+      connectionClosed = true;
+      
       try {
         socket.end();
       } catch {
         // Socket might already be closed, ignore error
       }
+      
+      // CRITICAL: Use cleanupConnection to ensure counters are updated
+      this.cleanupConnection(connectionId, tunnel.id, totalBytesReceived, totalBytesSent);
     });
     
     channel.on('error', (err: Error) => {
@@ -491,15 +503,8 @@ export class TcpServerManager {
         // Channel might already be closed, ignore error
       }
       
-      // Update statistics and remove connection tracking
-      this.updateTunnelStats(tunnel.id, totalBytesReceived, totalBytesSent);
-      this.connections.get(tunnel.id)?.delete(connectionId);
-      
-      // Update connection counter
-      const count = this.connectionCounters.get(tunnel.id) || 0;
-      this.connectionCounters.set(tunnel.id, Math.max(0, count - 1));
-      
-      this.updateTunnelConnectionCount(tunnel.id);
+      // Use standard cleanup method to ensure consistency
+      this.cleanupConnection(connectionId, tunnel.id, totalBytesReceived, totalBytesSent);
     });
 
     socket.on('end', () => {
@@ -513,6 +518,9 @@ export class TcpServerManager {
       } catch {
         // Channel might already be closed, ignore error
       }
+      
+      // CRITICAL: Use cleanupConnection to ensure counters are updated
+      this.cleanupConnection(connectionId, tunnel.id, totalBytesReceived, totalBytesSent);
     });
 
     channel.on('end', () => {
@@ -584,9 +592,23 @@ export class TcpServerManager {
     // Force close all existing connections for this server
     const connections = this.connections.get(serverInfo.tunnelId);
     if (connections) {
-      connections.forEach(_connectionId => {
-        // Connection cleanup will be handled by individual socket close handlers
+      console.log(`Closing ${connections.size} active connections for tunnel ${serverInfo.tunnelId}`);
+      connections.forEach(connectionId => {
+        // Note: Individual connection cleanup is handled by socket close handlers
+        // but we force close here to ensure clean shutdown
+        // Note: We don't have direct access to the socket here, so we rely
+        // on the socket close handlers to clean up properly
       });
+      
+      // Clear all connections for this tunnel to force immediate cleanup
+      connections.clear();
+      this.connections.delete(serverInfo.tunnelId);
+      
+      // Reset connection counter to 0
+      this.connectionCounters.set(serverInfo.tunnelId, 0);
+      
+      // Update database to reflect 0 connections
+      this.updateTunnelConnectionCount(serverInfo.tunnelId);
     }
     
     // Reset connection counter for this tunnel
@@ -648,28 +670,30 @@ export class TcpServerManager {
   /**
    * Clean up a connection and update statistics
    */
-  private cleanupConnection(connectionId: string, tunnelId: number, bytesReceived: number, bytesSent: number): void {
+  private async cleanupConnection(connectionId: string, tunnelId: number, bytesReceived: number, bytesSent: number): Promise<void> {
     try {
-      // Update statistics and remove connection tracking
+      // Update statistics first
       this.updateTunnelStats(tunnelId, bytesReceived, bytesSent);
       
+      // Remove connection from tracking set
       const connections = this.connections.get(tunnelId);
       if (connections) {
         connections.delete(connectionId);
-        
-        // Update connection counter
-        const currentCount = this.connectionCounters.get(tunnelId) || 0;
-        this.connectionCounters.set(tunnelId, Math.max(0, currentCount - 1));
-        
-        // Clean up empty connection sets to prevent memory leaks
-        if (connections.size === 0) {
-          this.connections.delete(tunnelId);
-        }
       }
       
-      this.updateTunnelConnectionCount(tunnelId);
+      // Use atomic operation to decrement connection counter
+      this.atomicDecrementConnection(tunnelId);
+      
+      // Update database
+      await this.updateTunnelConnectionCount(tunnelId);
     } catch (error) {
       console.error(`Error in cleanupConnection for ${connectionId}:`, error);
+      // Ensure connection count is still updated even if stats update fails
+      try {
+        this.atomicDecrementConnection(tunnelId);
+      } catch (decrementError) {
+        console.error(`Critical: Failed to decrement connection count:`, decrementError);
+      }
     }
   }
 
@@ -677,17 +701,54 @@ export class TcpServerManager {
    * Update tunnel statistics
    */
   private updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number): void {
-    this.database.updateTunnelStats(tunnelId, bytesReceived, bytesSent, 0);
+    const currentConnections = this.connectionCounters.get(tunnelId) || 0;
+    this.database.updateTunnelStats(tunnelId, bytesReceived, bytesSent, currentConnections);
+  }
+
+  /**
+   * Atomic operations for connection management
+   */
+  private atomicIncrementConnection(tunnelId: number): number {
+    const current = this.connectionCounters.get(tunnelId) || 0;
+    const newCount = current + 1;
+    this.connectionCounters.set(tunnelId, newCount);
+    
+    // Log connection count changes for debugging
+    console.log(`[Tunnel ${tunnelId}] Connection count: ${current} -> ${newCount} (+1)`);
+    
+    // Ensure connections set exists
+    if (!this.connections.has(tunnelId)) {
+      this.connections.set(tunnelId, new Set());
+    }
+    
+    return newCount;
+  }
+  
+  private atomicDecrementConnection(tunnelId: number): number {
+    const current = this.connectionCounters.get(tunnelId) || 0;
+    const newCount = Math.max(0, current - 1);
+    this.connectionCounters.set(tunnelId, newCount);
+    
+    // Log connection count changes for debugging
+    console.log(`[Tunnel ${tunnelId}] Connection count: ${current} -> ${newCount} (-1)`);
+    
+    // Clean up empty connection sets
+    const connections = this.connections.get(tunnelId);
+    if (connections && connections.size === 0) {
+      this.connections.delete(tunnelId);
+    }
+    
+    return newCount;
   }
 
   /**
    * Update tunnel connection count
    */
-  private updateTunnelConnectionCount(tunnelId: number): void {
+  private async updateTunnelConnectionCount(tunnelId: number): Promise<void> {
     // Use the connection counter instead of the connections set size
     // This ensures consistency with the getConnectionCount method
     const count = this.connectionCounters.get(tunnelId) || 0;
-    this.database.updateTunnelConnections(tunnelId, count);
+    await this.database.updateTunnelConnections(tunnelId, count);
   }
 
   /**

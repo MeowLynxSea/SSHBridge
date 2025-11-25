@@ -502,7 +502,7 @@ class Database {
   }
 
   // New method to update only in-memory stats for rate calculation
-  updateSessionStats(tunnelId: number, bytesReceived: number, bytesSent: number): void {
+  updateSessionStats(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections?: number): void {
     // Update in-memory counters for rate calculation
     const currentReceived = this.currentBytesReceived.get(tunnelId) || 0;
     const currentSent = this.currentBytesSent.get(tunnelId) || 0;
@@ -518,20 +518,24 @@ class Database {
     
     // Also update total traffic in real-time to keep Total Traffic and Current Session in sync
     // Use async but don't await to avoid blocking
-    this.updateTunnelStatsAsync(tunnelId, bytesReceived, bytesSent);
+    this.updateTunnelStatsAsync(tunnelId, bytesReceived, bytesSent, activeConnections);
   }
 
   // Async method to update total traffic without blocking
-  private async updateTunnelStatsAsync(tunnelId: number, bytesReceived: number, bytesSent: number): Promise<void> {
+  private async updateTunnelStatsAsync(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections?: number): Promise<void> {
     try {
+      // Use provided connection count or fall back to reasonable default
+      const connections = activeConnections !== undefined ? activeConnections : 0;
+      
       const { run } = promisifyDb(this.db);
       await run(`
         UPDATE tunnel_stats 
         SET total_bytes_received = total_bytes_received + ?, 
             total_bytes_sent = total_bytes_sent + ?,
+            active_connections = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE tunnel_id = ?
-      `, [bytesReceived, bytesSent, tunnelId]);
+      `, [bytesReceived, bytesSent, connections, tunnelId]);
     } catch (error) {
       console.error('Error updating total traffic:', error);
     }
