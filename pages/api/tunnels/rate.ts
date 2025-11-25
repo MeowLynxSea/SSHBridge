@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const database = getDatabaseInstance();
     const { token } = req.cookies;
-    
+
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { tunnelId } = req.query;
-    
+
     if (!tunnelId || Array.isArray(tunnelId)) {
       return res.status(400).json({ error: 'Tunnel ID is required' });
     }
@@ -33,12 +33,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get current stats and rate
     const realtimeStats = await database.getRealtimeStats(Number(tunnelId));
-    
+
     return res.status(200).json({
       success: true,
       tunnelId: Number(tunnelId),
       realtimeStats,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Rate API error:', error);

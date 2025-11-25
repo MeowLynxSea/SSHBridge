@@ -17,15 +17,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     localStorage.setItem('sshbridge-theme', newTheme);
-    
+
     // Apply theme immediately
     applyTheme(newTheme);
   };
 
   const applyTheme = (theme: Theme) => {
     const root = document.documentElement;
-    const isDark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
+    const isDark =
+      theme === 'dark' ||
+      (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
     if (isDark) {
       root.classList.add('dark');
       root.setAttribute('data-theme', 'dark');
@@ -33,22 +35,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       root.classList.remove('dark');
       root.setAttribute('data-theme', 'light');
     }
-    
+
     setEffectiveTheme(isDark ? 'dark' : 'light');
   };
 
   // Check system theme preference
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
+
     const handleChange = () => {
       if (theme === 'auto') {
         applyTheme(theme);
       }
     };
-    
+
     mediaQuery.addEventListener('change', handleChange);
-    
+
     return () => {
       mediaQuery.removeEventListener('change', handleChange);
     };
@@ -57,13 +59,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Initialize theme from localStorage or default
   useEffect(() => {
     const savedTheme = localStorage.getItem('sshbridge-theme') as Theme;
-    const initialTheme = savedTheme && ['dark', 'light', 'auto'].includes(savedTheme) ? savedTheme : 'auto';
-    
+    const initialTheme =
+      savedTheme && ['dark', 'light', 'auto'].includes(savedTheme) ? savedTheme : 'auto';
+
     // Use setTimeout to avoid setting state synchronously during render
     const timer = setTimeout(() => {
       setThemeState(initialTheme);
     }, 0);
-    
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -73,11 +76,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{
-      theme,
-      setTheme,
-      effectiveTheme
-    }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        setTheme,
+        effectiveTheme,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

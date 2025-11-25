@@ -16,6 +16,7 @@ SSH server and tunnel management system with user authentication, tunnel managem
 ## 技术栈
 
 ### 后端
+
 - Node.js + TypeScript
 - ssh2 (SSH服务器)
 - SQLite3 (数据存储)
@@ -23,6 +24,7 @@ SSH server and tunnel management system with user authentication, tunnel managem
 - JWT (会话管理)
 
 ### 前端
+
 - Next.js 14 (SSR模式)
 - React 18
 - TypeScript
@@ -31,20 +33,24 @@ SSH server and tunnel management system with user authentication, tunnel managem
 ## 快速开始
 
 ### 安装依赖
+
 ```bash
 npm install
 ```
 
 ### 开发模式
+
 ```bash
 npm run dev
 ```
 
 这将同时启动：
+
 - SSH服务器 (端口 2222)
 - Web UI (端口 3000)
 
 ### 生产模式
+
 ```bash
 npm run build
 npm start
@@ -53,17 +59,22 @@ npm start
 ## 使用说明
 
 ### 1. 创建用户
+
 访问 http://localhost:3000 并注册一个新账户
 
 ### 2. 配置隧道
+
 登录后，在Web UI中创建隧道：
+
 - 名称：隧道的描述性名称
 - 目标主机：要转发到的目标服务器地址
 - 目标端口：目标服务器的端口
 - 本地端口：SSH服务器上的本地端口
 
 ### 3. 使用隧道
+
 使用SSH客户端连接到服务器：
+
 ```bash
 ssh -L [本地端口]:[目标主机]:[目标端口] 用户名@服务器地址 -p 2222
 ```
@@ -82,11 +93,13 @@ ssh -L [本地端口]:[目标主机]:[目标端口] 用户名@服务器地址 -p
 ## API接口
 
 ### 认证
+
 - `POST /api/auth/register` - 用户注册
 - `POST /api/auth/login` - 用户登录
 - `POST /api/auth/logout` - 用户登出
 
 ### 隧道管理
+
 - `GET /api/tunnels` - 获取用户隧道列表
 - `POST /api/tunnels` - 创建新隧道
 - `PUT /api/tunnels/[id]` - 更新隧道
@@ -114,7 +127,9 @@ SSHBridge/
 ## 开发说明
 
 ### 类型安全
+
 项目使用严格的TypeScript配置，所有代码都需要通过类型检查。
 
 ### SSH隧道机制
+
 服务器根据用户配置的隧道信息，自动将传入的SSH连接转发到指定的目标主机和端口。用户无需在连接时指定转发参数。

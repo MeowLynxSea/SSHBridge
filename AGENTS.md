@@ -7,6 +7,7 @@ SSHBridge is an SSH server and tunnel management system with a Web UI. It provid
 ### Technology Stack
 
 **Backend:**
+
 - Node.js + TypeScript
 - ssh2 (SSH server implementation)
 - SQLite3 (data storage)
@@ -14,6 +15,7 @@ SSHBridge is an SSH server and tunnel management system with a Web UI. It provid
 - JWT (session management)
 
 **Frontend:**
+
 - Next.js 14 (SSR mode)
 - React 18
 - TypeScript
@@ -21,7 +23,9 @@ SSHBridge is an SSH server and tunnel management system with a Web UI. It provid
 - Radix UI components (shadcn/ui)
 
 ### Multi-language Support
+
 The application supports 8 languages:
+
 - English (en) - Default
 - Chinese (zh) - 中文
 - Spanish (es) - Español
@@ -36,6 +40,7 @@ Language preferences are stored in localStorage and can be changed in the Settin
 ## Essential Commands
 
 ### Development
+
 ```bash
 # Install dependencies
 npm install
@@ -51,6 +56,7 @@ npm run web:dev
 ```
 
 ### Production
+
 ```bash
 # Build both server and web
 npm run build
@@ -66,6 +72,7 @@ npm start
 ```
 
 ### Quality Assurance
+
 ```bash
 # Run linting
 npm run lint
@@ -78,6 +85,7 @@ npm run type-check
 ```
 
 ### Utilities
+
 ```bash
 # Create demo user with example data
 node scripts/create-demo-user.js
@@ -115,12 +123,14 @@ SSHBridge/
 ## Code Patterns and Conventions
 
 ### TypeScript Configuration
+
 - Strict TypeScript enabled
 - Path aliases configured: `@/*` maps to `./src/*`
 - ESNext modules with Node resolution
 - React JSX transform enabled
 
 ### ESLint Configuration
+
 - TypeScript ESLint rules enabled
 - React and React Hooks rules configured
 - Unused variables with `_` prefix are allowed
@@ -128,6 +138,7 @@ SSHBridge/
 - Linting is enforced via pre-commit hook
 
 ### Component Patterns
+
 - Functional components with hooks
 - Props interfaces defined above components
 - shadcn/ui components for UI elements
@@ -135,6 +146,7 @@ SSHBridge/
 - Custom CSS classes for neo-brutalism theme (prefix: `nb-`)
 
 ### API Routes
+
 - Next.js API routes in `pages/api/`
 - Method validation at route start
 - Try-catch blocks for error handling
@@ -142,6 +154,7 @@ SSHBridge/
 - Authentication via JWT tokens
 
 ### Database Patterns
+
 - SQLite with promisified methods
 - Singleton pattern for database instance
 - Prepared statements with parameterized queries
@@ -150,12 +163,14 @@ SSHBridge/
 ## Authentication & Security
 
 ### User Authentication
+
 - Password hashing with bcrypt
 - JWT sessions for API authentication
 - User registration and login endpoints
 - Session management in SQLite database
 
 ### SSH Server
+
 - Runs on port 2222 (configurable via SSH_PORT env var)
 - RSA host key generation on first run
 - Password-based authentication
@@ -170,6 +185,7 @@ SSHBridge/
 ## Testing
 
 Currently no test framework is configured. Consider adding:
+
 - Jest for unit testing
 - React Testing Library for component testing
 - Supertest for API endpoint testing

@@ -52,7 +52,7 @@ export class IntegratedRateLimiter {
         refillRate: config.maxBandwidth,
         lastRefill: now,
         tunnelId: parseInt(bucketKey.split(':')[0], 10), // Extract tunnel ID from key
-        direction
+        direction,
       });
     }
   }
@@ -62,13 +62,17 @@ export class IntegratedRateLimiter {
    * Returns the data to send (possibly delayed for rate limiting)
    * Uses a non-blocking approach with token tracking
    */
-  processData(tunnelId: number, data: Buffer, direction: 'upload' | 'download'): {
+  processData(
+    tunnelId: number,
+    data: Buffer,
+    direction: 'upload' | 'download'
+  ): {
     shouldSend: boolean;
     delay: number;
   } {
     const key = this.getBucketKey(tunnelId, direction);
     const bucket = this.buckets.get(key);
-    
+
     if (!bucket) {
       // No bandwidth limit - send immediately
       return { shouldSend: true, delay: 0 };
@@ -84,10 +88,10 @@ export class IntegratedRateLimiter {
       // Not enough tokens - calculate delay needed
       const tokensNeeded = data.length - bucket.tokens;
       const delayMs = (tokensNeeded / bucket.refillRate) * 1000;
-      
-      return { 
-        shouldSend: false, 
-        delay: Math.min(delayMs, 1000) // Cap at 1 second
+
+      return {
+        shouldSend: false,
+        delay: Math.min(delayMs, 1000), // Cap at 1 second
       };
     }
   }
@@ -96,10 +100,14 @@ export class IntegratedRateLimiter {
    * Synchronous write with rate limiting
    * Actually blocks data transmission until tokens are available
    */
-  async writeWithRateLimit(bucketKey: string, data: Buffer, direction: 'upload' | 'download'): Promise<void> {
+  async writeWithRateLimit(
+    bucketKey: string,
+    data: Buffer,
+    direction: 'upload' | 'download'
+  ): Promise<void> {
     const key = `${bucketKey}:${direction}`;
     const bucket = this.buckets.get(key);
-    
+
     if (!bucket) {
       // No bandwidth limit - send immediately
       return;
@@ -108,19 +116,19 @@ export class IntegratedRateLimiter {
     // Keep trying until tokens are available
     while (true) {
       this.refillBucket(bucket);
-      
+
       if (bucket.tokens >= data.length) {
         // Enough tokens available - consume them and allow sending
         bucket.tokens -= data.length;
         return; // Allow the actual data write to proceed
       }
-      
+
       // Not enough tokens - wait for refill
       const tokensNeeded = data.length - bucket.tokens;
       const delayMs = (tokensNeeded / bucket.refillRate) * 1000;
-      
+
       // Wait (minimum 10ms to avoid busy loop)
-      await new Promise<void>(resolve => setTimeout(resolve, Math.max(delayMs, 10)));
+      await new Promise<void>((resolve) => setTimeout(resolve, Math.max(delayMs, 10)));
     }
   }
 
@@ -131,7 +139,7 @@ export class IntegratedRateLimiter {
   consume(bucketKey: string, bytes: number, direction: 'upload' | 'download'): boolean {
     const key = `${bucketKey}:${direction}`;
     const bucket = this.buckets.get(key);
-    
+
     if (!bucket) {
       return true;
     }
@@ -148,7 +156,11 @@ export class IntegratedRateLimiter {
    * Legacy shapeTraffic method - now uses improved rate limiting
    * @param bucketKey Unique key for this tunnel-connection combination
    */
-  async shapeTraffic(bucketKey: string, data: Buffer, direction: 'upload' | 'download'): Promise<void> {
+  async shapeTraffic(
+    bucketKey: string,
+    data: Buffer,
+    direction: 'upload' | 'download'
+  ): Promise<void> {
     await this.writeWithRateLimit(bucketKey, data, direction);
   }
 
@@ -183,10 +195,10 @@ export class IntegratedRateLimiter {
    */
   private refillAllBuckets(): void {
     const now = Date.now();
-    this.buckets.forEach(bucket => {
+    this.buckets.forEach((bucket) => {
       const timeDiff = (now - bucket.lastRefill) / 1000;
       const tokensToAdd = Math.floor(bucket.refillRate * timeDiff);
-      
+
       bucket.tokens = Math.min(bucket.capacity, bucket.tokens + tokensToAdd);
       bucket.lastRefill = now;
     });
@@ -203,7 +215,10 @@ export class IntegratedRateLimiter {
    * Get bucket statistics
    * @param bucketKey Unique key for this tunnel-connection combination
    */
-  getBucketStats(bucketKey: string, direction: 'upload' | 'download'): {
+  getBucketStats(
+    bucketKey: string,
+    direction: 'upload' | 'download'
+  ): {
     tokens: number;
     capacity: number;
     refillRate: number;
@@ -211,18 +226,18 @@ export class IntegratedRateLimiter {
   } | null {
     const key = `${bucketKey}:${direction}`;
     const bucket = this.buckets.get(key);
-    
+
     if (!bucket) {
       return null;
     }
 
     this.refillBucket(bucket);
-    
+
     return {
       tokens: bucket.tokens,
       capacity: bucket.capacity,
       refillRate: bucket.refillRate,
-      utilization: 1 - (bucket.tokens / bucket.capacity)
+      utilization: 1 - bucket.tokens / bucket.capacity,
     };
   }
 

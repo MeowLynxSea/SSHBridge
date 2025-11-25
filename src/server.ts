@@ -8,7 +8,7 @@ const sshPort = parseInt(process.env.SSH_PORT || '2222', 10);
 
 async function generateHostKey(): Promise<string> {
   const keyPath = path.join(process.cwd(), 'host.key');
-  
+
   if (fs.existsSync(keyPath)) {
     return fs.readFileSync(keyPath, 'utf8');
   }
@@ -21,14 +21,14 @@ async function generateHostKey(): Promise<string> {
 async function gracefulShutdown(): Promise<void> {
   try {
     console.log('Starting graceful shutdown...');
-    
+
     const sshServer = getSSHServer();
     if (sshServer) {
       console.log('Shutting down SSH server and all TCP tunnels...');
       await sshServer.stop();
       console.log('SSH server and all TCP tunnels stopped');
     }
-    
+
     console.log('Shutdown complete');
     process.exit(0);
   } catch (error) {
@@ -40,37 +40,39 @@ async function gracefulShutdown(): Promise<void> {
 async function startServer() {
   try {
     console.log('Starting SSHBridge server...');
-    
+
     const database = getDatabaseInstance();
-    await new Promise(resolve => setTimeout(resolve, 100)); // Give database time to initialize
-    
+    await new Promise((resolve) => setTimeout(resolve, 100)); // Give database time to initialize
+
     const hostKey = await generateHostKey();
-    const sshServer = new SSHBridgeServer({
-      port: sshPort,
-      hostKey
-    }, database);
-    
+    const sshServer = new SSHBridgeServer(
+      {
+        port: sshPort,
+        hostKey,
+      },
+      database
+    );
+
     // Set the SSH server instance in our shared module
     setSSHServer(sshServer);
-    
+
     await sshServer.start();
     console.log(`SSH server started on port ${sshPort}`);
-    
+
     // Handle multiple shutdown signals
     process.on('SIGINT', gracefulShutdown);
     process.on('SIGTERM', gracefulShutdown);
-    
+
     // Handle uncaught exceptions and rejections
     process.on('uncaughtException', (error) => {
       console.error('Uncaught Exception:', error);
       gracefulShutdown();
     });
-    
+
     process.on('unhandledRejection', (reason, promise) => {
       console.error('Unhandled Rejection at:', promise, 'reason:', reason);
       gracefulShutdown();
     });
-    
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

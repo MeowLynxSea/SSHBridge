@@ -5,16 +5,25 @@ declare module 'ssh2' {
     listen(options: { port: number; host?: string }, callback?: () => void): void;
     close(callback?: () => void): void;
   }
-  
+
   export interface Connection {
     on(event: string, callback: (ctx: any) => void): void;
     on(event: 'authentication', callback: (ctx: AuthContext) => void): void;
-    on(event: 'request', callback: (accept: () => void, reject: () => void, name: string, data: any) => void): void;
+    on(
+      event: 'request',
+      callback: (accept: () => void, reject: () => void, name: string, data: any) => void
+    ): void;
     on(event: 'session', callback: (accept: () => Session) => void): void;
     on(event: 'error' | 'end', callback: () => void): void;
-    forwardOut(srcAddr: string, srcPort: number, destAddr: string, destPort: number, callback: (err: Error, channel: Channel) => void): void;
+    forwardOut(
+      srcAddr: string,
+      srcPort: number,
+      destAddr: string,
+      destPort: number,
+      callback: (err: Error, channel: Channel) => void
+    ): void;
     end(): void;
-    
+
     // Custom properties for SSHBridge
     _sshbForwardError?: { message: string; details: string };
     _sshbTunnelReplaced?: { message: string; details: string };
@@ -22,7 +31,7 @@ declare module 'ssh2' {
     _processedPortForwards?: number;
     _connectionStartTime?: string; // ISO string when connection was established
   }
-  
+
   export interface AuthContext {
     method: string;
     username: string;
@@ -30,26 +39,32 @@ declare module 'ssh2' {
     accept(): void;
     reject(): void;
   }
-  
+
   export interface Session {
     on(event: string, callback: (accept: any, reject: any, info: any) => void): void;
-    on(event: 'pty', callback: (accept: () => void, reject: () => void, info: PtyInfo) => void): void;
+    on(
+      event: 'pty',
+      callback: (accept: () => void, reject: () => void, info: PtyInfo) => void
+    ): void;
     on(event: 'shell', callback: (accept: () => Channel, reject: () => void) => void): void;
-    on(event: 'channel', callback: (accept: () => Channel, reject: () => void, info: any) => void): void;
+    on(
+      event: 'channel',
+      callback: (accept: () => Channel, reject: () => void, info: any) => void
+    ): void;
     on(event: 'error', callback: (err: Error) => void): void;
-    
+
     // Custom properties for SSHBridge
     _showForwardError?: boolean;
     _showTunnelReplaced?: boolean;
   }
-  
+
   export interface PtyInfo {
     term: string;
     rows: number;
     cols: number;
     session?: string;
   }
-  
+
   export interface Channel {
     write(data: string | Buffer): void;
     on(event: string, callback: (data: any) => void): void;
@@ -58,11 +73,11 @@ declare module 'ssh2' {
     close(): void;
     end(): void;
     eof(): void; // Send EOF signal to indicate no more data will be sent
-    
+
     // Custom properties for SSHBridge
     _conn?: Connection; // Reference to the parent connection
   }
-  
+
   export interface TCPForwardingInfo {
     server: any;
     bindAddr: string;
@@ -70,10 +85,10 @@ declare module 'ssh2' {
     connection: Connection;
     user: any;
   }
-  
+
   const ssh2: {
     Server: typeof Server;
   };
-  
+
   export default ssh2;
 }

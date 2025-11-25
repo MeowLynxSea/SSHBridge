@@ -6,7 +6,7 @@ const database = getDatabaseInstance();
 async function authenticate(req: NextApiRequest): Promise<{ id: number; username: string } | null> {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return null;
-  
+
   const user = await database.validateSession(token);
   return user ? { id: user.id, username: user.username } : null;
 }
@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get bandwidth statistics from the database
     const tunnelStats = await database.getTunnelStatsByTunnelId(tunnelId);
-    
+
     // Format response
     const bandwidthStats = {
       tunnel_id: tunnelId,
@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       total_bytes_sent: tunnelStats?.total_bytes_sent || 0,
       active_connections: tunnelStats?.active_connections || 0,
       is_online: tunnelStats?.is_online || 0,
-      updated_at: tunnelStats?.updated_at || new Date().toISOString()
+      updated_at: tunnelStats?.updated_at || new Date().toISOString(),
     };
 
     res.status(200).json({ stats: bandwidthStats });

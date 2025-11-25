@@ -22,9 +22,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       user: {
         id: user.id,
         username: user.username,
-        created_at: user.created_at
+        created_at: user.created_at,
       },
-      token
+      token,
     });
   } catch (error: unknown) {
     const err = error as Error;

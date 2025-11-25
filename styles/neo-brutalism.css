@@ -4,879 +4,935 @@
 
 /* 全局变量与重置 */
 :root {
-    /* 配色方案 */
-    --bg-color: #ffffff;
-    --fg-color: #000000;
-    --accent-color: #ff5500; /* 唯一的橙色 */
-    --gray-light: #f0f0f0;
+  /* 配色方案 */
+  --bg-color: #ffffff;
+  --fg-color: #000000;
+  --accent-color: #ff5500; /* 唯一的橙色 */
+  --gray-light: #f0f0f0;
 
-    /* 尺寸系统 */
-    --border-width: 2px;
-    --border-radius: 0px; /* 拒绝圆角，拥抱直角 */
-    --shadow-distance: 4px;
+  /* 尺寸系统 */
+  --border-width: 2px;
+  --border-radius: 0px; /* 拒绝圆角，拥抱直角 */
+  --shadow-distance: 4px;
 
-    /* 字体 */
-    --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    --font-mono: "Courier New", Courier, monospace;
+  /* 字体 */
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: 'Courier New', Courier, monospace;
 }
 
 /* 暗色主题变量 */
 .dark {
-    /* 暗色主题配色方案 - 基于明亮模式的反转 */
-    --bg-color: #2d2d2d; /* 更亮的深灰色背景 */
-    --fg-color: #ffffff; /* 文字类白色 */
-    --border-bg-color: #e0e0e0; /* 边框和背景类白色（稍微暗一点的白色） */
-    --accent-color: #ff6b35; /* 稍微亮一点的橙色，在暗色背景下更突出 */
-    --gray-light: #3a3a3a; /* 较浅的灰色 */
+  /* 暗色主题配色方案 - 基于明亮模式的反转 */
+  --bg-color: #2d2d2d; /* 更亮的深灰色背景 */
+  --fg-color: #ffffff; /* 文字类白色 */
+  --border-bg-color: #e0e0e0; /* 边框和背景类白色（稍微暗一点的白色） */
+  --accent-color: #ff6b35; /* 稍微亮一点的橙色，在暗色背景下更突出 */
+  --gray-light: #3a3a3a; /* 较浅的灰色 */
 }
 
 /* 装饰性网格背景 */
 body::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image:
-        linear-gradient(var(--fg-color) 1px, transparent 1px),
-        linear-gradient(90deg, var(--fg-color) 1px, transparent 1px);
-    background-size: 40px 40px;
-    opacity: 0.03;
-    z-index: -1;
-    pointer-events: none;
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(var(--fg-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--fg-color) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.03;
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* 暗色主题下的网格背景调整 */
 .dark body::before {
-    opacity: 0.05; /* 在暗色背景下稍微增加不透明度以提高可见性 */
+  opacity: 0.05; /* 在暗色背景下稍微增加不透明度以提高可见性 */
 }
 
 /* 暗色主题下的文字颜色 */
 .dark body {
-    color: var(--fg-color); /* 确保主要文字颜色为白色 */
+  color: var(--fg-color); /* 确保主要文字颜色为白色 */
 }
 
 /* 暗色主题下的标题文字 */
-.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
-    color: var(--fg-color); /* 确保标题文字为白色 */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+  color: var(--fg-color); /* 确保标题文字为白色 */
 }
 
 /* 暗色主题下的段落文字 */
 .dark p {
-    color: var(--fg-color); /* 确保段落文字为白色 */
+  color: var(--fg-color); /* 确保段落文字为白色 */
 }
 
 /* 暗色主题下的标签文字 */
 .dark .nb-label {
-    color: var(--fg-color); /* 确保标签文字为白色 */
+  color: var(--fg-color); /* 确保标签文字为白色 */
 }
-
-
 
 /* 暗色主题下的表格单元格 */
 .dark .nb-table th,
 .dark .nb-table td {
-    color: var(--fg-color); /* 确保表格文字为白色文字 */
-    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  color: var(--fg-color); /* 确保表格文字为白色文字 */
+  border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
 }
 
 /* 暗色主题下的徽章 */
 .dark .nb-badge {
-    color: var(--fg-color); /* 确保徽章文字为白色文字 */
-    background-color: var(--gray-light); /* 使用暗灰色背景 */
-    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  color: var(--fg-color); /* 确保徽章文字为白色文字 */
+  background-color: var(--gray-light); /* 使用暗灰色背景 */
+  border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
 }
 
 /* 暗色主题下的表格标题行 */
 .dark .nb-table th {
-    background: var(--border-bg-color); /* 边框和背景类白色背景 */
-    color: var(--bg-color); /* 深灰色文字 */
+  background: var(--border-bg-color); /* 边框和背景类白色背景 */
+  color: var(--bg-color); /* 深灰色文字 */
 }
 
 /* 暗色主题下的标签页 */
 .dark .nb-tab {
-    color: var(--fg-color); /* 确保标签页文字为白色文字 */
-    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  color: var(--fg-color); /* 确保标签页文字为白色文字 */
+  border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
 }
 
 /* 暗色主题下的按钮 */
 .dark .nb-btn {
-    color: var(--fg-color); /* 确保按钮文字为白色文字 */
-    background-color: var(--bg-color); /* 深灰色背景 */
-    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
-    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
+  color: var(--fg-color); /* 确保按钮文字为白色文字 */
+  background-color: var(--bg-color); /* 深灰色背景 */
+  border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
 }
 
 /* 暗色主题下的主按钮（hover效果） */
 .dark .nb-btn-primary:hover {
-    color: var(--bg-color); /* hover时背景变白，文字变黑 */
+  color: var(--bg-color); /* hover时背景变白，文字变黑 */
 }
 
 /* 暗色主题下的强调按钮 */
 .dark .nb-btn-accent {
-    color: var(--fg-color) !important; /* 强调按钮文字为白色 */
-    background: var(--accent-color) !important; /* 确保背景色为橙色 */
+  color: var(--fg-color) !important; /* 强调按钮文字为白色 */
+  background: var(--accent-color) !important; /* 确保背景色为橙色 */
 }
 
 .dark .nb-btn-accent:hover {
-    color: var(--bg-color) !important; /* hover时文字变黑色 */
-    background: var(--border-bg-color) !important; /* hover时背景变边框和背景类白色 */
+  color: var(--bg-color) !important; /* hover时文字变黑色 */
+  background: var(--border-bg-color) !important; /* hover时背景变边框和背景类白色 */
 }
 
 /* 暗色主题下的故障效果按钮 */
 .dark .nb-btn-glitch:hover {
-    color: var(--accent-color); /* hover时文字变橙色 */
+  color: var(--accent-color); /* hover时文字变橙色 */
 }
 
 /* 确保顶部导航栏中的按钮文字颜色正确 */
 .dark header .nb-btn,
 .dark .nb-box .nb-btn {
-    color: var(--fg-color); /* 白色文字 */
+  color: var(--fg-color); /* 白色文字 */
 }
 
 /* 暗色主题下顶部导航栏中的强调按钮 */
 .dark header .nb-btn-accent,
 .dark .nb-box .nb-btn-accent {
-    color: var(--bg-color); /* 强调按钮文字为黑色 */
+  color: var(--bg-color); /* 强调按钮文字为黑色 */
 }
 
 /* 确保所有上下文中的按钮文字颜色都正确 */
 .dark .nb-btn:not(.nb-btn-accent):not(.nb-btn-primary) {
-    color: var(--fg-color) !important; /* 强制白色文字 */
+  color: var(--fg-color) !important; /* 强制白色文字 */
 }
 
 /* 暗色主题下的复选框 */
 .dark .nb-checkmark {
-    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
 }
 
 /* 暗色主题下的警告框 */
 .dark .nb-alert {
-    background-color: var(--bg-color); /* 深灰色背景 */
-    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
-    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
+  background-color: var(--bg-color); /* 深灰色背景 */
+  border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
 }
 
 /* 暗色主题下的标签页组 */
 .dark .nb-tabs {
-    border-bottom-color: var(--border-bg-color); /* 边框和背景类白色底部边框 */
+  border-bottom-color: var(--border-bg-color); /* 边框和背景类白色底部边框 */
 }
 
 /* 标题样式 */
-h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-sans);
-    font-weight: 900;
-    text-transform: uppercase;
-    margin-top: 0;
-    letter-spacing: -0.5px;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans);
+  font-weight: 900;
+  text-transform: uppercase;
+  margin-top: 0;
+  letter-spacing: -0.5px;
 }
 
 /* 核心动画库 */
 @keyframes glitch-anim {
-    0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
-    20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
-    40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
-    60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
-    80% { clip-path: inset(10% 0 60% 0); transform: translate(-1px, 1px); }
-    100% { clip-path: inset(30% 0 70% 0); transform: translate(1px, -1px); }
+  0% {
+    clip-path: inset(20% 0 80% 0);
+    transform: translate(-2px, 1px);
+  }
+  20% {
+    clip-path: inset(60% 0 10% 0);
+    transform: translate(2px, -1px);
+  }
+  40% {
+    clip-path: inset(40% 0 50% 0);
+    transform: translate(-2px, 2px);
+  }
+  60% {
+    clip-path: inset(80% 0 5% 0);
+    transform: translate(2px, -2px);
+  }
+  80% {
+    clip-path: inset(10% 0 60% 0);
+    transform: translate(-1px, 1px);
+  }
+  100% {
+    clip-path: inset(30% 0 70% 0);
+    transform: translate(1px, -1px);
+  }
 }
 
 @keyframes pulse-border {
-    0% { box-shadow: 0 0 0 0 rgba(255, 85, 0, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(255, 85, 0, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 85, 0, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 85, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 85, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 85, 0, 0);
+  }
 }
 
 @keyframes scanline {
-    0% { transform: translateY(-100%); }
-    100% { transform: translateY(100%); }
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
 }
 
 /* 顶部导航栏特殊样式 */
 .nb-header {
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 .nb-header:hover {
-    transform: none !important;
-    box-shadow: none !important;
-    border: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 /* 暗色主题下的顶部导航栏 */
 .dark .nb-header {
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 .dark .nb-header:hover {
-    transform: none !important;
-    box-shadow: none !important;
-    border: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 /* NEO-BRUTALISM 通用类 */
 .nb-box {
-    border: var(--border-width) solid var(--fg-color);
-    background: var(--bg-color);
-    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+  border: var(--border-width) solid var(--fg-color);
+  background: var(--bg-color);
+  box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
 }
 
 .nb-box:hover {
-     transform: translate(-2px, -2px);
-     box-shadow: calc(var(--shadow-distance) + 2px) calc(var(--shadow-distance) + 2px) 0 var(--accent-color);
-     transition: 0.2s ease;
+  transform: translate(-2px, -2px);
+  box-shadow: calc(var(--shadow-distance) + 2px) calc(var(--shadow-distance) + 2px) 0
+    var(--accent-color);
+  transition: 0.2s ease;
 }
 
 .nb-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 12px 24px;
-    font-family: var(--font-mono);
-    font-weight: bold;
-    text-transform: uppercase;
-    text-decoration: none;
-    cursor: pointer;
-    border: var(--border-width) solid var(--fg-color);
-    background: var(--bg-color);
-    color: var(--fg-color);
-    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
-    transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
-    font-size: 1rem;
-    border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  border: var(--border-width) solid var(--fg-color);
+  background: var(--bg-color);
+  color: var(--fg-color);
+  box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  font-size: 1rem;
+  border-radius: 0;
 }
 
 .nb-btn:active {
-    transform: translate(var(--shadow-distance), var(--shadow-distance));
-    box-shadow: 0 0 0 var(--fg-color);
+  transform: translate(var(--shadow-distance), var(--shadow-distance));
+  box-shadow: 0 0 0 var(--fg-color);
 }
 
 .nb-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Button - Primary (Hover Slide Animation) */
 .nb-btn-primary::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: var(--fg-color);
-    transition: left 0.3s ease;
-    z-index: -1;
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: var(--fg-color);
+  transition: left 0.3s ease;
+  z-index: -1;
 }
 .nb-btn-primary:hover {
-    color: var(--bg-color);
+  color: var(--bg-color);
 }
 .nb-btn-primary:hover::before {
-    left: 0;
+  left: 0;
 }
 
 /* Button - Accent */
 .nb-btn-accent {
-    background: var(--accent-color);
-    color: var(--bg-color); /* 白字 */
-    border-color: var(--fg-color);
+  background: var(--accent-color);
+  color: var(--bg-color); /* 白字 */
+  border-color: var(--fg-color);
 }
 .nb-btn-accent:hover {
-    background: var(--fg-color);
-    color: var(--accent-color);
+  background: var(--fg-color);
+  color: var(--accent-color);
 }
 
 /* Button - Glitch */
 .nb-btn-glitch:hover {
-    animation: glitch-anim 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
-    color: var(--accent-color);
-    border-color: var(--accent-color);
+  animation: glitch-anim 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+  color: var(--accent-color);
+  border-color: var(--accent-color);
 }
 
 /* Button - Danger */
 .nb-btn-danger {
-    background: #dc3545;
-    color: var(--bg-color);
-    border-color: var(--fg-color);
+  background: #dc3545;
+  color: var(--bg-color);
+  border-color: var(--fg-color);
 }
 .nb-btn-danger:hover {
-    background: #c82333;
-    color: var(--bg-color);
-    border-color: #c82333;
+  background: #c82333;
+  color: var(--bg-color);
+  border-color: #c82333;
 }
 
 /* Dark theme for danger button */
 .dark .nb-btn-danger {
-    background: #dc3545;
-    color: var(--bg-color);
-    border-color: var(--border-bg-color);
+  background: #dc3545;
+  color: var(--bg-color);
+  border-color: var(--border-bg-color);
 }
 .dark .nb-btn-danger:hover {
-    background: #c82333;
-    border-color: #c82333;
+  background: #c82333;
+  border-color: #c82333;
 }
 
 /* Form Elements */
 .nb-input {
-    width: 100%;
-    padding: 12px;
-    font-family: var(--font-mono);
-    border: var(--border-width) solid var(--fg-color);
-    background: var(--bg-color);
-    outline: none;
-    transition: 0.2s;
-    box-shadow: 2px 2px 0 transparent;
-    border-radius: 0;
+  width: 100%;
+  padding: 12px;
+  font-family: var(--font-mono);
+  border: var(--border-width) solid var(--fg-color);
+  background: var(--bg-color);
+  outline: none;
+  transition: 0.2s;
+  box-shadow: 2px 2px 0 transparent;
+  border-radius: 0;
 }
 
 .nb-input:focus {
-    box-shadow: 4px 4px 0 var(--accent-color);
-    transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 var(--accent-color);
+  transform: translate(-2px, -2px);
 }
 
 /* 暗色主题下的输入框焦点状态 - 增强可见性 */
 .dark .nb-input:focus {
-    box-shadow: 4px 4px 0 var(--accent-color), 0 0 0 2px var(--accent-color);
+  box-shadow:
+    4px 4px 0 var(--accent-color),
+    0 0 0 2px var(--accent-color);
 }
 
 /* 密码输入框预览按钮样式 - 支持明暗模式 */
-input[type="password"]::-webkit-credentials-auto-fill-button,
-input[type="password"]::-webkit-caps-lock-indicator,
-input[type="password"]::-webkit-reveal-password-button {
-    filter: invert(1);
+input[type='password']::-webkit-credentials-auto-fill-button,
+input[type='password']::-webkit-caps-lock-indicator,
+input[type='password']::-webkit-reveal-password-button {
+  filter: invert(1);
 }
 
 /* 暗色主题下的密码预览按钮 */
-.dark input[type="password"]::-webkit-credentials-auto-fill-button,
-.dark input[type="password"]::-webkit-caps-lock-indicator,
-.dark input[type="password"]::-webkit-reveal-password-button {
-    filter: none;
+.dark input[type='password']::-webkit-credentials-auto-fill-button,
+.dark input[type='password']::-webkit-caps-lock-indicator,
+.dark input[type='password']::-webkit-reveal-password-button {
+  filter: none;
 }
 
 /* 暗色主题下的盒子 */
 .dark .nb-box {
-    background: var(--bg-color); /* 深灰色背景 */
-    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
-    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
+  background: var(--bg-color); /* 深灰色背景 */
+  border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
 }
 
 /* 暗色主题下的卡片 */
 .dark .nb-card {
-    background: var(--bg-color); /* 深灰色背景 */
-    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
-    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
+  background: var(--bg-color); /* 深灰色背景 */
+  border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
 }
 
 /* 暗色主题下的卡片头部边框 */
 .dark .nb-card-header {
-    border-bottom-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  border-bottom-color: var(--border-bg-color); /* 边框和背景类白色边框 */
 }
 
 /* 暗色主题下的输入框 */
 .dark .nb-input {
-    color: var(--fg-color); /* 白色文字 */
-    background-color: var(--bg-color); /* 深灰色背景 */
-    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
-    box-shadow: 2px 2px 0 transparent;
+  color: var(--fg-color); /* 白色文字 */
+  background-color: var(--bg-color); /* 深灰色背景 */
+  border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  box-shadow: 2px 2px 0 transparent;
 }
 
 /* 暗色主题下的输入框placeholder文字颜色 */
 .dark .nb-input::placeholder {
-    color: var(--fg-color); /* 白色文字 */
-    opacity: 0.6; /* 稍微透明以区分 */
+  color: var(--fg-color); /* 白色文字 */
+  opacity: 0.6; /* 稍微透明以区分 */
 }
 
 /* 暗色主题下的输入框placeholder文字（兼容性） */
 .dark .nb-input::-webkit-input-placeholder {
-    color: var(--fg-color);
-    opacity: 0.6;
+  color: var(--fg-color);
+  opacity: 0.6;
 }
 
 .dark .nb-input::-moz-placeholder {
-    color: var(--fg-color);
-    opacity: 0.6;
+  color: var(--fg-color);
+  opacity: 0.6;
 }
 
 .dark .nb-input:-ms-input-placeholder {
-    color: var(--fg-color);
-    opacity: 0.6;
+  color: var(--fg-color);
+  opacity: 0.6;
 }
 
 /* Label */
 .nb-label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
-    font-family: var(--font-mono);
+  display: block;
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  font-family: var(--font-mono);
 }
 
 /* Checkbox Styling */
 .nb-checkbox-wrapper {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
 }
 
 .nb-checkbox {
-    opacity: 0;
-    position: absolute;
+  opacity: 0;
+  position: absolute;
 }
 
 .nb-checkmark {
-    width: 24px;
-    height: 24px;
-    border: var(--border-width) solid var(--fg-color);
-    margin-right: 10px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: 0.2s;
-    border-radius: 0;
+  width: 24px;
+  height: 24px;
+  border: var(--border-width) solid var(--fg-color);
+  margin-right: 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
+  border-radius: 0;
 }
 
 .nb-checkbox:checked + .nb-checkmark {
-    background: var(--fg-color);
-    box-shadow: 2px 2px 0 var(--accent-color);
+  background: var(--fg-color);
+  box-shadow: 2px 2px 0 var(--accent-color);
 }
 
 .nb-checkbox:checked + .nb-checkmark::after {
-    content: "✓";
-    color: var(--bg-color);
-    font-weight: bold;
+  content: '✓';
+  color: var(--bg-color);
+  font-weight: bold;
 }
 
 .nb-checkbox:focus + .nb-checkmark {
-    border-color: var(--accent-color);
+  border-color: var(--accent-color);
 }
 
 /* Card */
 .nb-card {
-    padding: 20px;
-    position: relative;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    border: var(--border-width) solid var(--fg-color);
-    background: var(--bg-color);
-    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+  padding: 20px;
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: var(--border-width) solid var(--fg-color);
+  background: var(--bg-color);
+  box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
 }
 
 .nb-card-header {
-    border-bottom: 2px solid var(--fg-color);
-    padding-bottom: 10px;
-    margin-bottom: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  border-bottom: 2px solid var(--fg-color);
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .nb-card-title {
-    font-family: var(--font-sans);
-    font-weight: 900;
-    text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 /* Alert */
 .nb-alert {
-    border: var(--border-width) solid var(--fg-color);
-    background: var(--bg-color);
-    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
-    padding: 12px;
-    margin-bottom: 20px;
+  border: var(--border-width) solid var(--fg-color);
+  background: var(--bg-color);
+  box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--fg-color);
+  padding: 12px;
+  margin-bottom: 20px;
 }
 
 .nb-alert-destructive {
-    border-color: var(--accent-color);
-    background: var(--bg-color);
-    color: var(--accent-color);
-    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--accent-color);
+  border-color: var(--accent-color);
+  background: var(--bg-color);
+  color: var(--accent-color);
+  box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--accent-color);
 }
 
 /* Table */
 .nb-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
 }
 
 .nb-table th,
 .nb-table td {
-    border: var(--border-width) solid var(--fg-color);
-    padding: 12px;
-    text-align: left;
-    font-family: var(--font-mono);
+  border: var(--border-width) solid var(--fg-color);
+  padding: 12px;
+  text-align: left;
+  font-family: var(--font-mono);
 }
 
 .nb-table th {
-    background: var(--fg-color);
-    color: var(--bg-color);
-    font-weight: bold;
+  background: var(--fg-color);
+  color: var(--bg-color);
+  font-weight: bold;
 }
 
 /* Badge */
 .nb-badge {
-    display: inline-block;
-    padding: 4px 8px;
-    font-family: var(--font-mono);
-    font-weight: bold;
-    border: var(--border-width) solid var(--fg-color);
-    background: var(--bg-color);
+  display: inline-block;
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  border: var(--border-width) solid var(--fg-color);
+  background: var(--bg-color);
 }
 
 .nb-badge-secondary {
-    background: var(--gray-light);
+  background: var(--gray-light);
 }
 
 /* Tabs */
 .nb-tabs {
-    margin-bottom: 20px;
-    border-bottom: var(--border-width) solid var(--fg-color);
+  margin-bottom: 20px;
+  border-bottom: var(--border-width) solid var(--fg-color);
 }
 
 .nb-tab {
-    padding: 12px 20px;
-    font-family: var(--font-mono);
-    font-weight: bold;
-    border: var(--border-width) solid transparent;
-    border-bottom: none;
-    cursor: pointer;
-    transition: 0.2s;
-    display: inline-block;
-    margin-right: 5px;
-    background: var(--bg-color);
+  padding: 12px 20px;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  border: var(--border-width) solid transparent;
+  border-bottom: none;
+  cursor: pointer;
+  transition: 0.2s;
+  display: inline-block;
+  margin-right: 5px;
+  background: var(--bg-color);
 }
 
 .nb-tab:hover {
-    color: var(--accent-color);
+  color: var(--accent-color);
 }
 
 .nb-tab-active {
-    border-color: var(--fg-color);
-    background: var(--accent-color);
-    color: white;
-    box-shadow: 0 -2px 0 rgba(0,0,0,0.1);
+  border-color: var(--fg-color);
+  background: var(--accent-color);
+  color: white;
+  box-shadow: 0 -2px 0 rgba(0, 0, 0, 0.1);
 }
 
 /* Dialog/Modal */
 .nb-dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 85, 0, 0.9); /* 橙色半透明 */
-    z-index: 999;
-    display: grid;
-    place-items: center;
-    backdrop-filter: grayscale(100%) contrast(1.2);
-    opacity: 0;
-    transition: opacity 0.3s ease-out;
-    pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 85, 0, 0.9); /* 橙色半透明 */
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  backdrop-filter: grayscale(100%) contrast(1.2);
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+  pointer-events: none;
 }
 
 /* Dialog open animation */
 .nb-dialog-open {
-    opacity: 1;
-    pointer-events: auto;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Dialog closed animation */
 .nb-dialog-closed {
-    opacity: 0;
-    pointer-events: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Dialog card animation */
 .nb-dialog-card {
-    background: var(--bg-color);
-    border: 3px solid var(--fg-color);
-    padding: 0;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 10px 10px 0 var(--fg-color);
-    transform: scale(0.9) translateY(-20px);
-    opacity: 0;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    pointer-events: none;
+  background: var(--bg-color);
+  border: 3px solid var(--fg-color);
+  padding: 0;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 10px 10px 0 var(--fg-color);
+  transform: scale(0.9) translateY(-20px);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
 }
 
 /* Dialog card open animation */
 .nb-dialog-card-open {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-    pointer-events: auto;
+  transform: scale(1) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Dialog card closed animation */
 .nb-dialog-card-closed {
-    transform: scale(0.9) translateY(-20px);
-    opacity: 0;
-    pointer-events: none;
+  transform: scale(0.9) translateY(-20px);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* 暗色主题下的模态框背景 */
 .dark .nb-dialog-overlay {
-    background: rgba(255, 107, 53, 0.85); /* 使用暗色主题下的橙色，稍微降低不透明度 */
+  background: rgba(255, 107, 53, 0.85); /* 使用暗色主题下的橙色，稍微降低不透明度 */
 }
 
 /* 暗色主题下的模态框标题背景 */
 .dark .nb-dialog-header {
-    background: var(--border-bg-color); /* 边框和背景类白色 */
-    color: var(--bg-color); /* 深灰色文字 */
+  background: var(--border-bg-color); /* 边框和背景类白色 */
+  color: var(--bg-color); /* 深灰色文字 */
 }
 
 /* 确保模态框标题文字颜色正确 */
 .dark .nb-dialog-header h2,
 .dark .nb-dialog-header h3,
 .dark .nb-dialog-header .title {
-    color: var(--bg-color) !important; /* 强制深灰色文字 */
+  color: var(--bg-color) !important; /* 强制深灰色文字 */
 }
 
 /* 暗色主题下的模态框卡片 */
 .dark .nb-dialog-card {
-    background: var(--bg-color); /* 深灰色背景 */
-    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
-    box-shadow: 10px 10px 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
+  background: var(--bg-color); /* 深灰色背景 */
+  border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+  box-shadow: 10px 10px 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
 }
 
 .nb-dialog-header {
-    background: var(--fg-color);
-    color: var(--bg-color);
-    padding: 10px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  background: var(--fg-color);
+  color: var(--bg-color);
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .nb-dialog-body {
-    padding: 20px;
+  padding: 20px;
 }
 
 /* Loader */
 .nb-loader {
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--fg-color);
-    border-top-color: var(--accent-color);
-    animation: nb-spin 1s linear infinite;
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--fg-color);
+  border-top-color: var(--accent-color);
+  animation: nb-spin 1s linear infinite;
 }
 
-@keyframes nb-spin { 
-    to { transform: rotate(360deg); } 
+@keyframes nb-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 覆盖默认样式 */
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 body {
-    margin: 0;
-    padding: 0;
-    background-color: var(--bg-color);
-    color: var(--fg-color);
-    font-family: var(--font-mono);
-    line-height: 1.5;
-    overflow-x: hidden;
-    /* 改善移动端的文本渲染 */
-    -webkit-text-size-adjust: 100%;
-    -ms-text-size-adjust: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--fg-color);
+  font-family: var(--font-mono);
+  line-height: 1.5;
+  overflow-x: hidden;
+  /* 改善移动端的文本渲染 */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
-code, pre {
-    font-family: var(--font-mono);
+code,
+pre {
+  font-family: var(--font-mono);
 }
 
 /* 移动端优化 - 768px 以下 */
 @media (max-width: 768px) {
-    .grid-3 { 
-        grid-template-columns: 1fr; 
-    }
-    
-    /* 整体布局调整 */
-    body {
-        font-size: 0.9rem;
-    }
-    
-    /* 容器和间距 */
-    .nb-box, .nb-card {
-        padding: 15px;
-    }
-    
-    /* 标题调整 */
-    h1 { font-size: 2rem; }
-    h2 { font-size: 1.5rem; }
-    h3 { font-size: 1.25rem; }
-    
-    /* 按钮调整 */
-    .nb-btn {
-        padding: 10px 16px;
-        font-size: 0.9rem;
-    }
-    
-    /* 表单元素调整 */
-    .nb-input {
-        padding: 10px;
-    }
-    
-    /* 表格调整 */
-    .nb-table {
-        font-size: 0.8rem;
-    }
-    
-    .nb-table th,
-    .nb-table td {
-        padding: 8px;
-    }
-    
-    /* 模态框调整 */
-    .nb-dialog-card {
-        width: 95%;
-        max-height: 90vh;
-        overflow-y: auto;
-    }
-    
-    /* 徽章调整 */
-    .nb-badge {
-        font-size: 0.8rem;
-        padding: 3px 6px;
-    }
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  /* 整体布局调整 */
+  body {
+    font-size: 0.9rem;
+  }
+
+  /* 容器和间距 */
+  .nb-box,
+  .nb-card {
+    padding: 15px;
+  }
+
+  /* 标题调整 */
+  h1 {
+    font-size: 2rem;
+  }
+  h2 {
+    font-size: 1.5rem;
+  }
+  h3 {
+    font-size: 1.25rem;
+  }
+
+  /* 按钮调整 */
+  .nb-btn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  /* 表单元素调整 */
+  .nb-input {
+    padding: 10px;
+  }
+
+  /* 表格调整 */
+  .nb-table {
+    font-size: 0.8rem;
+  }
+
+  .nb-table th,
+  .nb-table td {
+    padding: 8px;
+  }
+
+  /* 模态框调整 */
+  .nb-dialog-card {
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* 徽章调整 */
+  .nb-badge {
+    font-size: 0.8rem;
+    padding: 3px 6px;
+  }
 }
 
 /* 小屏幕设备优化 - 480px 以下 */
 @media (max-width: 480px) {
-    body {
-        font-size: 0.85rem;
-    }
-    
-    /* 容器和间距 */
-    .nb-box, .nb-card {
-        padding: 12px;
-    }
-    
-    /* 标题调整 */
-    h1 { font-size: 1.75rem; }
-    h2 { font-size: 1.35rem; }
-    h3 { font-size: 1.15rem; }
-    
-    /* 按钮调整 */
-    .nb-btn {
-        padding: 8px 12px;
-        font-size: 0.85rem;
-        width: 100%;
-    }
-    
-    /* 表格调整 - 变为垂直布局 */
-    .nb-table {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-        font-size: 0.75rem;
-    }
-    
-    .nb-table th,
-    .nb-table td {
-        padding: 6px;
-        min-width: 80px;
-    }
-    
-    /* 标签页调整 */
-    .nb-tab {
-        padding: 8px 10px;
-        font-size: 0.85rem;
-    }
-    
-    /* 模态框调整 */
-    .nb-dialog-card {
-        width: 100%;
-        height: 100vh;
-        max-width: none;
-        border-radius: 0;
-        border: none;
-    }
-    
-    /* 加载器调整 */
-    .nb-loader {
-        width: 30px;
-        height: 30px;
-        border-width: 3px;
-    }
+  body {
+    font-size: 0.85rem;
+  }
+
+  /* 容器和间距 */
+  .nb-box,
+  .nb-card {
+    padding: 12px;
+  }
+
+  /* 标题调整 */
+  h1 {
+    font-size: 1.75rem;
+  }
+  h2 {
+    font-size: 1.35rem;
+  }
+  h3 {
+    font-size: 1.15rem;
+  }
+
+  /* 按钮调整 */
+  .nb-btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    width: 100%;
+  }
+
+  /* 表格调整 - 变为垂直布局 */
+  .nb-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    font-size: 0.75rem;
+  }
+
+  .nb-table th,
+  .nb-table td {
+    padding: 6px;
+    min-width: 80px;
+  }
+
+  /* 标签页调整 */
+  .nb-tab {
+    padding: 8px 10px;
+    font-size: 0.85rem;
+  }
+
+  /* 模态框调整 */
+  .nb-dialog-card {
+    width: 100%;
+    height: 100vh;
+    max-width: none;
+    border-radius: 0;
+    border: none;
+  }
+
+  /* 加载器调整 */
+  .nb-loader {
+    width: 30px;
+    height: 30px;
+    border-width: 3px;
+  }
 }
 
 /* 横向布局优化 */
 @media (max-width: 767px) and (orientation: landscape) {
-    .nb-dialog-card {
-        width: 90%;
-        max-height: 95vh;
-    }
+  .nb-dialog-card {
+    width: 90%;
+    max-height: 95vh;
+  }
 }
 
 /* 移动端特定的交互优化 */
 @media (max-width: 768px) {
-    /* 更大的触摸目标 */
-    .nb-checkbox-wrapper {
-        margin: 10px 0;
-    }
-    
-    .nb-checkmark {
-        min-width: 28px;
-        min-height: 28px;
-    }
-    
-    /* 更好的滚动体验 */
-    .nb-dialog-card {
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    /* 移动端专用的间距调整 */
-    .form-group {
-        margin-bottom: 20px;
-    }
-    
-    /* 卡片间距调整 */
-    .space-y-6 > * + * {
-        margin-top: 1.5rem;
-    }
-    
-    /* 更好的文本换行 */
-    .nb-badge {
-        white-space: nowrap;
-    }
-    
-    /* 防止内容溢出 */
-    .nb-box {
-        overflow-wrap: break-word;
-        word-wrap: break-word;
-        word-break: break-word;
-    }
-    
-    /* 移动端专用按钮组优化 */
-    .mobile-button-group {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 15px;
-    }
-    
-    /* 移动端隧道卡片特殊样式 */
-    .tunnel-card {
-        position: relative;
-        margin-bottom: 15px;
-    }
-    
-    /* 确保内容在小屏幕上不会过度压缩 */
-    .responsive-content {
-        min-width: 0; /* 允许flex项目收缩到0宽度 */
-        flex-shrink: 1; /* 允许flex项目收缩 */
-    }
+  /* 更大的触摸目标 */
+  .nb-checkbox-wrapper {
+    margin: 10px 0;
+  }
+
+  .nb-checkmark {
+    min-width: 28px;
+    min-height: 28px;
+  }
+
+  /* 更好的滚动体验 */
+  .nb-dialog-card {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 移动端专用的间距调整 */
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  /* 卡片间距调整 */
+  .space-y-6 > * + * {
+    margin-top: 1.5rem;
+  }
+
+  /* 更好的文本换行 */
+  .nb-badge {
+    white-space: nowrap;
+  }
+
+  /* 防止内容溢出 */
+  .nb-box {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+  }
+
+  /* 移动端专用按钮组优化 */
+  .mobile-button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+  }
+
+  /* 移动端隧道卡片特殊样式 */
+  .tunnel-card {
+    position: relative;
+    margin-bottom: 15px;
+  }
+
+  /* 确保内容在小屏幕上不会过度压缩 */
+  .responsive-content {
+    min-width: 0; /* 允许flex项目收缩到0宽度 */
+    flex-shrink: 1; /* 允许flex项目收缩 */
+  }
 }

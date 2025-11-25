@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
-    
+
     if (savedToken && savedUser) {
       // Use requestAnimationFrame to avoid setState synchronously in effect
       requestAnimationFrame(() => {
@@ -90,14 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await fetch('/api/auth/logout', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         });
       } catch (error) {
         console.error('Logout error:', error);
       }
     }
-    
+
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');

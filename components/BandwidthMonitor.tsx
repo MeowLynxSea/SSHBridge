@@ -59,7 +59,7 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
     try {
       const response = await fetch(`/api/tunnels/${tunnel.id}/bandwidth`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -82,10 +82,10 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
   useEffect(() => {
     if (isOpen && tunnel.id) {
       fetchStats();
-      
+
       // Set up interval to refresh stats every 2 seconds
       const interval = setInterval(fetchStats, 2000);
-      
+
       return () => clearInterval(interval);
     }
   }, [isOpen, tunnel.id, token]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -93,12 +93,12 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
   // Function to calculate utilization percentage
   const getUtilizationPercentage = (): number => {
     if (!stats || !stats.max_bandwidth) return 0;
-    
+
     // Calculate current rate based on recent traffic
     // This is a simplified calculation - in a real scenario, you'd track rate over time
     const totalBytes = stats.current_bytes_received + stats.current_bytes_sent;
     const maxBytes = stats.max_bandwidth; // per second
-    
+
     // This is a rough approximation for demonstration
     return Math.min(100, Math.round((totalBytes / maxBytes) * 100));
   };
@@ -107,45 +107,49 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
 
   return (
     <div className="nb-dialog-overlay" style={{ display: 'grid' }}>
-      <div 
-        className="nb-dialog-card" 
-        style={{ 
+      <div
+        className="nb-dialog-card"
+        style={{
           maxWidth: isSmallMobile ? '100%' : '700px',
           maxHeight: isSmallMobile ? '100vh' : '90vh',
-          overflowY: 'auto'
+          overflowY: 'auto',
         }}
       >
         <div className="nb-dialog-header">
-          <h2 style={{ 
-            fontFamily: 'var(--font-sans)', 
-            fontWeight: '900', 
-            textTransform: 'uppercase',
-            fontSize: isSmallMobile ? '1.2rem' : '1.5rem'
-          }}>
-            {isSmallMobile ? t('tunnelManager.bandwidth') : t('tunnelManager.bandwidthMonitor')}: {tunnel.name}
+          <h2
+            style={{
+              fontFamily: 'var(--font-sans)',
+              fontWeight: '900',
+              textTransform: 'uppercase',
+              fontSize: isSmallMobile ? '1.2rem' : '1.5rem',
+            }}
+          >
+            {isSmallMobile ? t('tunnelManager.bandwidth') : t('tunnelManager.bandwidthMonitor')}:{' '}
+            {tunnel.name}
           </h2>
-          <button 
-            className="nb-btn" 
-            style={{ background: 'none', border: 'none', boxShadow: 'none', padding: '5px' }}
+          <button
+            className="nb-btn"
+            style={{
+              background: 'none',
+              border: 'none',
+              boxShadow: 'none',
+              padding: '5px',
+            }}
             onClick={onClose}
           >
             {t('tunnelManager.close')}
           </button>
         </div>
         <div className="nb-dialog-body">
-          {error && (
-            <div className="nb-alert nb-alert-destructive">
-              {error}
-            </div>
-          )}
-          
+          {error && <div className="nb-alert nb-alert-destructive">{error}</div>}
+
           {loading && !stats && (
             <div style={{ textAlign: 'center', padding: '20px' }}>
               <div className="nb-loader" style={{ margin: '0 auto' }}></div>
               <p style={{ marginTop: '10px' }}>{t('tunnelManager.loadingBandwidth')}</p>
             </div>
           )}
-          
+
           {stats && (
             <div>
               {/* Bandwidth Configuration */}
@@ -154,79 +158,163 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
                   <h3 className="nb-card-title">{t('tunnelManager.bandwidthConfiguration')}</h3>
                 </div>
                 <div className="nb-card-body">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: '10px',
+                    }}
+                  >
                     <span>{t('tunnelManager.statusLabel')}</span>
                     <span className={`nb-badge ${stats.is_limited ? '' : 'nb-badge-success'}`}>
                       {stats.is_limited ? t('tunnelManager.limited') : t('tunnelManager.unlimited')}
                     </span>
                   </div>
                   {stats.max_bandwidth && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                      }}
+                    >
                       <span>{t('tunnelManager.maxBandwidthLabel')}</span>
                       <span className="nb-badge">
-                        {stats.max_bandwidth < 1024 * 1024 
+                        {stats.max_bandwidth < 1024 * 1024
                           ? `${(stats.max_bandwidth / 1024).toFixed(1)}KB/s`
-                          : `${(stats.max_bandwidth / (1024 * 1024)).toFixed(1)}MB/s`
-                        }
+                          : `${(stats.max_bandwidth / (1024 * 1024)).toFixed(1)}MB/s`}
                       </span>
                     </div>
                   )}
                 </div>
               </div>
-              
+
               {/* Traffic Statistics */}
               <div className="nb-box nb-card" style={{ marginBottom: '20px' }}>
                 <div className="nb-card-header">
                   <h3 className="nb-card-title">{t('tunnelManager.trafficStatistics')}</h3>
                 </div>
                 <div className="nb-card-body">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '15px',
+                    }}
+                  >
                     <div>
-                      <h4 style={{ marginBottom: '10px', fontSize: '0.9rem', opacity: '0.8' }}>{t('tunnelManager.currentSession')}</h4>
-                      <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                      <h4
+                        style={{
+                          marginBottom: '10px',
+                          fontSize: '0.9rem',
+                          opacity: '0.8',
+                        }}
+                      >
+                        {t('tunnelManager.currentSession')}
+                      </h4>
+                      <div
+                        style={{
+                          marginBottom: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                        }}
+                      >
                         <span>{t('tunnelManager.received')}:</span>
                         <span>{formatBytes(stats.current_bytes_received)}</span>
                       </div>
-                      <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                      <div
+                        style={{
+                          marginBottom: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                        }}
+                      >
                         <span>{t('tunnelManager.sent')}:</span>
                         <span>{formatBytes(stats.current_bytes_sent)}</span>
                       </div>
-                      <div style={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+                      <div
+                        style={{
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                        }}
+                      >
                         <span>{t('tunnelManager.total')}</span>
-                        <span>{formatBytes(stats.current_bytes_received + stats.current_bytes_sent)}</span>
+                        <span>
+                          {formatBytes(stats.current_bytes_received + stats.current_bytes_sent)}
+                        </span>
                       </div>
                     </div>
-                    
+
                     <div>
-                      <h4 style={{ marginBottom: '10px', fontSize: '0.9rem', opacity: '0.8' }}>{t('tunnelManager.allTimeTotal')}</h4>
-                      <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                      <h4
+                        style={{
+                          marginBottom: '10px',
+                          fontSize: '0.9rem',
+                          opacity: '0.8',
+                        }}
+                      >
+                        {t('tunnelManager.allTimeTotal')}
+                      </h4>
+                      <div
+                        style={{
+                          marginBottom: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                        }}
+                      >
                         <span>{t('tunnelManager.received')}:</span>
                         <span>{formatBytes(stats.total_bytes_received)}</span>
                       </div>
-                      <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                      <div
+                        style={{
+                          marginBottom: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                        }}
+                      >
                         <span>{t('tunnelManager.sent')}:</span>
                         <span>{formatBytes(stats.total_bytes_sent)}</span>
                       </div>
-                      <div style={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+                      <div
+                        style={{
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                        }}
+                      >
                         <span>{t('tunnelManager.total')}</span>
-                        <span>{formatBytes(stats.total_bytes_received + stats.total_bytes_sent)}</span>
+                        <span>
+                          {formatBytes(stats.total_bytes_received + stats.total_bytes_sent)}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              
+
               {/* Connection Info */}
               <div className="nb-box nb-card">
                 <div className="nb-card-header">
                   <h3 className="nb-card-title">{t('tunnelManager.connectionInfo')}</h3>
                 </div>
                 <div className="nb-card-body">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: '10px',
+                    }}
+                  >
                     <span>Active Connections:</span>
                     <span className="nb-badge">{stats.active_connections}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: '10px',
+                    }}
+                  >
                     <span>Tunnel {t('tunnelManager.statusLabel')}</span>
                     <span className={`nb-badge ${stats.is_online ? 'nb-badge-success' : ''}`}>
                       {stats.is_online ? 'Online' : 'Offline'}
@@ -238,25 +326,34 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
                   </div>
                 </div>
               </div>
-              
+
               {/* Utilization Bar */}
               {stats.is_limited && stats.max_bandwidth && (
                 <div style={{ marginTop: '20px' }}>
-                  <h4 style={{ marginBottom: '10px' }}>{t('tunnelManager.bandwidthUtilization')}</h4>
-                  <div style={{
-                    height: '20px',
-                    backgroundColor: 'var(--gray-light)',
-                    borderRadius: '10px',
-                    overflow: 'hidden',
-                    marginBottom: '5px'
-                  }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${getUtilizationPercentage()}%`,
-                      backgroundColor: getUtilizationPercentage() > 80 ? 'var(--destructive-color)' : 'var(--accent-color)',
-                      transition: 'width 0.3s ease',
-                      borderRadius: '10px'
-                    }}></div>
+                  <h4 style={{ marginBottom: '10px' }}>
+                    {t('tunnelManager.bandwidthUtilization')}
+                  </h4>
+                  <div
+                    style={{
+                      height: '20px',
+                      backgroundColor: 'var(--gray-light)',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      marginBottom: '5px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${getUtilizationPercentage()}%`,
+                        backgroundColor:
+                          getUtilizationPercentage() > 80
+                            ? 'var(--destructive-color)'
+                            : 'var(--accent-color)',
+                        transition: 'width 0.3s ease',
+                        borderRadius: '10px',
+                      }}
+                    ></div>
                   </div>
                   <div style={{ fontSize: '0.8rem', opacity: '0.8' }}>
                     {getUtilizationPercentage()}% utilized (approximate)
@@ -265,7 +362,7 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
               )}
             </div>
           )}
-          
+
           <div style={{ marginTop: '20px', textAlign: 'right' }}>
             <button className="nb-btn" onClick={onClose}>
               CLOSE

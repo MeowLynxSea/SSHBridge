@@ -14,15 +14,15 @@ export function parseDatabaseDate(dateString: string): Date {
     // 返回当前时间作为默认值
     return new Date();
   }
-  
+
   // SQLite的CURRENT_TIMESTAMP是UTC时间，添加'Z'后缀明确表示UTC
   const date = new Date(dateString + 'Z');
-  
+
   // 检查日期是否有效
   if (isNaN(date.getTime())) {
     return new Date();
   }
-  
+
   return date;
 }
 
@@ -58,7 +58,7 @@ export function formatForDisplay(dateString: string, locale?: string): string {
  */
 export function formatDuration(startTime: string, endTime: Date = new Date()): string {
   let startTimeMs: number;
-  
+
   // 如果已经是ISO字符串，直接使用
   if (startTime.includes('T') && startTime.includes('Z')) {
     startTimeMs = new Date(startTime).getTime();
@@ -66,13 +66,13 @@ export function formatDuration(startTime: string, endTime: Date = new Date()): s
     // 如果不是，使用parseDatabaseDate
     startTimeMs = parseDatabaseDate(startTime).getTime();
   }
-  
+
   const diffMs = endTime.getTime() - startTimeMs;
-  
+
   const hours = Math.floor(diffMs / (1000 * 60 * 60));
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-  
+
   if (hours > 0) {
     return `${hours}h ${minutes}m ${seconds}s`;
   } else if (minutes > 0) {

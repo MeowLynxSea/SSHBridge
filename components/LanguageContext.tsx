@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface LanguageContextType {
@@ -24,44 +31,49 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation();
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
 
-  const changeLanguage = useCallback((languageCode: string) => {
-    i18n.changeLanguage(languageCode);
-    setCurrentLanguage(languageCode);
-    localStorage.setItem('sshb-bridge-language', languageCode);
-    
-    // Update document direction for RTL languages
-    const lang = availableLanguages.find(l => l.code === languageCode);
-    if (lang) {
-      document.dir = lang.isRTL ? 'rtl' : 'ltr';
-    }
-  }, [i18n]);
+  const changeLanguage = useCallback(
+    (languageCode: string) => {
+      i18n.changeLanguage(languageCode);
+      setCurrentLanguage(languageCode);
+      localStorage.setItem('sshb-bridge-language', languageCode);
 
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('sshb-bridge-language');
-    if (savedLanguage && availableLanguages.find(lang => lang.code === savedLanguage)) {
-      i18n.changeLanguage(savedLanguage);
-      
       // Update document direction for RTL languages
-      const lang = availableLanguages.find(l => l.code === savedLanguage);
+      const lang = availableLanguages.find((l) => l.code === languageCode);
       if (lang) {
         document.dir = lang.isRTL ? 'rtl' : 'ltr';
       }
-      
+    },
+    [i18n]
+  );
+
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('sshb-bridge-language');
+    if (savedLanguage && availableLanguages.find((lang) => lang.code === savedLanguage)) {
+      i18n.changeLanguage(savedLanguage);
+
+      // Update document direction for RTL languages
+      const lang = availableLanguages.find((l) => l.code === savedLanguage);
+      if (lang) {
+        document.dir = lang.isRTL ? 'rtl' : 'ltr';
+      }
+
       // Use setTimeout to avoid setting state synchronously during render
       const timer = setTimeout(() => {
         setCurrentLanguage(savedLanguage);
       }, 0);
-      
+
       return () => clearTimeout(timer);
     }
   }, [i18n]);
 
   return (
-    <LanguageContext.Provider value={{
-      currentLanguage,
-      changeLanguage,
-      availableLanguages
-    }}>
+    <LanguageContext.Provider
+      value={{
+        currentLanguage,
+        changeLanguage,
+        availableLanguages,
+      }}
+    >
       {children}
     </LanguageContext.Provider>
   );

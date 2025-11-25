@@ -52,7 +52,7 @@ function AccountManagerPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           currentPassword,
@@ -65,10 +65,10 @@ function AccountManagerPage() {
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        
+
         // Keep form expanded after success
         // Don't redirect to home
-        
+
         // Clear success message after 3 seconds but keep form expanded
         setTimeout(() => {
           setSuccess('');
@@ -93,18 +93,33 @@ function AccountManagerPage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className={`nb-box nb-header`} style={{ 
-        borderBottom: 'none', 
-        padding: isSmallMobile ? '15px 0' : '20px 0', 
-        boxShadow: 'none',
-        position: 'relative'
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isSmallMobile ? '0 15px' : '0 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header
+        className={`nb-box nb-header`}
+        style={{
+          borderBottom: 'none',
+          padding: isSmallMobile ? '15px 0' : '20px 0',
+          boxShadow: 'none',
+          position: 'relative',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: isSmallMobile ? '0 15px' : '0 20px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
             <h1 className={`${isSmallMobile ? 'text-2xl' : 'text-3xl'} font-black uppercase`}>
               SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
             </h1>
-            <button 
+            <button
               className="nb-btn"
               onClick={handleBack}
               style={{ fontSize: isSmallMobile ? '0.9rem' : '1rem' }}
@@ -116,42 +131,58 @@ function AccountManagerPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-4" style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        width: '100%'
-      }}>
-        <div className="nb-box nb-card" style={{ 
-          width: '100%', 
-          maxWidth: isSmallMobile ? '100%' : '500px',
-          margin: isSmallMobile ? '0' : 'auto',
-          position: 'relative'
-        }}>
+      <main
+        className="flex-1 flex items-center justify-center p-4"
+        style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          width: '100%',
+        }}
+      >
+        <div
+          className="nb-box nb-card"
+          style={{
+            width: '100%',
+            maxWidth: isSmallMobile ? '100%' : '500px',
+            margin: isSmallMobile ? '0' : 'auto',
+            position: 'relative',
+          }}
+        >
           <div className="nb-card-header">
             <h2 className="nb-card-title">{t('account.title')}</h2>
           </div>
-          
+
           <div className="nb-card-body">
             <div style={{ marginBottom: '20px' }}>
-              <div 
+              <div
                 className="nb-box"
-                style={{ 
+                style={{
                   padding: '15px',
                   cursor: 'pointer',
-                  userSelect: 'none'
+                  userSelect: 'none',
                 }}
                 onClick={() => setIsPasswordFormExpanded(!isPasswordFormExpanded)}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontFamily: 'var(--font-sans)', fontWeight: 'bold', margin: 0 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      fontWeight: 'bold',
+                      margin: 0,
+                    }}
+                  >
                     {t('account.changePassword')}
                   </h3>
-                  <span style={{ fontSize: '1.2rem' }}>
-                    {isPasswordFormExpanded ? '▼' : '▶'}
-                  </span>
+                  <span style={{ fontSize: '1.2rem' }}>{isPasswordFormExpanded ? '▼' : '▶'}</span>
                 </div>
               </div>
-              
+
               {isPasswordFormExpanded && (
                 <div style={{ marginTop: '15px' }}>
                   {error && (
@@ -159,17 +190,20 @@ function AccountManagerPage() {
                       {error}
                     </div>
                   )}
-                  
+
                   {success && (
-                    <div className="nb-alert" style={{ 
-                      marginBottom: '15px', 
-                      backgroundColor: 'var(--accent-color)',
-                      color: 'var(--bg-color)'
-                    }}>
+                    <div
+                      className="nb-alert"
+                      style={{
+                        marginBottom: '15px',
+                        backgroundColor: 'var(--accent-color)',
+                        color: 'var(--bg-color)',
+                      }}
+                    >
                       {success}
                     </div>
                   )}
-                  
+
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="form-group">
                       <label className="nb-label" htmlFor="currentPassword">
@@ -186,7 +220,7 @@ function AccountManagerPage() {
                         onChange={(e) => setCurrentPassword(e.target.value)}
                       />
                     </div>
-                    
+
                     <div className="form-group">
                       <label className="nb-label" htmlFor="newPassword">
                         {t('account.newPassword')}
@@ -202,7 +236,7 @@ function AccountManagerPage() {
                         onChange={(e) => setNewPassword(e.target.value)}
                       />
                     </div>
-                    
+
                     <div className="form-group">
                       <label className="nb-label" htmlFor="confirmPassword">
                         {t('account.confirmPassword')}
@@ -218,27 +252,27 @@ function AccountManagerPage() {
                         onChange={(e) => setConfirmPassword(e.target.value)}
                       />
                     </div>
-                    
+
                     <div className="flex flex-col space-y-3 pt-4">
-                      <button 
-                        className={`nb-btn nb-btn-primary ${isMobile ? 'w-full' : 'w-full'}`} 
-                        type="submit" 
+                      <button
+                        className={`nb-btn nb-btn-primary ${isMobile ? 'w-full' : 'w-full'}`}
+                        type="submit"
                         disabled={isLoading}
                         style={{
                           fontSize: isSmallMobile ? '1rem' : '1rem',
-                          padding: isSmallMobile ? '14px 16px' : '12px 24px'
+                          padding: isSmallMobile ? '14px 16px' : '12px 24px',
                         }}
                       >
                         {isLoading ? t('account.updating') : t('account.updatePassword')}
                       </button>
-                      
+
                       <button
                         className={`nb-btn ${isMobile ? 'w-full' : 'w-full'}`}
                         type="button"
                         onClick={handleBack}
                         style={{
                           fontSize: isSmallMobile ? '0.9rem' : '1rem',
-                          padding: isSmallMobile ? '12px 16px' : '12px 24px'
+                          padding: isSmallMobile ? '12px 16px' : '12px 24px',
                         }}
                       >
                         {t('account.cancel')}

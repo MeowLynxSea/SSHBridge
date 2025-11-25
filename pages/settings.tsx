@@ -37,7 +37,7 @@ export default function SettingsPage() {
       setError('');
       const response = await fetch('/api/settings', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -82,7 +82,7 @@ export default function SettingsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           refreshInterval: settings.refreshInterval,
@@ -137,57 +137,73 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className={`nb-box nb-header`} style={{ 
-        borderBottom: 'none', 
-        padding: isSmallMobile ? '15px 0' : '20px 0', 
-        boxShadow: 'none',
-        position: 'relative'
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isSmallMobile ? '0 15px' : '0 20px' }}>
+      <header
+        className={`nb-box nb-header`}
+        style={{
+          borderBottom: 'none',
+          padding: isSmallMobile ? '15px 0' : '20px 0',
+          boxShadow: 'none',
+          position: 'relative',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: isSmallMobile ? '0 15px' : '0 20px',
+          }}
+        >
           {/* Navigation */}
           {isMobile ? (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '15px',
+                }}
+              >
                 <h1 className={`${isSmallMobile ? 'text-2xl' : 'text-3xl'} font-black uppercase`}>
                   SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
                 </h1>
-                <button 
+                <button
                   className="nb-btn"
                   onClick={() => router.push('/')}
-                  style={{ 
-                    background: 'none', 
-                    border: 'none', 
-                    boxShadow: 'none', 
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    boxShadow: 'none',
                     padding: '5px',
                     fontSize: '1.2rem',
                     width: '40px',
                     height: '40px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
                   }}
                 >
                   ←
                 </button>
               </div>
-              
+
               {/* Mobile Tabs */}
               <div className="nb-tabs">
-                <button 
+                <button
                   className="nb-tab"
                   onClick={() => router.push('/')}
                   style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
                 >
                   {t('tunnelManager.tunnels')}
                 </button>
-                <button 
+                <button
                   className="nb-tab"
                   onClick={() => router.push('/stats')}
                   style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
                 >
                   {t('tunnelManager.statistics')}
                 </button>
-                <button 
+                <button
                   className="nb-tab nb-tab-active"
                   style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
                 >
@@ -197,41 +213,37 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
                 <h1 className="text-4xl font-black uppercase">
                   SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
                 </h1>
-                <button 
-                  className="nb-btn" 
+                <button
+                  className="nb-btn"
                   onClick={() => router.push('/')}
-                  style={{ 
-                    background: 'var(--gray-light)', 
-                    color: 'var(--fg-color)' 
+                  style={{
+                    background: 'var(--gray-light)',
+                    color: 'var(--fg-color)',
                   }}
                 >
                   ← {t('general.back')}
                 </button>
               </div>
-              
+
               {/* Tabs */}
               <div className="nb-tabs">
-                <button 
-                  className="nb-tab"
-                  onClick={() => router.push('/')}
-                >
+                <button className="nb-tab" onClick={() => router.push('/')}>
                   {t('tunnelManager.tunnels')}
                 </button>
-                <button 
-                  className="nb-tab"
-                  onClick={() => router.push('/stats')}
-                >
+                <button className="nb-tab" onClick={() => router.push('/stats')}>
                   {t('tunnelManager.statistics')}
                 </button>
-                <button 
-                  className="nb-tab nb-tab-active"
-                >
-                  {t('tunnelManager.settings')}
-                </button>
+                <button className="nb-tab nb-tab-active">{t('tunnelManager.settings')}</button>
               </div>
             </div>
           )}
@@ -239,37 +251,42 @@ export default function SettingsPage() {
       </header>
 
       {/* Main Content */}
-      <main style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        padding: isSmallMobile ? '0 15px' : '0 20px' 
-      }}>
+      <main
+        style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: isSmallMobile ? '0 15px' : '0 20px',
+        }}
+      >
         <div style={{ marginTop: isSmallMobile ? '20px' : '40px' }}>
           <div className="nb-box nb-card">
             <div className="nb-card-header">
-              <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>{t('settings.title')}</h2>
+              <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>
+                {t('settings.title')}
+              </h2>
             </div>
             <div className="nb-card-body">
-              <p style={{ marginBottom: '20px' }}>
-                {t('settings.description')}
-              </p>
-              
+              <p style={{ marginBottom: '20px' }}>{t('settings.description')}</p>
+
               {error && (
                 <div className="nb-alert nb-alert-destructive" style={{ marginBottom: '20px' }}>
                   {error}
                 </div>
               )}
-              
+
               {success && (
-                <div className="nb-alert" style={{ 
-                  marginBottom: '20px', 
-                  background: 'var(--accent-color)', 
-                  color: 'var(--bg-color)' 
-                }}>
+                <div
+                  className="nb-alert"
+                  style={{
+                    marginBottom: '20px',
+                    background: 'var(--accent-color)',
+                    color: 'var(--bg-color)',
+                  }}
+                >
                   {success}
                 </div>
               )}
-              
+
               <form onSubmit={handleSubmit}>
                 <div className="form-group" style={{ marginBottom: '20px' }}>
                   <label className="nb-label" htmlFor="refreshInterval">
@@ -285,16 +302,18 @@ export default function SettingsPage() {
                     onChange={handleIntervalChange}
                     required
                   />
-                  <p style={{ 
-                    fontSize: '0.8rem', 
-                    marginTop: '5px', 
-                    fontFamily: 'monospace',
-                    opacity: 0.8
-                  }}>
+                  <p
+                    style={{
+                      fontSize: '0.8rem',
+                      marginTop: '5px',
+                      fontFamily: 'monospace',
+                      opacity: 0.8,
+                    }}
+                  >
                     {t('settings.refreshIntervalDescription')}
                   </p>
                 </div>
-                
+
                 {/* Language Selection */}
                 <div className="form-group" style={{ marginBottom: '20px' }}>
                   <label className="nb-label" htmlFor="language">
@@ -313,16 +332,18 @@ export default function SettingsPage() {
                       </option>
                     ))}
                   </select>
-                  <p style={{ 
-                    fontSize: '0.8rem', 
-                    marginTop: '5px', 
-                    fontFamily: 'monospace',
-                    opacity: 0.8
-                  }}>
+                  <p
+                    style={{
+                      fontSize: '0.8rem',
+                      marginTop: '5px',
+                      fontFamily: 'monospace',
+                      opacity: 0.8,
+                    }}
+                  >
                     {t('settings.languageDescription')}
                   </p>
                 </div>
-                
+
                 {/* Theme Selection */}
                 <div className="form-group" style={{ marginBottom: '20px' }}>
                   <label className="nb-label" htmlFor="theme">
@@ -339,22 +360,26 @@ export default function SettingsPage() {
                     <option value="dark">{t('settings.themeDark')}</option>
                     <option value="light">{t('settings.themeLight')}</option>
                   </select>
-                  <p style={{ 
-                    fontSize: '0.8rem', 
-                    marginTop: '5px', 
-                    fontFamily: 'monospace',
-                    opacity: 0.8
-                  }}>
+                  <p
+                    style={{
+                      fontSize: '0.8rem',
+                      marginTop: '5px',
+                      fontFamily: 'monospace',
+                      opacity: 0.8,
+                    }}
+                  >
                     {t('settings.themeDescription')}
                   </p>
                 </div>
-                
-                <div style={{ 
-                  display: isMobile ? 'flex' : 'flex', 
-                  flexDirection: isMobile ? 'column' : 'row',
-                  justifyContent: 'flex-end', 
-                  gap: '10px' 
-                }}>
+
+                <div
+                  style={{
+                    display: isMobile ? 'flex' : 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    justifyContent: 'flex-end',
+                    gap: '10px',
+                  }}
+                >
                   <button
                     className="nb-btn"
                     type="button"
@@ -364,8 +389,8 @@ export default function SettingsPage() {
                   >
                     {t('general.back')}
                   </button>
-                  <button 
-                    className="nb-btn nb-btn-primary" 
+                  <button
+                    className="nb-btn nb-btn-primary"
                     type="submit"
                     disabled={loading}
                     style={{ width: isMobile ? '100%' : 'auto' }}

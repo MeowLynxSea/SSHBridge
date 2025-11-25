@@ -1,8 +1,7 @@
-
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* 引入NEO-BRUTALISM UI样式 */
-@import "./neo-brutalism.css";
+@import './neo-brutalism.css';
 
 :root {
   --radius: 0.625rem;

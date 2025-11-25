@@ -16,81 +16,81 @@ interface SettingsResponse {
   error?: string;
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<SettingsResponse>
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse<SettingsResponse>) {
   try {
     // 验证JWT token并获取用户ID
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
     const db = getDatabaseInstance();
     let userId: number;
-    
+
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret-key-change-in-production') as jwt.JwtPayload & { userId: number };
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'default-secret-key-change-in-production'
+      ) as jwt.JwtPayload & { userId: number };
       userId = decoded.userId;
     } catch {
       return res.status(401).json({
         success: false,
-        error: 'Invalid authentication token'
+        error: 'Invalid authentication token',
       });
     }
-    
+
     if (req.method === 'GET') {
       // Get current user's refresh interval
       const refreshInterval = await db.getUserRefreshInterval(userId);
-      
+
       return res.status(200).json({
         success: true,
-        refreshInterval
+        refreshInterval,
       });
     } else if (req.method === 'POST' || req.method === 'PUT') {
       const { refreshInterval }: SettingsRequest = req.body;
-      
+
       // Validate refresh interval (minimum 1 second)
       if (refreshInterval !== undefined) {
         if (typeof refreshInterval !== 'number' || refreshInterval < 1000) {
           return res.status(400).json({
             success: false,
-            error: 'Refresh interval must be at least 1000ms (1 second)'
+            error: 'Refresh interval must be at least 1000ms (1 second)',
           });
         }
-        
+
         // Update user's refresh interval in database
         const success = await db.setUserRefreshInterval(userId, refreshInterval);
         if (!success) {
           return res.status(500).json({
             success: false,
-            error: 'Failed to save settings to database'
+            error: 'Failed to save settings to database',
           });
         }
       }
-      
+
       // Get the updated value
       const updatedInterval = await db.getUserRefreshInterval(userId);
       return res.status(200).json({
         success: true,
-        refreshInterval: updatedInterval
+        refreshInterval: updatedInterval,
       });
     } else {
       res.setHeader('Allow', ['GET', 'POST', 'PUT']);
       return res.status(405).json({
         success: false,
-        error: 'Method not allowed'
+        error: 'Method not allowed',
       });
     }
   } catch (error) {
     console.error('Settings API error:', error);
     return res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      error: 'Internal server error',
     });
   }
 }

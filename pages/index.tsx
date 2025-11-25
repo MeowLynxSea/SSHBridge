@@ -19,13 +19,13 @@ function AppContent() {
           <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'var(--font-sans)' }}>
             Loading...
           </h2>
-          <div 
-            className="nb-box" 
-            style={{ 
-              padding: '10px', 
-              fontSize: '0.8rem', 
+          <div
+            className="nb-box"
+            style={{
+              padding: '10px',
+              fontSize: '0.8rem',
               fontFamily: 'monospace',
-              transform: 'rotate(1deg)'
+              transform: 'rotate(1deg)',
             }}
           >
             SYSTEM INITIALIZING...
@@ -40,10 +40,7 @@ function AppContent() {
   }
 
   return (
-    <AuthForm 
-      mode={mode} 
-      onToggleMode={() => setMode(mode === 'login' ? 'register' : 'login')} 
-    />
+    <AuthForm mode={mode} onToggleMode={() => setMode(mode === 'login' ? 'register' : 'login')} />
   );
 }
 

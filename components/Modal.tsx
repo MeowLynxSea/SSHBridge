@@ -11,23 +11,25 @@ interface ModalProps {
   overlayClassName?: string;
 }
 
-export default function Modal({ 
-  isOpen, 
-  onClose, 
-  children, 
+export default function Modal({
+  isOpen,
+  onClose,
+  children,
   maxWidth = '500px',
   className = '',
-  overlayClassName = ''
+  overlayClassName = '',
 }: ModalProps) {
   const { effectiveTheme } = useTheme();
   const { isMobile, isSmallMobile } = useMobile();
   const dialogRef = useRef<HTMLDivElement>(null);
-  
+
   // Track whether modal should be rendered
   const [shouldRender, setShouldRender] = React.useState(isOpen);
-  
+
   // Track animation state
-  const [animationState, setAnimationState] = React.useState<'closed' | 'open'>(isOpen ? 'open' : 'closed');
+  const [animationState, setAnimationState] = React.useState<'closed' | 'open'>(
+    isOpen ? 'open' : 'closed'
+  );
 
   // Handle modal opening/closing
   useEffect(() => {
@@ -76,17 +78,14 @@ export default function Modal({
   const cardClass = `nb-dialog-card ${animationState === 'open' ? 'nb-dialog-card-open' : 'nb-dialog-card-closed'} ${className}`;
 
   return (
-    <div 
-      className={overlayClass}
-      onClick={handleOverlayClick}
-    >
-      <div 
+    <div className={overlayClass} onClick={handleOverlayClick}>
+      <div
         ref={dialogRef}
         className={cardClass}
         data-theme={effectiveTheme}
-        style={{ 
+        style={{
           margin: isMobile ? '0 10px' : 'auto',
-          maxWidth: isSmallMobile ? '95vw' : maxWidth
+          maxWidth: isSmallMobile ? '95vw' : maxWidth,
         }}
       >
         {children}

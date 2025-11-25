@@ -29,7 +29,7 @@ export default function StatsPage() {
     try {
       const response = await fetch('/api/stats', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -50,19 +50,19 @@ export default function StatsPage() {
     try {
       const response = await fetch('/api/tunnels', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Set tunnels with online status
         const tunnelsWithStatus = data.tunnels.map((tunnel: Tunnel) => ({
           ...tunnel,
-          is_online: tunnelStatuses.get(tunnel.id) || false
+          is_online: tunnelStatuses.get(tunnel.id) || false,
         }));
-        
+
         setTunnels(tunnelsWithStatus);
       }
     } catch (err) {
@@ -93,56 +93,72 @@ export default function StatsPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className={`nb-box nb-header`} style={{ 
-        borderBottom: 'none', 
-        padding: isSmallMobile ? '15px 0' : '20px 0', 
-        boxShadow: 'none',
-        position: 'relative'
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isSmallMobile ? '0 15px' : '0 20px' }}>
+      <header
+        className={`nb-box nb-header`}
+        style={{
+          borderBottom: 'none',
+          padding: isSmallMobile ? '15px 0' : '20px 0',
+          boxShadow: 'none',
+          position: 'relative',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: isSmallMobile ? '0 15px' : '0 20px',
+          }}
+        >
           {/* Navigation */}
           {isMobile ? (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '15px',
+                }}
+              >
                 <h1 className={`${isSmallMobile ? 'text-2xl' : 'text-3xl'} font-black uppercase`}>
                   SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
                 </h1>
-                <button 
+                <button
                   className="nb-btn"
                   onClick={() => router.push('/')}
-                  style={{ 
-                    background: 'none', 
-                    border: 'none', 
-                    boxShadow: 'none', 
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    boxShadow: 'none',
                     padding: '5px',
                     fontSize: '1.2rem',
                     width: '40px',
                     height: '40px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
                   }}
                 >
                   ←
                 </button>
               </div>
-              
+
               {/* Mobile Tabs */}
               <div className="nb-tabs">
-                <button 
+                <button
                   className="nb-tab"
                   onClick={() => router.push('/')}
                   style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
                 >
                   {t('tunnelManager.tunnels')}
                 </button>
-                <button 
+                <button
                   className="nb-tab nb-tab-active"
                   style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
                 >
                   {t('tunnelManager.statistics')}
                 </button>
-                <button 
+                <button
                   className="nb-tab"
                   onClick={() => router.push('/settings')}
                   style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
@@ -153,39 +169,35 @@ export default function StatsPage() {
             </div>
           ) : (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
                 <h1 className="text-4xl font-black uppercase">
                   SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
                 </h1>
-                <button 
-                  className="nb-btn" 
+                <button
+                  className="nb-btn"
                   onClick={() => router.push('/')}
-                  style={{ 
-                    background: 'var(--gray-light)', 
-                    color: 'var(--fg-color)' 
+                  style={{
+                    background: 'var(--gray-light)',
+                    color: 'var(--fg-color)',
                   }}
                 >
                   ← {t('general.back')}
                 </button>
               </div>
-              
+
               {/* Tabs */}
               <div className="nb-tabs">
-                <button 
-                  className="nb-tab"
-                  onClick={() => router.push('/')}
-                >
+                <button className="nb-tab" onClick={() => router.push('/')}>
                   {t('tunnelManager.tunnels')}
                 </button>
-                <button 
-                  className="nb-tab nb-tab-active"
-                >
-                  {t('tunnelManager.statistics')}
-                </button>
-                <button 
-                  className="nb-tab"
-                  onClick={() => router.push('/settings')}
-                >
+                <button className="nb-tab nb-tab-active">{t('tunnelManager.statistics')}</button>
+                <button className="nb-tab" onClick={() => router.push('/settings')}>
                   {t('tunnelManager.settings')}
                 </button>
               </div>
@@ -195,15 +207,19 @@ export default function StatsPage() {
       </header>
 
       {/* Main Content */}
-      <main style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        padding: isSmallMobile ? '0 15px' : '0 20px' 
-      }}>
+      <main
+        style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: isSmallMobile ? '0 15px' : '0 20px',
+        }}
+      >
         <div style={{ marginTop: isSmallMobile ? '20px' : '40px' }}>
           <div className="nb-box nb-card">
             <div className="nb-card-header">
-              <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>{t('tunnelManager.statistics')}</h2>
+              <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>
+                {t('tunnelManager.statistics')}
+              </h2>
             </div>
             <div className="nb-card-body">
               {/* Content will be the same as TunnelStats component */}
@@ -216,53 +232,82 @@ export default function StatsPage() {
                   <div>
                     {isMobile ? (
                       // Mobile card-based layout
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '15px',
+                        }}
+                      >
                         {tunnels.map((tunnel) => (
                           <div key={tunnel.id} className="nb-box" style={{ padding: '15px' }}>
                             <div style={{ marginBottom: '10px' }}>
-                              <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center',
-                                marginBottom: '10px'
-                              }}>
-                                <h3 style={{ 
-                                  fontWeight: 'bold', 
-                                  fontFamily: 'var(--font-sans)',
-                                  fontSize: '1.1rem'
-                                }}>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  marginBottom: '10px',
+                                }}
+                              >
+                                <h3
+                                  style={{
+                                    fontWeight: 'bold',
+                                    fontFamily: 'var(--font-sans)',
+                                    fontSize: '1.1rem',
+                                  }}
+                                >
                                   {tunnel.name}
                                 </h3>
-                                <div 
+                                <div
                                   className="nb-badge"
-                                  style={{ 
-                                    backgroundColor: tunnel.is_online ? 'var(--accent-color)' : 'var(--gray-light)',
-                                    color: tunnel.is_online ? 'var(--bg-color)' : 'var(--fg-color)'
+                                  style={{
+                                    backgroundColor: tunnel.is_online
+                                      ? 'var(--accent-color)'
+                                      : 'var(--gray-light)',
+                                    color: tunnel.is_online ? 'var(--bg-color)' : 'var(--fg-color)',
                                   }}
                                 >
                                   {t('tunnelManager.externalPort')} {tunnel.external_port}
                                 </div>
                               </div>
-                              
+
                               <div style={{ marginBottom: '10px' }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                                  {t('tunnelManager.status')}: 
-                                  <span className="nb-badge" style={{ 
-                                    backgroundColor: tunnel.is_online ? 'var(--accent-color)' : 'var(--gray-light)',
-                                    color: tunnel.is_online ? 'var(--bg-color)' : 'var(--fg-color)',
-                                    marginLeft: '5px',
-                                    padding: '2px 6px',
-                                    fontSize: '0.8rem'
-                                  }}>
-                                    {tunnel.is_online ? t('tunnelManager.online') : t('tunnelManager.offline')}
+                                <span
+                                  style={{
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.9rem',
+                                  }}
+                                >
+                                  {t('tunnelManager.status')}:
+                                  <span
+                                    className="nb-badge"
+                                    style={{
+                                      backgroundColor: tunnel.is_online
+                                        ? 'var(--accent-color)'
+                                        : 'var(--gray-light)',
+                                      color: tunnel.is_online
+                                        ? 'var(--bg-color)'
+                                        : 'var(--fg-color)',
+                                      marginLeft: '5px',
+                                      padding: '2px 6px',
+                                      fontSize: '0.8rem',
+                                    }}
+                                  >
+                                    {tunnel.is_online
+                                      ? t('tunnelManager.online')
+                                      : t('tunnelManager.offline')}
                                   </span>
                                 </span>
                               </div>
-                              
+
                               {tunnel.is_online && (
                                 <button
                                   className="nb-btn"
-                                  style={{ width: '100%', fontSize: '0.9rem' }}
+                                  style={{
+                                    width: '100%',
+                                    fontSize: '0.9rem',
+                                  }}
                                   onClick={() => setSelectedTunnelForBandwidth(tunnel)}
                                 >
                                   {t('tunnelManager.bandwidthMonitor')}
@@ -291,21 +336,28 @@ export default function StatsPage() {
                                 <span className="nb-badge">{tunnel.external_port}</span>
                               </td>
                               <td>
-                                <span 
+                                <span
                                   className="nb-badge"
-                                  style={{ 
-                                    backgroundColor: tunnel.is_online ? 'var(--accent-color)' : 'var(--gray-light)',
-                                    color: tunnel.is_online ? 'var(--bg-color)' : 'var(--fg-color)'
+                                  style={{
+                                    backgroundColor: tunnel.is_online
+                                      ? 'var(--accent-color)'
+                                      : 'var(--gray-light)',
+                                    color: tunnel.is_online ? 'var(--bg-color)' : 'var(--fg-color)',
                                   }}
                                 >
-                                  {tunnel.is_online ? t('tunnelManager.online') : t('tunnelManager.offline')}
+                                  {tunnel.is_online
+                                    ? t('tunnelManager.online')
+                                    : t('tunnelManager.offline')}
                                 </span>
                               </td>
                               <td style={{ textAlign: 'right' }}>
                                 {tunnel.is_online && (
                                   <button
                                     className="nb-btn"
-                                    style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                                    style={{
+                                      padding: '8px 12px',
+                                      fontSize: '0.8rem',
+                                    }}
                                     onClick={() => setSelectedTunnelForBandwidth(tunnel)}
                                   >
                                     {t('tunnelManager.bandwidthMonitor')}

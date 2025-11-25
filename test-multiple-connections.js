@@ -29,56 +29,59 @@ for (let i = 0; i < CONNECTION_COUNT; i++) {
 function createConnection(id) {
   const socket = new net.Socket();
   let connectionStart = performance.now();
-  
-  socket.connect({
-    port: TUNNEL_PORT,
-    host: 'localhost'
-  }, () => {
-    console.log(`Connection ${id} established`);
-    activeConnections.push({ id, socket, connectionStart });
-    
-    // Send initial message
-    socket.write(`${TEST_MESSAGE}${id}`);
-    messagesSent++;
-    
-    // Set up periodic message sending
-    const interval = setInterval(() => {
-      if (socket.destroyed) {
-        clearInterval(interval);
-        return;
-      }
-      
-      try {
-        socket.write(`${TEST_MESSAGE}${id} at ${Date.now()}`);
-        messagesSent++;
-      } catch (err) {
-        console.error(`Error sending data on connection ${id}:`, err.message);
-        clearInterval(interval);
-      }
-    }, TEST_INTERVAL_MS);
-    
-    socket.interval = interval;
-  });
-  
+
+  socket.connect(
+    {
+      port: TUNNEL_PORT,
+      host: 'localhost',
+    },
+    () => {
+      console.log(`Connection ${id} established`);
+      activeConnections.push({ id, socket, connectionStart });
+
+      // Send initial message
+      socket.write(`${TEST_MESSAGE}${id}`);
+      messagesSent++;
+
+      // Set up periodic message sending
+      const interval = setInterval(() => {
+        if (socket.destroyed) {
+          clearInterval(interval);
+          return;
+        }
+
+        try {
+          socket.write(`${TEST_MESSAGE}${id} at ${Date.now()}`);
+          messagesSent++;
+        } catch (err) {
+          console.error(`Error sending data on connection ${id}:`, err.message);
+          clearInterval(interval);
+        }
+      }, TEST_INTERVAL_MS);
+
+      socket.interval = interval;
+    }
+  );
+
   socket.on('data', () => {
     messagesReceived++;
     if (messagesReceived % 100 === 0) {
       console.log(`Received ${messagesReceived} messages total`);
     }
   });
-  
+
   socket.on('close', () => {
     connectionsClosed++;
     clearInterval(socket.interval);
     const connectionDuration = performance.now() - connectionStart;
     console.log(`Connection ${id} closed after ${Math.round(connectionDuration)}ms`);
-    
+
     // If all connections are closed, print statistics
     if (connectionsClosed === CONNECTION_COUNT) {
       printStatistics();
     }
   });
-  
+
   socket.on('error', (err) => {
     console.error(`Connection ${id} error:`, err.message);
     clearInterval(socket.interval);
@@ -88,17 +91,18 @@ function createConnection(id) {
 
 function printStatistics() {
   const totalConnections = activeConnections.length;
-  const avgDuration = activeConnections.reduce((sum, conn) => {
-    return sum + (performance.now() - conn.connectionStart);
-  }, 0) / totalConnections;
-  
+  const avgDuration =
+    activeConnections.reduce((sum, conn) => {
+      return sum + (performance.now() - conn.connectionStart);
+    }, 0) / totalConnections;
+
   console.log('\n=== Test Statistics ===');
   console.log(`Total connections attempted: ${CONNECTION_COUNT}`);
   console.log(`Total messages sent: ${messagesSent}`);
   console.log(`Total messages received: ${messagesReceived}`);
   console.log(`Average connection duration: ${Math.round(avgDuration)}ms`);
   console.log(`Connections closed: ${connectionsClosed}`);
-  
+
   process.exit(0);
 }
 

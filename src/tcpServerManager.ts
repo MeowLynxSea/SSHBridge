@@ -14,8 +14,18 @@ interface Tunnel {
 }
 
 interface Database {
-  updateSessionStats(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections?: number): void;
-  updateTunnelStats(tunnelId: number, bytesReceived: number, bytesSent: number, activeConnections: number): void;
+  updateSessionStats(
+    tunnelId: number,
+    bytesReceived: number,
+    bytesSent: number,
+    activeConnections?: number
+  ): void;
+  updateTunnelStats(
+    tunnelId: number,
+    bytesReceived: number,
+    bytesSent: number,
+    activeConnections: number
+  ): void;
   updateTunnelConnections(tunnelId: number, connections: number): void;
   getTunnelById(id: number): Promise<Tunnel | null>;
 }
@@ -48,7 +58,7 @@ export class TcpServerManager {
   private database: Database;
   private readonly maxConnections: number = 1000; // Maximum connections per tunnel
   private readonly connectionTimeout: number = 30000; // 30 seconds default timeout
-// Track connection counters per tunnel and SSH connection
+  // Track connection counters per tunnel and SSH connection
   private connectionCounters: Map<string, number> = new Map(); // Key: "tunnelId:connectionId"
   private rateLimiter: IntegratedRateLimiter;
 
@@ -72,7 +82,7 @@ export class TcpServerManager {
     connectionId: string
   ): Promise<net.Server> {
     const key = `${username}_${bindPort}`;
-    
+
     // Check if server already exists
     if (this.servers.has(key)) {
       throw new Error(`TCP server for ${bindAddr}:${bindPort} already exists`);
@@ -92,7 +102,7 @@ export class TcpServerManager {
       userId,
       username,
       connection: sshConnection,
-      connectionId
+      connectionId,
     });
 
     return server;
@@ -128,148 +138,166 @@ export class TcpServerManager {
   ): Promise<void> {
     // Create a unique key for this tunnel-connection combination
     const tunnelConnectionKey = `${tunnelId}:${connectionId}`;
-    
+
     // Check if we've reached the maximum connections for this tunnel per connection
     const currentCount = this.connectionCounters.get(tunnelConnectionKey) || 0;
     if (currentCount >= this.maxConnections) {
-      console.log(`Refusing new connection to ${bindAddr}:${bindPort} - maximum connections (${this.maxConnections}) reached for connection ${connectionId}`);
+      console.log(
+        `Refusing new connection to ${bindAddr}:${bindPort} - maximum connections (${this.maxConnections}) reached for connection ${connectionId}`
+      );
       socket.end();
       return;
     }
-    
+
     // Get tunnel configuration for bandwidth limiting
     const tunnel = await this.database.getTunnelById(tunnelId);
     if (tunnel?.max_bandwidth) {
       // Create unique bucket key for this tunnel-connection combination
       const bucketKey = `${tunnelId}:${connectionId}`;
-      
+
       // Initialize bandwidth limiting for this tunnel-connection combination
-      this.rateLimiter.initBucket(bucketKey, {
-        maxBandwidth: tunnel.max_bandwidth,
-        burstFactor: 1.5, // Allow 50% burst capacity
-        enableShaping: true
-      }, 'upload');
-      
-      this.rateLimiter.initBucket(bucketKey, {
-        maxBandwidth: tunnel.max_bandwidth,
-        burstFactor: 1.5,
-        enableShaping: true
-      }, 'download');
+      this.rateLimiter.initBucket(
+        bucketKey,
+        {
+          maxBandwidth: tunnel.max_bandwidth,
+          burstFactor: 1.5, // Allow 50% burst capacity
+          enableShaping: true,
+        },
+        'upload'
+      );
+
+      this.rateLimiter.initBucket(
+        bucketKey,
+        {
+          maxBandwidth: tunnel.max_bandwidth,
+          burstFactor: 1.5,
+          enableShaping: true,
+        },
+        'download'
+      );
     }
-    
-    console.log(`New connection to ${bindAddr}:${bindPort} from ${socket.remoteAddress || 'unknown'}:${socket.remotePort || 'unknown'} (SSH connection: ${connectionId})`);
-    
+
+    console.log(
+      `New connection to ${bindAddr}:${bindPort} from ${socket.remoteAddress || 'unknown'}:${socket.remotePort || 'unknown'} (SSH connection: ${connectionId})`
+    );
+
     // Track this connection for statistics - unique connection ID for this specific TCP connection
     const tcpConnectionId = `${socket.remoteAddress || 'unknown'}:${socket.remotePort || 'unknown'}-${Date.now()}`;
-    
+
     if (!this.connections.has(tunnelConnectionKey)) {
       this.connections.set(tunnelConnectionKey, new Set());
     }
     this.connections.get(tunnelConnectionKey)!.add(tcpConnectionId);
-    
+
     // Use atomic operation to increment connection counter for this specific tunnel-connection combination
     this.atomicIncrementConnection(tunnelId, connectionId);
-    
+
     // Update active connections count
     await this.updateTunnelConnectionCount(tunnelId);
-    
+
     // Track data transfer for statistics
     let bytesReceived = 0;
     let bytesSent = 0;
     let connectionClosed = false; // Prevent multiple close operations
-    
+
     // Set socket timeout with configurable value
     socket.setTimeout(this.connectionTimeout);
-    
+
     // Open a channel back to the SSH client for forwarded-tcpip
     sshConnection.forwardOut(
-      bindAddr, 
-      bindPort, 
-      socket.remoteAddress || '', 
-      socket.remotePort || 0, 
+      bindAddr,
+      bindPort,
+      socket.remoteAddress || '',
+      socket.remotePort || 0,
       async (err: Error | null, channel: SSH2Channel) => {
         if (err) {
           console.error(`Error opening channel: ${err.message}`);
-          await this.cleanupConnection(tcpConnectionId, tunnelId, connectionId, bytesReceived, bytesSent);
+          await this.cleanupConnection(
+            tcpConnectionId,
+            tunnelId,
+            connectionId,
+            bytesReceived,
+            bytesSent
+          );
           socket.end();
           return;
         }
-      
+
         // Create serial data queues to maintain packet order for this connection
         const uploadQueue: Buffer[] = [];
         const downloadQueue: Buffer[] = [];
         let uploadProcessing = false;
         let downloadProcessing = false;
-        
+
         // Track if channel is still writable to prevent backpressure issues
         let isChannelWritable = true;
         let isSocketWritable = true;
-        
+
         // Serial upload processor (socket → channel)
         const processUploadQueue = async () => {
           if (uploadProcessing || uploadQueue.length === 0) return;
           uploadProcessing = true;
-          
+
           while (uploadQueue.length > 0) {
             const data = uploadQueue.shift()!;
             bytesReceived += data.length;
-            
+
             // Update session stats in real-time for rate calculation
             const currentConnections = this.connectionCounters.get(tunnelConnectionKey) || 0;
             this.database.updateSessionStats(tunnelId, data.length, 0, currentConnections);
-            
+
             // Apply bandwidth limit BEFORE sending data
             if (tunnel?.max_bandwidth) {
               const bucketKey = `${tunnelId}:${connectionId}`;
               await this.rateLimiter.writeWithRateLimit(bucketKey, data, 'upload');
             }
-            
+
             // Only write if channel is still writable and track write status
             if (isChannelWritable) {
               channel.write(data);
             }
           }
-          
+
           uploadProcessing = false;
         };
-        
+
         // Serial download processor (channel → socket)
         const processDownloadQueue = async () => {
           if (downloadProcessing || downloadQueue.length === 0) return;
           downloadProcessing = true;
-          
+
           while (downloadQueue.length > 0) {
             const data = downloadQueue.shift()!;
             bytesSent += data.length;
-            
+
             // Update session stats in real-time for rate calculation
             const currentConnections = this.connectionCounters.get(tunnelConnectionKey) || 0;
             this.database.updateSessionStats(tunnelId, 0, data.length, currentConnections);
-            
+
             // Apply bandwidth limit BEFORE sending data
             if (tunnel?.max_bandwidth) {
               const bucketKey = `${tunnelId}:${connectionId}`;
               await this.rateLimiter.writeWithRateLimit(bucketKey, data, 'download');
             }
-            
+
             // Only write if socket is still writable
             if (isSocketWritable) {
               isSocketWritable = socket.write(data);
             }
           }
-          
+
           downloadProcessing = false;
         };
-      
+
         // Track write status to prevent writing to closed connections
         socket.on('drain', () => {
           isSocketWritable = true;
         });
-        
+
         channel.on('drain', () => {
           isChannelWritable = true;
         });
-        
+
         // Forward data between socket and channel with bandwidth limiting
         socket.on('data', (data: Buffer) => {
           // Queue data for serial processing (socket → channel)
@@ -277,98 +305,129 @@ export class TcpServerManager {
           // Process queue in next tick to maintain order
           setImmediate(processUploadQueue);
         });
-      
+
         channel.on('data', (data: Buffer) => {
           // Queue data for serial processing (channel → socket)
           downloadQueue.push(data);
           // Process queue in next tick to maintain order
           setImmediate(processDownloadQueue);
         });
-      
-      socket.on('close', async () => {
-        if (connectionClosed) return; // Prevent multiple close operations
-        connectionClosed = true;
-        
-        try {
-          // Send EOF signal to notify the SSH client that this specific connection is closed
-          // This prevents the internal server from continuing to send data for this connection
-          channel.eof();
-          // Then close the channel
-          channel.close();
-        } catch {
-          // Channel might already be closed, ignore error
-        }
-        
-        await this.cleanupConnection(tcpConnectionId, tunnelId, connectionId, bytesReceived, bytesSent);
-        socket.destroy(); // Ensure socket is fully closed
-      });
-      
-      socket.on('timeout', async () => {
-        if (connectionClosed) return; // Prevent multiple close operations
-        connectionClosed = true;
-        
-        console.log(`Socket timeout for ${bindAddr}:${bindPort}`);
-        try {
-          // Send EOF signal before closing
-          channel.eof();
-          channel.close();
-        } catch {
-          // Channel might already be closed, ignore error
-        }
-        
-        // CRITICAL: Use cleanupConnection to ensure counters are updated
-        await this.cleanupConnection(tcpConnectionId, tunnelId, connectionId, bytesReceived, bytesSent);
-        socket.destroy();
-      });
-      
-      socket.on('error', async (err?: Error) => {
-        if (connectionClosed) return; // Prevent multiple close operations
-        connectionClosed = true;
-        
-        console.error(`Socket error: ${err?.message || 'unknown'}`);
-        await this.cleanupConnection(tcpConnectionId, tunnelId, connectionId, bytesReceived, bytesSent);
-        
-        // Close the channel but do NOT affect the SSH connection itself
-        try {
-          // Send EOF signal to notify the SSH client that this specific connection is closed
-          channel.eof();
-          channel.close();
-        } catch {
-          // Channel might already be closed, ignore error
-        }
-      });
-      
-      channel.on('close', async () => {
-        if (connectionClosed) return; // Prevent multiple close operations
-        connectionClosed = true;
-        
-        try {
-          // Ensure socket is closed to prevent sending data to disconnected client
-          socket.destroy(); // Use destroy instead of end for immediate closure
-        } catch {
-          // Socket might already be closed, ignore error
-        }
-        
-        // CRITICAL: Use cleanupConnection to ensure counters are updated
-        await this.cleanupConnection(tcpConnectionId, tunnelId, connectionId, bytesReceived, bytesSent);
-      });
-      
-      channel.on('error', async (err: Error) => {
-        if (connectionClosed) return; // Prevent multiple close operations
-        connectionClosed = true;
-        
-        console.error(`Channel error: ${err.message}`);
-        await this.cleanupConnection(tcpConnectionId, tunnelId, connectionId, bytesReceived, bytesSent);
-        
-        // Close the socket but do NOT affect the SSH connection itself
-        try {
-          // Ensure socket is closed to prevent sending data to disconnected client
-          socket.destroy(); // Use destroy instead of end for immediate closure
-        } catch {
-          // Socket might already be closed, ignore error
-        }
-      });
-    });
+
+        socket.on('close', async () => {
+          if (connectionClosed) return; // Prevent multiple close operations
+          connectionClosed = true;
+
+          try {
+            // Send EOF signal to notify the SSH client that this specific connection is closed
+            // This prevents the internal server from continuing to send data for this connection
+            channel.eof();
+            // Then close the channel
+            channel.close();
+          } catch {
+            // Channel might already be closed, ignore error
+          }
+
+          await this.cleanupConnection(
+            tcpConnectionId,
+            tunnelId,
+            connectionId,
+            bytesReceived,
+            bytesSent
+          );
+          socket.destroy(); // Ensure socket is fully closed
+        });
+
+        socket.on('timeout', async () => {
+          if (connectionClosed) return; // Prevent multiple close operations
+          connectionClosed = true;
+
+          console.log(`Socket timeout for ${bindAddr}:${bindPort}`);
+          try {
+            // Send EOF signal before closing
+            channel.eof();
+            channel.close();
+          } catch {
+            // Channel might already be closed, ignore error
+          }
+
+          // CRITICAL: Use cleanupConnection to ensure counters are updated
+          await this.cleanupConnection(
+            tcpConnectionId,
+            tunnelId,
+            connectionId,
+            bytesReceived,
+            bytesSent
+          );
+          socket.destroy();
+        });
+
+        socket.on('error', async (err?: Error) => {
+          if (connectionClosed) return; // Prevent multiple close operations
+          connectionClosed = true;
+
+          console.error(`Socket error: ${err?.message || 'unknown'}`);
+          await this.cleanupConnection(
+            tcpConnectionId,
+            tunnelId,
+            connectionId,
+            bytesReceived,
+            bytesSent
+          );
+
+          // Close the channel but do NOT affect the SSH connection itself
+          try {
+            // Send EOF signal to notify the SSH client that this specific connection is closed
+            channel.eof();
+            channel.close();
+          } catch {
+            // Channel might already be closed, ignore error
+          }
+        });
+
+        channel.on('close', async () => {
+          if (connectionClosed) return; // Prevent multiple close operations
+          connectionClosed = true;
+
+          try {
+            // Ensure socket is closed to prevent sending data to disconnected client
+            socket.destroy(); // Use destroy instead of end for immediate closure
+          } catch {
+            // Socket might already be closed, ignore error
+          }
+
+          // CRITICAL: Use cleanupConnection to ensure counters are updated
+          await this.cleanupConnection(
+            tcpConnectionId,
+            tunnelId,
+            connectionId,
+            bytesReceived,
+            bytesSent
+          );
+        });
+
+        channel.on('error', async (err: Error) => {
+          if (connectionClosed) return; // Prevent multiple close operations
+          connectionClosed = true;
+
+          console.error(`Channel error: ${err.message}`);
+          await this.cleanupConnection(
+            tcpConnectionId,
+            tunnelId,
+            connectionId,
+            bytesReceived,
+            bytesSent
+          );
+
+          // Close the socket but do NOT affect the SSH connection itself
+          try {
+            // Ensure socket is closed to prevent sending data to disconnected client
+            socket.destroy(); // Use destroy instead of end for immediate closure
+          } catch {
+            // Socket might already be closed, ignore error
+          }
+        });
+      }
+    );
   }
 
   /**
@@ -382,50 +441,60 @@ export class TcpServerManager {
     accept: () => SSH2Channel,
     connectionId: string
   ): Promise<void> {
-    console.log(`Creating tunnel for external port: ${tunnel.name} -> ${tunnel.external_port} (connection: ${connectionId})`);
-    
+    console.log(
+      `Creating tunnel for external port: ${tunnel.name} -> ${tunnel.external_port} (connection: ${connectionId})`
+    );
+
     // Create unique bucket key for this tunnel-connection combination
     const bucketKey = `${tunnel.id}:${connectionId}`;
-    
+
     // Initialize bandwidth limiting for this tunnel-connection combination if needed
     if (tunnel.max_bandwidth) {
-      this.rateLimiter.initBucket(bucketKey, {
-        maxBandwidth: tunnel.max_bandwidth,
-        burstFactor: 1.5, // Allow 50% burst capacity
-        enableShaping: true
-      }, 'upload');
-      
-      this.rateLimiter.initBucket(bucketKey, {
-        maxBandwidth: tunnel.max_bandwidth,
-        burstFactor: 1.5,
-        enableShaping: true
-      }, 'download');
+      this.rateLimiter.initBucket(
+        bucketKey,
+        {
+          maxBandwidth: tunnel.max_bandwidth,
+          burstFactor: 1.5, // Allow 50% burst capacity
+          enableShaping: true,
+        },
+        'upload'
+      );
+
+      this.rateLimiter.initBucket(
+        bucketKey,
+        {
+          maxBandwidth: tunnel.max_bandwidth,
+          burstFactor: 1.5,
+          enableShaping: true,
+        },
+        'download'
+      );
     }
-    
+
     const channel: SSH2Channel = accept();
-    
+
     // For direct-tcpip connections, we forward to the address specified in the connection info
     const socket = createConnection({
       host: info.destAddr,
       port: info.destPort,
-      timeout: 10000 // 10 second connect timeout
+      timeout: 10000, // 10 second connect timeout
     }) as Socket;
-    
+
     // Track this connection for statistics
     const tcpConnectionId = `${sshConnection.remoteAddress}:${Date.now()}`;
     const tunnelConnectionKey = `${tunnel.id}:${connectionId}`;
-    
+
     if (!this.connections.has(tunnelConnectionKey)) {
       this.connections.set(tunnelConnectionKey, new Set());
     }
     this.connections.get(tunnelConnectionKey)!.add(tcpConnectionId);
-    
+
     // Use atomic operation to increment connection counter for this specific tunnel-connection combination
     this.atomicIncrementConnection(tunnel.id, connectionId);
-    
+
     // Update active connections count
     await this.updateTunnelConnectionCount(tunnel.id);
-    
+
     // Track data transfer for statistics
     let totalBytesReceived = 0;
     let totalBytesSent = 0;
@@ -434,37 +503,37 @@ export class TcpServerManager {
     socket.on('connect', () => {
       console.log(`Connected to target ${info.destAddr}:${info.destPort}`);
     });
-    
+
     socket.setTimeout(30000); // 30 second timeout
 
     socket.on('data', async (data: Buffer) => {
       totalBytesReceived += data.length;
-      
+
       // Update session stats in real-time for rate calculation
       const currentConnections = this.connectionCounters.get(tunnelConnectionKey) || 0;
       this.database.updateSessionStats(tunnel.id, data.length, 0, currentConnections);
-      
+
       // Check bandwidth limit (download direction: socket -> channel)
       if (tunnel.max_bandwidth) {
         await this.rateLimiter.writeWithRateLimit(bucketKey, data, 'download');
       }
-      
+
       // Write data to channel (after bandwidth control if needed)
       channel.write(data);
     });
 
     channel.on('data', async (data: Buffer) => {
       totalBytesSent += data.length;
-      
+
       // Update session stats in real-time for rate calculation
       const currentConnections = this.connectionCounters.get(tunnelConnectionKey) || 0;
       this.database.updateSessionStats(tunnel.id, 0, data.length, currentConnections);
-      
+
       // Check bandwidth limit (upload direction: channel -> socket)
       if (tunnel.max_bandwidth) {
         await this.rateLimiter.writeWithRateLimit(bucketKey, data, 'upload');
       }
-      
+
       // Write data to socket (after bandwidth control if needed)
       socket.write(data);
     });
@@ -476,8 +545,14 @@ export class TcpServerManager {
 
     socket.on('error', async (err: Error) => {
       console.error(`Target connection error: ${err.message}`);
-      await this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
-      
+      await this.cleanupConnection(
+        tcpConnectionId,
+        tunnel.id,
+        connectionId,
+        totalBytesReceived,
+        totalBytesSent
+      );
+
       // Close the channel but do NOT affect the SSH connection itself
       try {
         channel.close();
@@ -489,24 +564,36 @@ export class TcpServerManager {
     channel.on('close', async () => {
       if (connectionClosed) return; // Prevent multiple close operations
       connectionClosed = true;
-      
+
       try {
         socket.end();
       } catch {
         // Socket might already be closed, ignore error
       }
-      
+
       // CRITICAL: Use cleanupConnection to ensure counters are updated
-      await this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
+      await this.cleanupConnection(
+        tcpConnectionId,
+        tunnel.id,
+        connectionId,
+        totalBytesReceived,
+        totalBytesSent
+      );
     });
-    
+
     channel.on('error', async (err: Error) => {
       if (connectionClosed) return; // Prevent multiple close operations
       connectionClosed = true;
-      
+
       console.error(`Channel error in direct-tcpip: ${err.message}`);
-      await this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
-      
+      await this.cleanupConnection(
+        tcpConnectionId,
+        tunnel.id,
+        connectionId,
+        totalBytesReceived,
+        totalBytesSent
+      );
+
       // Close the socket but do NOT affect the SSH connection itself
       try {
         socket.end();
@@ -518,7 +605,7 @@ export class TcpServerManager {
     socket.on('close', async () => {
       if (connectionClosed) return; // Prevent multiple close operations
       connectionClosed = true;
-      
+
       try {
         // Send EOF signal to notify the SSH client that this specific connection is closed
         // This prevents the internal server from continuing to send data for this connection
@@ -527,15 +614,21 @@ export class TcpServerManager {
       } catch {
         // Channel might already be closed, ignore error
       }
-      
+
       // Use standard cleanup method to ensure consistency
-      await this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
+      await this.cleanupConnection(
+        tcpConnectionId,
+        tunnel.id,
+        connectionId,
+        totalBytesReceived,
+        totalBytesSent
+      );
     });
 
     socket.on('end', async () => {
       if (connectionClosed) return; // Prevent multiple close operations
       connectionClosed = true;
-      
+
       try {
         // Send EOF signal to notify the SSH client that this specific connection is closed
         channel.eof();
@@ -543,15 +636,21 @@ export class TcpServerManager {
       } catch {
         // Channel might already be closed, ignore error
       }
-      
+
       // CRITICAL: Use cleanupConnection to ensure counters are updated
-      await this.cleanupConnection(tcpConnectionId, tunnel.id, connectionId, totalBytesReceived, totalBytesSent);
+      await this.cleanupConnection(
+        tcpConnectionId,
+        tunnel.id,
+        connectionId,
+        totalBytesReceived,
+        totalBytesSent
+      );
     });
 
     channel.on('end', () => {
       if (connectionClosed) return; // Prevent multiple close operations
       connectionClosed = true;
-      
+
       try {
         // Ensure socket is closed to prevent sending data to disconnected client
         socket.end();
@@ -574,7 +673,7 @@ export class TcpServerManager {
    */
   getUserServers(username: string): TcpServerInfo[] {
     const result: TcpServerInfo[] = [];
-    this.servers.forEach(server => {
+    this.servers.forEach((server) => {
       if (server.username === username) {
         result.push(server);
       }
@@ -587,7 +686,7 @@ export class TcpServerManager {
    */
   isPortInUse(bindPort: number): boolean {
     let inUse = false;
-    this.servers.forEach(server => {
+    this.servers.forEach((server) => {
       if (server.bindPort === bindPort) {
         inUse = true;
       }
@@ -601,7 +700,7 @@ export class TcpServerManager {
   async closeTcpServer(username: string, bindPort: number): Promise<void> {
     const key = `${username}_${bindPort}`;
     const serverInfo = this.servers.get(key);
-    
+
     if (!serverInfo) {
       console.log(`No TCP server found for ${username}:${bindPort}, might already be closed`);
       return;
@@ -614,30 +713,32 @@ export class TcpServerManager {
     // Remove all event listeners to prevent new connections
     serverInfo.server.removeAllListeners('connection');
     serverInfo.server.removeAllListeners('error');
-    
+
     // Force close all existing connections for this server and connection
     const tunnelConnectionKey = `${serverInfo.tunnelId}:${serverInfo.connectionId}`;
     const connections = this.connections.get(tunnelConnectionKey);
     if (connections) {
-      console.log(`Closing ${connections.size} active connections for tunnel ${serverInfo.tunnelId} (connection: ${serverInfo.connectionId})`);
+      console.log(
+        `Closing ${connections.size} active connections for tunnel ${serverInfo.tunnelId} (connection: ${serverInfo.connectionId})`
+      );
       connections.forEach((_connectionId) => {
         // Note: Individual connection cleanup is handled by socket close handlers
         // but we force close here to ensure clean shutdown
         // Note: We don't have direct access to the socket here, so we rely
         // on the socket close handlers to clean up properly
       });
-      
+
       // Clear all connections for this tunnel-connection combination
       connections.clear();
       this.connections.delete(tunnelConnectionKey);
     }
-    
+
     // Reset connection counter for this tunnel-connection combination
     this.connectionCounters.delete(tunnelConnectionKey);
-    
+
     // Update database to reflect current connection count (might still have connections from other SSH connections)
     this.updateTunnelConnectionCount(serverInfo.tunnelId);
-    
+
     // Close the server
     if (serverInfo.server.listening) {
       return new Promise<void>((resolve, reject) => {
@@ -664,10 +765,10 @@ export class TcpServerManager {
    */
   async closeAllUserServers(username: string): Promise<void> {
     const userServers = this.getUserServers(username);
-    const closePromises = userServers.map(server => 
+    const closePromises = userServers.map((server) =>
       this.closeTcpServer(server.username, server.bindPort)
     );
-    
+
     await Promise.all(closePromises);
   }
 
@@ -677,16 +778,16 @@ export class TcpServerManager {
   async closeAllServers(): Promise<void> {
     // Clean up all bandwidth limiters
     this.rateLimiter.destroy();
-    
+
     // Clear all connection counters
     this.connectionCounters.clear();
-    
+
     const closePromises: Promise<void>[] = [];
     this.servers.forEach((serverInfo, key) => {
       const [username, portStr] = key.split('_');
       closePromises.push(this.closeTcpServer(username, parseInt(portStr, 10)));
     });
-    
+
     await Promise.all(closePromises);
     this.servers.clear();
   }
@@ -694,13 +795,19 @@ export class TcpServerManager {
   /**
    * Clean up a connection and update statistics
    */
-  private async cleanupConnection(tcpConnectionId: string, tunnelId: number, sshConnectionId: string, bytesReceived: number, bytesSent: number): Promise<void> {
+  private async cleanupConnection(
+    tcpConnectionId: string,
+    tunnelId: number,
+    sshConnectionId: string,
+    bytesReceived: number,
+    bytesSent: number
+  ): Promise<void> {
     const tunnelConnectionKey = `${tunnelId}:${sshConnectionId}`;
-    
+
     try {
       // Update statistics first
       this.updateTunnelStats(tunnelId, bytesReceived, bytesSent);
-      
+
       // Remove connection from tracking set
       const connections = this.connections.get(tunnelConnectionKey);
       let wasInSet = false;
@@ -711,11 +818,11 @@ export class TcpServerManager {
           this.connections.delete(tunnelConnectionKey);
         }
       }
-      
+
       // Only decrement counter if connection was actually in the set
       if (wasInSet) {
         this.atomicDecrementConnection(tunnelId, sshConnectionId);
-        
+
         // Update database
         await this.updateTunnelConnectionCount(tunnelId);
       }
@@ -748,32 +855,36 @@ export class TcpServerManager {
     const current = this.connectionCounters.get(tunnelConnectionKey) || 0;
     const newCount = current + 1;
     this.connectionCounters.set(tunnelConnectionKey, newCount);
-    
+
     // Log connection count changes for debugging
-    console.log(`[Tunnel ${tunnelId}:${sshConnectionId}] Connection count: ${current} -> ${newCount} (+1)`);
-    
+    console.log(
+      `[Tunnel ${tunnelId}:${sshConnectionId}] Connection count: ${current} -> ${newCount} (+1)`
+    );
+
     // Ensure connections set exists
     if (!this.connections.has(tunnelConnectionKey)) {
       this.connections.set(tunnelConnectionKey, new Set());
     }
-    
+
     return newCount;
   }
-  
+
   private atomicDecrementConnection(tunnelId: number, sshConnectionId: string): number {
     const tunnelConnectionKey = `${tunnelId}:${sshConnectionId}`;
     const current = this.connectionCounters.get(tunnelConnectionKey) || 0;
     const newCount = Math.max(0, current - 1);
     this.connectionCounters.set(tunnelConnectionKey, newCount);
-    
+
     // Log connection count changes for debugging
-    console.log(`[Tunnel ${tunnelId}:${sshConnectionId}] Connection count: ${current} -> ${newCount} (-1)`);
-    
+    console.log(
+      `[Tunnel ${tunnelId}:${sshConnectionId}] Connection count: ${current} -> ${newCount} (-1)`
+    );
+
     // Clean up counter if it's 0 to prevent memory leaks
     if (newCount === 0) {
       this.connectionCounters.delete(tunnelConnectionKey);
     }
-    
+
     return newCount;
   }
 
@@ -812,7 +923,7 @@ export class TcpServerManager {
    */
   getActiveServers(): TcpServerInfo[] {
     const result: TcpServerInfo[] = [];
-    this.servers.forEach(server => {
+    this.servers.forEach((server) => {
       result.push(server);
     });
     return result;
@@ -823,8 +934,18 @@ export class TcpServerManager {
    * Aggregates stats across all connections for this tunnel
    */
   getBandwidthStats(tunnelId: number): {
-    upload: { tokens: number; capacity: number; refillRate: number; utilization: number } | null;
-    download: { tokens: number; capacity: number; refillRate: number; utilization: number } | null;
+    upload: {
+      tokens: number;
+      capacity: number;
+      refillRate: number;
+      utilization: number;
+    } | null;
+    download: {
+      tokens: number;
+      capacity: number;
+      refillRate: number;
+      utilization: number;
+    } | null;
   } {
     // Find all buckets for this tunnel and aggregate their stats
     type BucketStats = {
@@ -833,16 +954,16 @@ export class TcpServerManager {
       refillRate: number;
       utilization: number;
     } | null;
-    
+
     let uploadStats: BucketStats = null;
     let downloadStats: BucketStats = null;
-    
+
     for (const [key] of this.connectionCounters.keys()) {
       const [keyTunnelId] = key.split(':');
       if (parseInt(keyTunnelId, 10) === tunnelId) {
         const upload = this.rateLimiter.getBucketStats(key, 'upload');
         const download = this.rateLimiter.getBucketStats(key, 'download');
-        
+
         if (upload) {
           if (!uploadStats) {
             uploadStats = { ...upload };
@@ -854,7 +975,7 @@ export class TcpServerManager {
             uploadStats.utilization = Math.max(uploadStats.utilization, upload.utilization);
           }
         }
-        
+
         if (download) {
           if (!downloadStats) {
             downloadStats = { ...download };
@@ -868,10 +989,10 @@ export class TcpServerManager {
         }
       }
     }
-    
+
     return {
       upload: uploadStats,
-      download: downloadStats
+      download: downloadStats,
     };
   }
 
@@ -881,24 +1002,32 @@ export class TcpServerManager {
    */
   async updateBandwidthConfig(tunnelId: number): Promise<void> {
     const tunnel = await this.database.getTunnelById(tunnelId);
-    
+
     if (tunnel?.max_bandwidth) {
       // Find all connection-specific buckets for this tunnel
       for (const [key] of this.connectionCounters.keys()) {
         const [keyTunnelId] = key.split(':');
         if (parseInt(keyTunnelId, 10) === tunnelId) {
           // Update this specific connection bucket
-          this.rateLimiter.initBucket(key, {
-            maxBandwidth: tunnel.max_bandwidth,
-            burstFactor: 1.5,
-            enableShaping: true
-          }, 'upload');
-          
-          this.rateLimiter.initBucket(key, {
-            maxBandwidth: tunnel.max_bandwidth,
-            burstFactor: 1.5,
-            enableShaping: true
-          }, 'download');
+          this.rateLimiter.initBucket(
+            key,
+            {
+              maxBandwidth: tunnel.max_bandwidth,
+              burstFactor: 1.5,
+              enableShaping: true,
+            },
+            'upload'
+          );
+
+          this.rateLimiter.initBucket(
+            key,
+            {
+              maxBandwidth: tunnel.max_bandwidth,
+              burstFactor: 1.5,
+              enableShaping: true,
+            },
+            'download'
+          );
         }
       }
     } else {
@@ -910,8 +1039,8 @@ export class TcpServerManager {
           keysToRemove.push(key);
         }
       }
-      
-      keysToRemove.forEach(key => this.rateLimiter.removeBucket(key));
+
+      keysToRemove.forEach((key) => this.rateLimiter.removeBucket(key));
     }
   }
 
@@ -923,12 +1052,15 @@ export class TcpServerManager {
     tunnelConnections: Map<string, number>; // Changed to string key
     connectionDetails: Map<string, Set<string>>; // Changed to string key
   } {
-    const totalConnections = Array.from(this.connectionCounters.values()).reduce((sum, count) => sum + count, 0);
-    
+    const totalConnections = Array.from(this.connectionCounters.values()).reduce(
+      (sum, count) => sum + count,
+      0
+    );
+
     return {
       totalConnections,
       tunnelConnections: new Map(this.connectionCounters),
-      connectionDetails: new Map(this.connections)
+      connectionDetails: new Map(this.connections),
     };
   }
 }

@@ -37,16 +37,19 @@ export interface UserData {
 // Function overloads for event handlers
 export interface SSH2Connection {
   on(event: 'authentication', callback: (ctx: SSH2AuthContext) => void): void;
-  on(event: 'request', callback: (accept: () => void, reject: () => void, name: string, data: SSH2RequestData) => void): void;
+  on(
+    event: 'request',
+    callback: (accept: () => void, reject: () => void, name: string, data: SSH2RequestData) => void
+  ): void;
   on(event: 'session', callback: (accept: () => SSH2Session) => void): void;
   on(event: 'error' | 'end', callback: () => void): void;
   on(event: 'error', callback: (err: Error) => void): void;
   on(event: string, callback: (...args: unknown[]) => void): void;
   forwardOut(
-    srcAddr: string, 
-    srcPort: number, 
-    destAddr: string, 
-    destPort: number, 
+    srcAddr: string,
+    srcPort: number,
+    destAddr: string,
+    destPort: number,
     callback: (err: Error | null, channel: SSH2Channel) => void
   ): void;
   end(): void;
@@ -66,9 +69,15 @@ export interface SSH2Connection {
 }
 
 export interface SSH2Session {
-  on(event: 'pty', callback: (accept: () => void, reject: () => void, info: SSH2PtyInfo) => void): void;
+  on(
+    event: 'pty',
+    callback: (accept: () => void, reject: () => void, info: SSH2PtyInfo) => void
+  ): void;
   on(event: 'shell', callback: (accept: () => SSH2Channel, reject: () => void) => void): void;
-  on(event: 'channel', callback: (accept: () => SSH2Channel, reject: () => void, info: SSH2ForwardData) => void): void;
+  on(
+    event: 'channel',
+    callback: (accept: () => SSH2Channel, reject: () => void, info: SSH2ForwardData) => void
+  ): void;
   on(event: 'error', callback: (err: Error) => void): void;
   on(event: string, callback: (...args: unknown[]) => void): void;
   _showForwardError?: boolean;

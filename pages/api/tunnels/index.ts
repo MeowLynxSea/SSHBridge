@@ -6,7 +6,7 @@ const database = getDatabaseInstance();
 async function authenticate(req: NextApiRequest): Promise<{ id: number; username: string } | null> {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return null;
-  
+
   const user = await database.validateSession(token);
   return user ? { id: user.id, username: user.username } : null;
 }
@@ -46,7 +46,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (max_bandwidth && (isNaN(max_bandwidth) || parseInt(max_bandwidth) <= 0)) {
-          return res.status(400).json({ error: 'Max bandwidth must be a positive number (bytes per second)' });
+          return res.status(400).json({
+            error: 'Max bandwidth must be a positive number (bytes per second)',
+          });
         }
 
         const tunnel = await database.createTunnel(
@@ -59,17 +61,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         res.status(201).json({ tunnel });
       } catch (error) {
         console.error('Create tunnel error:', error);
-        
+
         // Handle specific validation errors
         if (error instanceof Error) {
           if (error.message.includes('is already in use')) {
             return res.status(409).json({ error: error.message });
           }
-          if (error.message.includes('not allowed') || error.message.includes('Port must be in range')) {
+          if (
+            error.message.includes('not allowed') ||
+            error.message.includes('Port must be in range')
+          ) {
             return res.status(400).json({ error: error.message });
           }
         }
-        
+
         res.status(500).json({ error: 'Internal server error' });
       }
       break;

@@ -26,7 +26,9 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   const { isMobile, isSmallMobile } = useMobile();
 
   return (
-    <div className={`responsive-layout ${isMobile ? 'mobile' : ''} ${isSmallMobile ? 'small-mobile' : ''}`}>
+    <div
+      className={`responsive-layout ${isMobile ? 'mobile' : ''} ${isSmallMobile ? 'small-mobile' : ''}`}
+    >
       {children}
     </div>
   );
