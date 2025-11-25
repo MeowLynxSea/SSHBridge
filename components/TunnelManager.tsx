@@ -190,7 +190,7 @@ export default function TunnelManager() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="nb-box" style={{ 
+      <header className={`nb-box nb-header`} style={{ 
         borderBottom: 'none', 
         padding: isSmallMobile ? '15px 0' : '20px 0', 
         boxShadow: 'none',

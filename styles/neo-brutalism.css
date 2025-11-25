@@ -20,6 +20,16 @@
     --font-mono: "Courier New", Courier, monospace;
 }
 
+/* 暗色主题变量 */
+.dark {
+    /* 暗色主题配色方案 - 基于明亮模式的反转 */
+    --bg-color: #2d2d2d; /* 更亮的深灰色背景 */
+    --fg-color: #ffffff; /* 文字类白色 */
+    --border-bg-color: #e0e0e0; /* 边框和背景类白色（稍微暗一点的白色） */
+    --accent-color: #ff6b35; /* 稍微亮一点的橙色，在暗色背景下更突出 */
+    --gray-light: #3a3a3a; /* 较浅的灰色 */
+}
+
 /* 装饰性网格背景 */
 body::before {
     content: "";
@@ -35,6 +45,122 @@ body::before {
     opacity: 0.03;
     z-index: -1;
     pointer-events: none;
+}
+
+/* 暗色主题下的网格背景调整 */
+.dark body::before {
+    opacity: 0.05; /* 在暗色背景下稍微增加不透明度以提高可见性 */
+}
+
+/* 暗色主题下的文字颜色 */
+.dark body {
+    color: var(--fg-color); /* 确保主要文字颜色为白色 */
+}
+
+/* 暗色主题下的标题文字 */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    color: var(--fg-color); /* 确保标题文字为白色 */
+}
+
+/* 暗色主题下的段落文字 */
+.dark p {
+    color: var(--fg-color); /* 确保段落文字为白色 */
+}
+
+/* 暗色主题下的标签文字 */
+.dark .nb-label {
+    color: var(--fg-color); /* 确保标签文字为白色 */
+}
+
+
+
+/* 暗色主题下的表格单元格 */
+.dark .nb-table th,
+.dark .nb-table td {
+    color: var(--fg-color); /* 确保表格文字为白色文字 */
+    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+}
+
+/* 暗色主题下的徽章 */
+.dark .nb-badge {
+    color: var(--fg-color); /* 确保徽章文字为白色文字 */
+    background-color: var(--gray-light); /* 使用暗灰色背景 */
+    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+}
+
+/* 暗色主题下的表格标题行 */
+.dark .nb-table th {
+    background: var(--border-bg-color); /* 边框和背景类白色背景 */
+    color: var(--bg-color); /* 深灰色文字 */
+}
+
+/* 暗色主题下的标签页 */
+.dark .nb-tab {
+    color: var(--fg-color); /* 确保标签页文字为白色文字 */
+    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+}
+
+/* 暗色主题下的按钮 */
+.dark .nb-btn {
+    color: var(--fg-color); /* 确保按钮文字为白色文字 */
+    background-color: var(--bg-color); /* 深灰色背景 */
+    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
+}
+
+/* 暗色主题下的主按钮（hover效果） */
+.dark .nb-btn-primary:hover {
+    color: var(--bg-color); /* hover时背景变白，文字变黑 */
+}
+
+/* 暗色主题下的强调按钮 */
+.dark .nb-btn-accent {
+    color: var(--fg-color) !important; /* 强调按钮文字为白色 */
+    background: var(--accent-color) !important; /* 确保背景色为橙色 */
+}
+
+.dark .nb-btn-accent:hover {
+    color: var(--bg-color) !important; /* hover时文字变黑色 */
+    background: var(--border-bg-color) !important; /* hover时背景变边框和背景类白色 */
+}
+
+/* 暗色主题下的故障效果按钮 */
+.dark .nb-btn-glitch:hover {
+    color: var(--accent-color); /* hover时文字变橙色 */
+}
+
+/* 确保顶部导航栏中的按钮文字颜色正确 */
+.dark header .nb-btn,
+.dark .nb-box .nb-btn {
+    color: var(--fg-color); /* 白色文字 */
+}
+
+/* 暗色主题下顶部导航栏中的强调按钮 */
+.dark header .nb-btn-accent,
+.dark .nb-box .nb-btn-accent {
+    color: var(--bg-color); /* 强调按钮文字为黑色 */
+}
+
+/* 确保所有上下文中的按钮文字颜色都正确 */
+.dark .nb-btn:not(.nb-btn-accent):not(.nb-btn-primary) {
+    color: var(--fg-color) !important; /* 强制白色文字 */
+}
+
+/* 暗色主题下的复选框 */
+.dark .nb-checkmark {
+    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+}
+
+/* 暗色主题下的警告框 */
+.dark .nb-alert {
+    background-color: var(--bg-color); /* 深灰色背景 */
+    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
+}
+
+/* 暗色主题下的标签页组 */
+.dark .nb-tabs {
+    border-bottom-color: var(--border-bg-color); /* 边框和背景类白色底部边框 */
 }
 
 /* 标题样式 */
@@ -65,6 +191,32 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes scanline {
     0% { transform: translateY(-100%); }
     100% { transform: translateY(100%); }
+}
+
+/* 顶部导航栏特殊样式 */
+.nb-header {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.nb-header:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* 暗色主题下的顶部导航栏 */
+.dark .nb-header {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.dark .nb-header:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border: none !important;
 }
 
 /* NEO-BRUTALISM 通用类 */
@@ -164,6 +316,60 @@ h1, h2, h3, h4, h5, h6 {
 .nb-input:focus {
     box-shadow: 4px 4px 0 var(--accent-color);
     transform: translate(-2px, -2px);
+}
+
+/* 暗色主题下的输入框焦点状态 - 增强可见性 */
+.dark .nb-input:focus {
+    box-shadow: 4px 4px 0 var(--accent-color), 0 0 0 2px var(--accent-color);
+}
+
+/* 暗色主题下的盒子 */
+.dark .nb-box {
+    background: var(--bg-color); /* 深灰色背景 */
+    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
+}
+
+/* 暗色主题下的卡片 */
+.dark .nb-card {
+    background: var(--bg-color); /* 深灰色背景 */
+    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+    box-shadow: var(--shadow-distance) var(--shadow-distance) 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
+}
+
+/* 暗色主题下的卡片头部边框 */
+.dark .nb-card-header {
+    border-bottom-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+}
+
+/* 暗色主题下的输入框 */
+.dark .nb-input {
+    color: var(--fg-color); /* 白色文字 */
+    background-color: var(--bg-color); /* 深灰色背景 */
+    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+    box-shadow: 2px 2px 0 transparent;
+}
+
+/* 暗色主题下的输入框placeholder文字颜色 */
+.dark .nb-input::placeholder {
+    color: var(--fg-color); /* 白色文字 */
+    opacity: 0.6; /* 稍微透明以区分 */
+}
+
+/* 暗色主题下的输入框placeholder文字（兼容性） */
+.dark .nb-input::-webkit-input-placeholder {
+    color: var(--fg-color);
+    opacity: 0.6;
+}
+
+.dark .nb-input::-moz-placeholder {
+    color: var(--fg-color);
+    opacity: 0.6;
+}
+
+.dark .nb-input:-ms-input-placeholder {
+    color: var(--fg-color);
+    opacity: 0.6;
 }
 
 /* Label */
@@ -336,6 +542,31 @@ h1, h2, h3, h4, h5, h6 {
     display: none;
     place-items: center;
     backdrop-filter: grayscale(100%) contrast(1.2);
+}
+
+/* 暗色主题下的模态框背景 */
+.dark .nb-dialog-overlay {
+    background: rgba(255, 107, 53, 0.85); /* 使用暗色主题下的橙色，稍微降低不透明度 */
+}
+
+/* 暗色主题下的模态框标题背景 */
+.dark .nb-dialog-header {
+    background: var(--border-bg-color); /* 边框和背景类白色 */
+    color: var(--bg-color); /* 深灰色文字 */
+}
+
+/* 确保模态框标题文字颜色正确 */
+.dark .nb-dialog-header h2,
+.dark .nb-dialog-header h3,
+.dark .nb-dialog-header .title {
+    color: var(--bg-color) !important; /* 强制深灰色文字 */
+}
+
+/* 暗色主题下的模态框卡片 */
+.dark .nb-dialog-card {
+    background: var(--bg-color); /* 深灰色背景 */
+    border-color: var(--border-bg-color); /* 边框和背景类白色边框 */
+    box-shadow: 10px 10px 0 var(--border-bg-color); /* 边框和背景类白色阴影 */
 }
 
 .nb-dialog-card {
