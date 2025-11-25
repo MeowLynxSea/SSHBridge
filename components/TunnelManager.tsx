@@ -552,39 +552,57 @@ export default function TunnelManager() {
               </div>
               <div className="nb-card-body">
                 <ol style={{ lineHeight: isSmallMobile ? '1.6' : '1.8', paddingLeft: '20px' }}>
-                  <li style={{ marginBottom: '10px' }}>{t('tunnelManager.connectInstruction')}</li>
-                  <li style={{ marginBottom: '10px' }}>
-                    {t('tunnelManager.usePortInstruction')}
-                    <div style={{ 
-                      marginTop: '5px',
-                      padding: '8px', 
-                      backgroundColor: 'var(--gray-light)', 
-                      border: '1px solid var(--fg-color)',
-                      fontFamily: 'monospace',
-                      fontSize: isSmallMobile ? '0.8rem' : '0.9rem',
-                      wordBreak: 'break-all',
-                      overflowX: 'auto'
-                    }}>
-                      ssh -R {tunnels.length > 0 ? tunnels.map(t => t.external_port).join(', ') : 'PORT'}:localhost:LOCAL_PORT user@server
+                  <li style={{ marginBottom: '15px' }}>
+                    <strong>{t('tunnelManager.step1Title')}</strong>
+                    <div style={{ marginTop: '8px' }}>
+                      {t('tunnelManager.step1Description')}
+                      <div style={{ 
+                        marginTop: '8px',
+                        padding: '10px', 
+                        backgroundColor: 'var(--gray-light)', 
+                        border: '1px solid var(--fg-color)',
+                        fontFamily: 'monospace',
+                        fontSize: isSmallMobile ? '0.8rem' : '0.9rem',
+                        wordBreak: 'break-all',
+                        overflowX: 'auto',
+                        borderRadius: '4px'
+                      }}>
+                        {baseTunnelPort === '22' 
+                          ? `ssh -R ${tunnels.length > 0 ? tunnels[0]?.external_port || '8080' : '8080'}:localhost:3000 ${user?.username || 'your_username'}@${baseTunnelHost}`
+                          : `ssh -p ${baseTunnelPort} -R ${tunnels.length > 0 ? tunnels[0]?.external_port || '8080' : '8080'}:localhost:3000 ${user?.username || 'your_username'}@${baseTunnelHost}`
+                        }
+                      </div>
                     </div>
                   </li>
-                  <li style={{ marginBottom: '10px' }}>{t('tunnelManager.connectExternalUsers')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('tunnelManager.sshForward')}</li>
-                  <li>
-                    {t('tunnelManager.example')}
-                    <div style={{ 
-                      marginTop: '5px',
-                      padding: '8px', 
-                      backgroundColor: 'var(--gray-light)', 
-                      border: '1px solid var(--fg-color)',
-                      fontFamily: 'monospace',
-                      fontSize: isSmallMobile ? '0.8rem' : '0.9rem',
-                      wordBreak: 'break-all'
-                    }}>
-                      ssh -R 8080:localhost:3000 user@server
+                  <li style={{ marginBottom: '15px' }}>
+                    <strong>{t('tunnelManager.step2Title')}</strong>
+                    <div style={{ marginTop: '8px' }}>
+                      {t('tunnelManager.step2Description')}
+                      <div style={{ marginTop: '8px' }}>
+                        <span style={{ 
+                          padding: '4px 8px', 
+                          backgroundColor: 'var(--accent-color)', 
+                          color: 'var(--bg-color)',
+                          borderRadius: '4px',
+                          fontFamily: 'monospace',
+                          fontSize: '0.9rem'
+                        }}>
+                          {baseTunnelHost}:{tunnels.length > 0 ? tunnels[0]?.external_port || '8080' : '8080'}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ marginTop: '5px', fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                      {t('tunnelManager.exampleDescription')}
+                  </li>
+                  <li>
+                    <strong>{t('tunnelManager.step3Title')}</strong>
+                    <div style={{ marginTop: '8px' }}>
+                      {t('tunnelManager.step3Description')}
+                      <div style={{ marginTop: '8px', fontSize: '0.9rem' }}>
+                        <ul style={{ paddingLeft: '20px', listStyleType: 'disc' }}>
+                          <li style={{ marginBottom: '5px' }}>{t('tunnelManager.step3Option1')}</li>
+                          <li style={{ marginBottom: '5px' }}>{t('tunnelManager.step3Option2')}</li>
+                          <li>{t('tunnelManager.step3Note')}</li>
+                        </ul>
+                      </div>
                     </div>
                   </li>
                 </ol>
