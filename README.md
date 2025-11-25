@@ -1,15 +1,17 @@
 # SSHBridge
 
-SSH服务器和隧道管理系统，提供用户认证、隧道管理和Web UI。
+SSH server and tunnel management system with user authentication, tunnel management, and Web UI.
 
-## 功能特性
+## Features
 
-- SSH服务器，支持密码认证
-- 反向代理/隧道管理
-- 用户注册、登录、认证
-- Web UI管理隧道（创建、编辑、删除）
-- 严格的TypeScript类型检查
-- Next.js SSR模式前端
+- SSH server with password authentication
+- Reverse proxy/tunnel management
+- User registration, login, and authentication
+- Web UI for tunnel management (create, edit, delete)
+- Multi-language support (English, Chinese, Spanish, French, German, Japanese, Russian, Arabic)
+- RTL language support (Arabic)
+- Strict TypeScript type checking
+- Next.js SSR mode frontend
 
 ## 技术栈
 

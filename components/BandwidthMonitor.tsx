@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
 import { formatForDisplay } from '../src/utils/timeUtils';
 import { useMobile } from './ResponsiveLayout';
@@ -32,6 +33,7 @@ interface BandwidthMonitorProps {
 }
 
 export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthMonitorProps) {
+  const { t } = useTranslation();
   const { token } = useAuth();
   const [stats, setStats] = useState<BandwidthStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,11 +68,11 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
         setStats(data.stats);
       } else {
         const errorData = await response.json();
-        setError(errorData.error || 'Failed to fetch bandwidth stats');
+        setError(errorData.error || t('console.failedToFetchBandwidthStats'));
       }
     } catch (err) {
-      console.error('Failed to fetch bandwidth stats:', err);
-      setError('Network error');
+      console.error(t('console.failedToFetchBandwidthStats'), err);
+      setError(t('settings.networkError'));
     } finally {
       setLoading(false);
     }
@@ -120,14 +122,14 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
             textTransform: 'uppercase',
             fontSize: isSmallMobile ? '1.2rem' : '1.5rem'
           }}>
-            {isSmallMobile ? 'BANDWIDTH' : 'BANDWIDTH MONITOR'}: {tunnel.name}
+            {isSmallMobile ? t('tunnelManager.bandwidth') : t('tunnelManager.bandwidthMonitor')}: {tunnel.name}
           </h2>
           <button 
             className="nb-btn" 
             style={{ background: 'none', border: 'none', boxShadow: 'none', padding: '5px' }}
             onClick={onClose}
           >
-            X
+            {t('tunnelManager.close')}
           </button>
         </div>
         <div className="nb-dialog-body">
@@ -140,7 +142,7 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
           {loading && !stats && (
             <div style={{ textAlign: 'center', padding: '20px' }}>
               <div className="nb-loader" style={{ margin: '0 auto' }}></div>
-              <p style={{ marginTop: '10px' }}>Loading bandwidth statistics...</p>
+              <p style={{ marginTop: '10px' }}>{t('tunnelManager.loadingBandwidth')}</p>
             </div>
           )}
           
@@ -149,18 +151,18 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
               {/* Bandwidth Configuration */}
               <div className="nb-box nb-card" style={{ marginBottom: '20px' }}>
                 <div className="nb-card-header">
-                  <h3 className="nb-card-title">BANDWIDTH CONFIGURATION</h3>
+                  <h3 className="nb-card-title">{t('tunnelManager.bandwidthConfiguration')}</h3>
                 </div>
                 <div className="nb-card-body">
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <span>Status:</span>
+                    <span>{t('tunnelManager.statusLabel')}</span>
                     <span className={`nb-badge ${stats.is_limited ? '' : 'nb-badge-success'}`}>
-                      {stats.is_limited ? 'Limited' : 'Unlimited'}
+                      {stats.is_limited ? t('tunnelManager.limited') : t('tunnelManager.unlimited')}
                     </span>
                   </div>
                   {stats.max_bandwidth && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Max Bandwidth:</span>
+                      <span>{t('tunnelManager.maxBandwidthLabel')}</span>
                       <span className="nb-badge">
                         {stats.max_bandwidth < 1024 * 1024 
                           ? `${(stats.max_bandwidth / 1024).toFixed(1)}KB/s`
@@ -175,38 +177,38 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
               {/* Traffic Statistics */}
               <div className="nb-box nb-card" style={{ marginBottom: '20px' }}>
                 <div className="nb-card-header">
-                  <h3 className="nb-card-title">TRAFFIC STATISTICS</h3>
+                  <h3 className="nb-card-title">{t('tunnelManager.trafficStatistics')}</h3>
                 </div>
                 <div className="nb-card-body">
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                     <div>
-                      <h4 style={{ marginBottom: '10px', fontSize: '0.9rem', opacity: '0.8' }}>CURRENT SESSION</h4>
+                      <h4 style={{ marginBottom: '10px', fontSize: '0.9rem', opacity: '0.8' }}>{t('tunnelManager.currentSession')}</h4>
                       <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Received:</span>
+                        <span>{t('tunnelManager.received')}:</span>
                         <span>{formatBytes(stats.current_bytes_received)}</span>
                       </div>
                       <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Sent:</span>
+                        <span>{t('tunnelManager.sent')}:</span>
                         <span>{formatBytes(stats.current_bytes_sent)}</span>
                       </div>
                       <div style={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Total:</span>
+                        <span>{t('tunnelManager.total')}</span>
                         <span>{formatBytes(stats.current_bytes_received + stats.current_bytes_sent)}</span>
                       </div>
                     </div>
                     
                     <div>
-                      <h4 style={{ marginBottom: '10px', fontSize: '0.9rem', opacity: '0.8' }}>ALL TIME TOTAL</h4>
+                      <h4 style={{ marginBottom: '10px', fontSize: '0.9rem', opacity: '0.8' }}>{t('tunnelManager.allTimeTotal')}</h4>
                       <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Received:</span>
+                        <span>{t('tunnelManager.received')}:</span>
                         <span>{formatBytes(stats.total_bytes_received)}</span>
                       </div>
                       <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Sent:</span>
+                        <span>{t('tunnelManager.sent')}:</span>
                         <span>{formatBytes(stats.total_bytes_sent)}</span>
                       </div>
                       <div style={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Total:</span>
+                        <span>{t('tunnelManager.total')}</span>
                         <span>{formatBytes(stats.total_bytes_received + stats.total_bytes_sent)}</span>
                       </div>
                     </div>
@@ -217,7 +219,7 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
               {/* Connection Info */}
               <div className="nb-box nb-card">
                 <div className="nb-card-header">
-                  <h3 className="nb-card-title">CONNECTION INFO</h3>
+                  <h3 className="nb-card-title">{t('tunnelManager.connectionInfo')}</h3>
                 </div>
                 <div className="nb-card-body">
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -225,7 +227,7 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
                     <span className="nb-badge">{stats.active_connections}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <span>Tunnel Status:</span>
+                    <span>Tunnel {t('tunnelManager.statusLabel')}</span>
                     <span className={`nb-badge ${stats.is_online ? 'nb-badge-success' : ''}`}>
                       {stats.is_online ? 'Online' : 'Offline'}
                     </span>
@@ -240,7 +242,7 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
               {/* Utilization Bar */}
               {stats.is_limited && stats.max_bandwidth && (
                 <div style={{ marginTop: '20px' }}>
-                  <h4 style={{ marginBottom: '10px' }}>BANDWIDTH UTILIZATION</h4>
+                  <h4 style={{ marginBottom: '10px' }}>{t('tunnelManager.bandwidthUtilization')}</h4>
                   <div style={{
                     height: '20px',
                     backgroundColor: 'var(--gray-light)',

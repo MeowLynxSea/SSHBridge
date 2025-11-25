@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
 import { useMobile } from './ResponsiveLayout';
 
@@ -8,6 +9,7 @@ interface AuthFormProps {
 }
 
 export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -43,7 +45,7 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       }}>
         <div className="nb-card-header">
           <h1 className="nb-card-title">
-            {mode === 'login' ? 'SIGN IN' : 'REGISTER'}
+            {mode === 'login' ? t('auth.signIn') : t('auth.register')}
           </h1>
           <div className="loader-container">
             {isLoading && <div className="nb-loader"></div>}
@@ -53,8 +55,8 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         <div className="nb-card-body">
           <p className="mb-6">
             {mode === 'login' 
-              ? 'ENTER YOUR CREDENTIALS TO ACCESS YOUR SSH TUNNELS' 
-              : 'CREATE A NEW ACCOUNT TO START MANAGING SSH TUNNELS'
+              ? t('auth.signInDescription') 
+              : t('auth.registerDescription')
             }
           </p>
           
@@ -67,7 +69,7 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="form-group">
               <label className="nb-label" htmlFor="username">
-                USERNAME
+                {t('auth.username')}
               </label>
               <input
                 className="nb-input"
@@ -75,7 +77,7 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                 type="text"
                 autoComplete="username"
                 required
-                placeholder="Enter your username"
+                placeholder={t('auth.usernamePlaceholder')}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
@@ -83,7 +85,7 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             
             <div className="form-group">
               <label className="nb-label" htmlFor="password">
-                PASSWORD
+                {t('auth.password')}
               </label>
               <input
                 className="nb-input"
@@ -91,7 +93,7 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                 type="password"
                 autoComplete="current-password"
                 required
-                placeholder="Enter your password"
+                placeholder={t('auth.passwordPlaceholder')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -107,7 +109,7 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                   padding: isSmallMobile ? '14px 16px' : '12px 24px'
                 }}
               >
-                {isLoading ? 'PROCESSING...' : (mode === 'login' ? 'SIGN IN' : 'REGISTER')}
+                {isLoading ? t('general.loading') : (mode === 'login' ? t('auth.submitLogin') : t('auth.submitRegister'))}
               </button>
               
               <button
@@ -120,8 +122,8 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                 }}
               >
                 {mode === 'login' 
-                  ? "DON'T HAVE AN ACCOUNT? REGISTER" 
-                  : 'ALREADY HAVE AN ACCOUNT? SIGN IN'
+                  ? `${t('auth.noAccount')} ${t('auth.switchToRegister')}` 
+                  : `${t('auth.hasAccount')} ${t('auth.switchToLogin')}`
                 }
               </button>
             </div>
@@ -139,7 +141,7 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
           fontSize: '0.7rem',
           fontFamily: 'monospace'
         }}>
-          SYSTEM STATUS: ONLINE<br/>
+          {t('auth.systemStatus')}<br/>
           SECURITY: {mode === 'login' ? 'ENFORCED' : 'CREATING'}<br/>
         </div>
       </div>

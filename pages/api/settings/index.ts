@@ -4,11 +4,15 @@ import jwt from 'jsonwebtoken';
 
 interface SettingsRequest {
   refreshInterval?: number;
+  language?: string;
+  theme?: 'dark' | 'light' | 'auto';
 }
 
 interface SettingsResponse {
   success: boolean;
   refreshInterval?: number;
+  language?: string;
+  theme?: 'dark' | 'light' | 'auto';
   error?: string;
 }
 

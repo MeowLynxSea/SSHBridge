@@ -20,6 +20,19 @@ SSHBridge is an SSH server and tunnel management system with a Web UI. It provid
 - Tailwind CSS
 - Radix UI components (shadcn/ui)
 
+### Multi-language Support
+The application supports 8 languages:
+- English (en) - Default
+- Chinese (zh) - 中文
+- Spanish (es) - Español
+- French (fr) - Français
+- German (de) - Deutsch
+- Japanese (ja) - 日本語
+- Russian (ru) - Русский
+- Arabic (ar) - العربية (with RTL support)
+
+Language preferences are stored in localStorage and can be changed in the Settings modal.
+
 ## Essential Commands
 
 ### Development

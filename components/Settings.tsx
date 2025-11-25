@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
 import { useMobile } from './ResponsiveLayout';
+import { useLanguage } from './LanguageContext';
+import { useTheme } from './ThemeContext';
 
 interface SettingsProps {
   isOpen: boolean;
@@ -9,12 +12,21 @@ interface SettingsProps {
 
 interface UserSettings {
   refreshInterval: number;
+  language: string;
+  theme: 'dark' | 'light' | 'auto';
 }
 
+type Theme = 'dark' | 'light' | 'auto';
+
 export default function Settings({ isOpen, onClose }: SettingsProps) {
+  const { t } = useTranslation();
   const { token } = useAuth();
+  const { availableLanguages, changeLanguage, currentLanguage } = useLanguage();
+  const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useState<UserSettings>({
     refreshInterval: 2000, // Default 2 seconds
+    language: 'en',
+    theme: 'auto',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,21 +48,23 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
         if (data.success) {
           setSettings({
             refreshInterval: data.refreshInterval,
+            language: data.language || currentLanguage,
+            theme: data.theme || 'auto',
           });
         } else {
-          setError(data.error || 'Failed to fetch settings');
+          setError(data.error || t('settings.failedToFetch'));
         }
       } else {
         const errorData = await response.json();
-        setError(errorData.error || 'Failed to fetch settings');
+        setError(errorData.error || t('settings.failedToFetch'));
       }
     } catch (err) {
       console.error('Failed to fetch settings:', err);
-      setError('Network error');
+      setError(t('settings.networkError'));
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, currentLanguage, t]);
 
   // Fetch current settings when modal opens
   useEffect(() => {
@@ -74,27 +88,31 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
         },
         body: JSON.stringify({
           refreshInterval: settings.refreshInterval,
+          language: currentLanguage,
+          theme: theme,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setSuccess('Settings saved successfully!');
+          setSuccess(t('settings.saved'));
           // Update local state with the response value
           setSettings({
             refreshInterval: data.refreshInterval,
+            language: data.language || currentLanguage,
+            theme: data.theme || theme,
           });
         } else {
-          setError(data.error || 'Failed to save settings');
+          setError(data.error || t('settings.failedToSave'));
         }
       } else {
         const errorData = await response.json();
-        setError(errorData.error || 'Failed to save settings');
+        setError(errorData.error || t('settings.failedToSave'));
       }
     } catch (err) {
-      console.error('Failed to save settings:', err);
-      setError('Network error');
+      console.error(t('console.failedToFetchSettings'), err);
+      setError(t('settings.networkError'));
     } finally {
       setLoading(false);
     }
@@ -122,19 +140,19 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
       >
         <div className="nb-dialog-header">
           <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: '900', textTransform: 'uppercase' }}>
-            SETTINGS
+            {t('settings.title')}
           </h2>
           <button 
             className="nb-btn" 
             style={{ background: 'none', border: 'none', boxShadow: 'none', padding: '5px' }}
             onClick={onClose}
           >
-            X
+            {t('general.close')}
           </button>
         </div>
         <div className="nb-dialog-body">
           <p style={{ marginBottom: '20px' }}>
-            Configure your SSHBridge preferences
+            {t('settings.description')}
           </p>
           
           {error && (
@@ -156,7 +174,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
           <form onSubmit={handleSubmit}>
             <div className="form-group" style={{ marginBottom: '20px' }}>
               <label className="nb-label" htmlFor="refreshInterval">
-                PTY STATUS REFRESH INTERVAL (MILLISECONDS)
+                {t('settings.refreshInterval')}
               </label>
               <input
                 className="nb-input"
@@ -174,7 +192,61 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                 fontFamily: 'monospace',
                 opacity: 0.8
               }}>
-                Minimum: 1000ms (1 second). This controls how often the PTY status display refreshes.
+                {t('settings.refreshIntervalDescription')}
+              </p>
+            </div>
+            
+            {/* Language Selection */}
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="nb-label" htmlFor="language">
+                {t('settings.language')}
+              </label>
+              <select
+                className="nb-input"
+                id="language"
+                value={currentLanguage}
+                onChange={(e) => changeLanguage(e.target.value)}
+                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+              >
+                {availableLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.nativeName} ({lang.name})
+                  </option>
+                ))}
+              </select>
+              <p style={{ 
+                fontSize: '0.8rem', 
+                marginTop: '5px', 
+                fontFamily: 'monospace',
+                opacity: 0.8
+              }}>
+                {t('settings.languageDescription')}
+              </p>
+            </div>
+            
+            {/* Theme Selection */}
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="nb-label" htmlFor="theme">
+                {t('settings.theme')}
+              </label>
+              <select
+                className="nb-input"
+                id="theme"
+                value={theme}
+                onChange={(e) => setTheme(e.target.value as Theme)}
+                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+              >
+                <option value="auto">{t('settings.themeAuto')}</option>
+                <option value="dark">{t('settings.themeDark')}</option>
+                <option value="light">{t('settings.themeLight')}</option>
+              </select>
+              <p style={{ 
+                fontSize: '0.8rem', 
+                marginTop: '5px', 
+                fontFamily: 'monospace',
+                opacity: 0.8
+              }}>
+                {t('settings.themeDescription')}
               </p>
             </div>
             
@@ -191,7 +263,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                 disabled={loading}
                 style={{ width: isMobile ? '100%' : 'auto' }}
               >
-                CANCEL
+                {t('general.cancel')}
               </button>
               <button 
                 className="nb-btn nb-btn-primary" 
@@ -199,7 +271,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                 disabled={loading}
                 style={{ width: isMobile ? '100%' : 'auto' }}
               >
-                {loading ? 'SAVING...' : 'SAVE SETTINGS'}
+                {loading ? t('settings.saving') : t('settings.save')}
               </button>
             </div>
           </form>

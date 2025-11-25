@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
 import TunnelStats from './TunnelStats';
 import Settings from './Settings';
@@ -28,6 +29,7 @@ interface TunnelFormData {
 }
 
 export default function TunnelManager() {
+  const { t } = useTranslation();
   const { token, logout } = useAuth();
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,9 +65,9 @@ export default function TunnelManager() {
         setTunnelStatuses(statuses);
       }
     } catch (err) {
-      console.error('Failed to fetch tunnel statuses:', err);
+      console.error(t('console.failedToFetchTunnelStatuses'), err);
     }
-  }, [token]);
+  }, [token, t]);
 
   const fetchTunnels = useCallback(async () => {
     try {
@@ -87,12 +89,12 @@ export default function TunnelManager() {
         setTunnels(tunnelsWithStatus);
       }
     } catch (err) {
-      console.error('Failed to fetch tunnels:', err);
-      setError('Failed to fetch tunnels');
+      console.error(t('settings.failedToFetchTunnels'), err);
+      setError(t('settings.failedToFetchTunnels'));
     } finally {
       setIsLoading(false);
     }
-  }, [token, tunnelStatuses]);
+  }, [token, tunnelStatuses, t]);
 
   useEffect(() => {
     fetchTunnels();
@@ -132,11 +134,11 @@ export default function TunnelManager() {
         fetchTunnels();
       } else {
         const error = await response.json();
-        setError(error.error || 'Failed to save tunnel');
+        setError(error.error || t('tunnelManager.failedToSave'));
       }
     } catch (err) {
       console.error('Failed to save tunnel:', err);
-      setError('Network error');
+      setError(t('settings.networkError'));
     }
   };
 
@@ -151,7 +153,7 @@ export default function TunnelManager() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this tunnel?')) return;
+    if (!confirm(t('tunnelManager.deleteConfirm'))) return;
 
     try {
       const response = await fetch(`/api/tunnels/${id}`, {
@@ -164,11 +166,11 @@ export default function TunnelManager() {
       if (response.ok) {
         fetchTunnels();
       } else {
-        setError('Failed to delete tunnel');
+        setError(t('settings.failedToDeleteTunnel'));
       }
     } catch (err) {
-      console.error('Failed to delete tunnel:', err);
-      setError('Network error');
+      console.error(t('settings.failedToDeleteTunnel'), err);
+      setError(t('settings.networkError'));
     }
   };
 
@@ -179,7 +181,7 @@ export default function TunnelManager() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-6">
           <div className="nb-loader"></div>
-          <h2 className="text-2xl font-bold">LOADING...</h2>
+          <h2 className="text-2xl font-bold">{t('general.loading')}</h2>
         </div>
       </div>
     );
@@ -236,7 +238,7 @@ export default function TunnelManager() {
                       }}
                       style={{ fontSize: isSmallMobile ? '0.9rem' : '1rem' }}
                     >
-                      CREATE TUNNEL
+                      {t('tunnelManager.createTunnel')}
                     </button>
                     <button 
                       className="nb-btn w-full" 
@@ -250,17 +252,17 @@ export default function TunnelManager() {
                         fontSize: isSmallMobile ? '0.9rem' : '1rem'
                       }}
                     >
-                      SETTINGS
+                      {t('tunnelManager.settings')}
                     </button>
                     <button 
-                      className="nb-btn nb-btn-glitch w-full" 
+                      className="nb-btn w-full" 
                       onClick={() => {
                         logout();
                         setShowMobileMenu(false);
                       }}
                       style={{ fontSize: isSmallMobile ? '0.9rem' : '1rem' }}
                     >
-                      LOGOUT
+                      {t('tunnelManager.logout')}
                     </button>
                   </div>
                 </div>
@@ -273,14 +275,14 @@ export default function TunnelManager() {
                   onClick={() => setActiveTab('tunnels')}
                   style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
                 >
-                  TUNNELS
+                  {t('tunnelManager.tunnels')}
                 </button>
                 <button 
                   className={`nb-tab ${activeTab === 'stats' ? 'nb-tab-active' : ''}`}
                   onClick={() => setActiveTab('stats')}
                   style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
                 >
-                  STATISTICS
+                  {t('tunnelManager.statistics')}
                 </button>
               </div>
             </div>
@@ -299,7 +301,7 @@ export default function TunnelManager() {
                       setShowForm(true);
                     }}
                   >
-                    CREATE TUNNEL
+                    {t('tunnelManager.createTunnel')}
                   </button>
                   <button 
                     className="nb-btn" 
@@ -309,10 +311,10 @@ export default function TunnelManager() {
                       color: 'var(--fg-color)' 
                     }}
                   >
-                    SETTINGS
+                    {t('tunnelManager.settings')}
                   </button>
-                  <button className="nb-btn nb-btn-glitch" onClick={logout}>
-                    LOGOUT
+                  <button className="nb-btn" onClick={logout}>
+                    {t('tunnelManager.logout')}
                   </button>
                 </div>
               </div>
@@ -323,13 +325,13 @@ export default function TunnelManager() {
                   className={`nb-tab ${activeTab === 'tunnels' ? 'nb-tab-active' : ''}`}
                   onClick={() => setActiveTab('tunnels')}
                 >
-                  TUNNELS
+                  {t('tunnelManager.tunnels')}
                 </button>
                 <button 
                   className={`nb-tab ${activeTab === 'stats' ? 'nb-tab-active' : ''}`}
                   onClick={() => setActiveTab('stats')}
                 >
-                  STATISTICS
+                  {t('tunnelManager.statistics')}
                 </button>
               </div>
             </div>
@@ -354,25 +356,25 @@ export default function TunnelManager() {
             {tunnels.length === 0 ? (
               <div className="nb-box nb-card">
                 <div className="nb-card-header">
-                  <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>NO TUNNELS CONFIGURED</h2>
+                  <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>{t('tunnelManager.noTunnels')}</h2>
                 </div>
                 <div className="nb-card-body">
                   <p style={{ marginBottom: '20px' }}>
-                    Create your first tunnel to get started with SSHBridge.
+                    {t('tunnelManager.createFirstTunnelDescription')}
                   </p>
                   <button 
                     className="nb-btn nb-btn-primary"
                     onClick={() => setShowForm(true)}
                     style={{ width: isMobile ? '100%' : 'auto' }}
                   >
-                    CREATE YOUR FIRST TUNNEL
+                    {t('tunnelManager.createFirstTunnel')}
                   </button>
                 </div>
               </div>
             ) : (
               <div className="nb-box nb-card">
                 <div className="nb-card-header">
-                  <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>YOUR SSH TUNNELS</h2>
+                  <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>{t('tunnelManager.yourSshTunnels')}</h2>
                 </div>
                 <div className="nb-card-body">
                   {isMobile ? (
@@ -401,13 +403,13 @@ export default function TunnelManager() {
                                   color: tunnel.is_online ? 'var(--bg-color)' : 'var(--fg-color)'
                                 }}
                               >
-                                PORT {tunnel.external_port}
+                                {t('tunnelManager.externalPort')} {tunnel.external_port}
                               </div>
                             </div>
                             
                             <div style={{ marginBottom: '10px' }}>
                               <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                                Bandwidth: {tunnel.max_bandwidth ? (
+                                {t('tunnelManager.maxBandwidth')}: {tunnel.max_bandwidth ? (
                                   <span className="nb-badge" style={{ 
                                     backgroundColor: 'var(--accent-color)',
                                     padding: '2px 6px',
@@ -425,14 +427,14 @@ export default function TunnelManager() {
                                     padding: '2px 6px',
                                     fontSize: '0.8rem'
                                   }}>
-                                    Unlimited
+                                    {t('tunnelManager.unlimited')}
                                   </span>
                                 )}
                               </span>
                             </div>
                             
                             <div style={{ marginBottom: '15px', fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                              Created: {formatForDisplay(tunnel.created_at)}
+                              {t('tunnelManager.created')}: {formatForDisplay(tunnel.created_at)}
                             </div>
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -442,7 +444,7 @@ export default function TunnelManager() {
                                   style={{ width: '100%', fontSize: '0.9rem' }}
                                   onClick={() => setSelectedTunnelForBandwidth(tunnel)}
                                 >
-                                  BANDWIDTH
+                                  {t('tunnelManager.bandwidthMonitor')}
                                 </button>
                               )}
                               <button
@@ -450,14 +452,14 @@ export default function TunnelManager() {
                                 style={{ width: '100%', fontSize: '0.9rem' }}
                                 onClick={() => handleEdit(tunnel)}
                               >
-                                EDIT
+                                {t('tunnelManager.edit')}
                               </button>
                               <button
                                 className="nb-btn nb-btn-glitch"
                                 style={{ width: '100%', fontSize: '0.9rem' }}
                                 onClick={() => handleDelete(tunnel.id)}
                               >
-                                DELETE
+                                {t('tunnelManager.delete')}
                               </button>
                             </div>
                           </div>
@@ -469,11 +471,11 @@ export default function TunnelManager() {
                     <table className="nb-table">
                       <thead>
                         <tr>
-                          <th>NAME</th>
-                          <th>EXTERNAL PORT</th>
-                          <th>MAX BANDWIDTH</th>
-                          <th>CREATED</th>
-                          <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                          <th>{t('tunnelManager.name')}</th>
+                          <th>{t('tunnelManager.externalPort')}</th>
+                          <th>{t('tunnelManager.maxBandwidth')}</th>
+                          <th>{t('tunnelManager.created')}</th>
+                          <th style={{ textAlign: 'right' }}>{t('tunnelManager.actions')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -493,7 +495,7 @@ export default function TunnelManager() {
                                 </span>
                               ) : (
                                 <span className="nb-badge" style={{ backgroundColor: 'var(--gray-light)', color: 'var(--fg-color)' }}>
-                                  Unlimited
+                                  {t('tunnelManager.unlimited')}
                                 </span>
                               )}
                             </td>
@@ -508,7 +510,7 @@ export default function TunnelManager() {
                                     style={{ padding: '8px 12px', fontSize: '0.8rem' }}
                                     onClick={() => setSelectedTunnelForBandwidth(tunnel)}
                                   >
-                                    BANDWIDTH
+                                    {t('tunnelManager.viewBandwidth')}
                                   </button>
                                 )}
                                 <button
@@ -516,14 +518,14 @@ export default function TunnelManager() {
                                   style={{ padding: '8px 12px', fontSize: '0.8rem' }}
                                   onClick={() => handleEdit(tunnel)}
                                 >
-                                  EDIT
+                                  {t('tunnelManager.edit')}
                                 </button>
                                 <button
                                   className="nb-btn nb-btn-glitch"
                                   style={{ padding: '8px 12px', fontSize: '0.8rem' }}
                                   onClick={() => handleDelete(tunnel.id)}
                                 >
-                                  DELETE
+                                  {t('tunnelManager.delete')}
                                 </button>
                               </div>
                             </td>
@@ -539,13 +541,13 @@ export default function TunnelManager() {
             {/* Instructions */}
             <div className="nb-box nb-card" style={{ marginTop: isSmallMobile ? '20px' : '30px' }}>
               <div className="nb-card-header">
-                <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>HOW TO USE YOUR TUNNELS</h2>
+                <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>{t('tunnelManager.howToUseTunnels')}</h2>
               </div>
               <div className="nb-card-body">
                 <ol style={{ lineHeight: isSmallMobile ? '1.6' : '1.8', paddingLeft: '20px' }}>
-                  <li style={{ marginBottom: '10px' }}>Connect to this SSH server using your credentials and the -R flag</li>
+                  <li style={{ marginBottom: '10px' }}>{t('tunnelManager.connectInstruction')}</li>
                   <li style={{ marginBottom: '10px' }}>
-                    Use your assigned external port:
+                    {t('tunnelManager.usePortInstruction')}
                     <div style={{ 
                       marginTop: '5px',
                       padding: '8px', 
@@ -559,10 +561,10 @@ export default function TunnelManager() {
                       ssh -R {tunnels.length > 0 ? tunnels.map(t => t.external_port).join(', ') : 'PORT'}:localhost:LOCAL_PORT user@server
                     </div>
                   </li>
-                  <li style={{ marginBottom: '10px' }}>External users connect to your assigned external port on this SSH server</li>
-                  <li style={{ marginBottom: '10px' }}>SSH server forwards traffic to your local service specified in the -R flag</li>
+                  <li style={{ marginBottom: '10px' }}>{t('tunnelManager.connectExternalUsers')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('tunnelManager.sshForward')}</li>
                   <li>
-                    Example:
+                    {t('tunnelManager.example')}
                     <div style={{ 
                       marginTop: '5px',
                       padding: '8px', 
@@ -575,7 +577,7 @@ export default function TunnelManager() {
                       ssh -R 8080:localhost:3000 user@server
                     </div>
                     <div style={{ marginTop: '5px', fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                      then external users access server:8080
+                      {t('tunnelManager.exampleDescription')}
                     </div>
                   </li>
                 </ol>
@@ -597,7 +599,7 @@ export default function TunnelManager() {
           <div className="nb-dialog-card">
             <div className="nb-dialog-header">
               <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: '900', textTransform: 'uppercase' }}>
-                {editingTunnel ? 'EDIT TUNNEL' : 'CREATE NEW TUNNEL'}
+                {editingTunnel ? t('tunnelManager.editTunnel') : t('tunnelManager.createNewTunnel')}
               </h2>
               <button 
                 className="nb-btn" 
@@ -608,14 +610,14 @@ export default function TunnelManager() {
                   setFormData({ name: '', external_port: '', max_bandwidth: '' });
                 }}
               >
-                X
+                {t('tunnelManager.close')}
               </button>
             </div>
             <div className="nb-dialog-body">
               <p style={{ marginBottom: '20px' }}>
                 {editingTunnel 
-                  ? 'Update the tunnel configuration below.'
-                  : 'Create a new SSH tunnel to expose your local services.'
+                  ? t('tunnelManager.updateTunnel')
+                  : t('tunnelManager.createTunnelDescription')
                 }
               </p>
               
@@ -628,21 +630,21 @@ export default function TunnelManager() {
               <form onSubmit={handleSubmit}>
                 <div className="form-group" style={{ marginBottom: '20px' }}>
                   <label className="nb-label" htmlFor="name">
-                    TUNNEL NAME
+                    {t('tunnelManager.tunnelName')}
                   </label>
                   <input
                     className="nb-input"
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Web Server"
+                    placeholder={t('tunnelManager.tunnelNamePlaceholder')}
                     required
                   />
                 </div>
                 
                 <div className="form-group" style={{ marginBottom: '20px' }}>
                   <label className="nb-label" htmlFor="external_port">
-                    EXTERNAL PORT
+                    {t('tunnelManager.externalPortRange')}
                   </label>
                   <input
                     className="nb-input"
@@ -650,14 +652,14 @@ export default function TunnelManager() {
                     type="number"
                     value={formData.external_port}
                     onChange={(e) => setFormData({ ...formData, external_port: e.target.value })}
-                    placeholder="8080"
+                    placeholder={t('tunnelManager.portPlaceholder')}
                     required
                   />
                 </div>
                 
                 <div className="form-group" style={{ marginBottom: '20px' }}>
                   <label className="nb-label" htmlFor="max_bandwidth">
-                    MAX BANDWIDTH (bytes/s, optional)
+                    {t('tunnelManager.maxBandwidthOptional')}
                   </label>
                   <input
                     className="nb-input"
@@ -665,10 +667,10 @@ export default function TunnelManager() {
                     type="number"
                     value={formData.max_bandwidth}
                     onChange={(e) => setFormData({ ...formData, max_bandwidth: e.target.value })}
-                    placeholder="1048576 (1MB/s)"
+                    placeholder={t('tunnelManager.bandwidthPlaceholder')}
                   />
                   <small style={{ color: 'var(--gray-medium)', display: 'block', marginTop: '5px' }}>
-                    Leave empty for unlimited bandwidth. Bandwidth is limited per tunnel.
+                    {t('tunnelManager.bandwidthDescription')}
                   </small>
                 </div>
                 
@@ -682,10 +684,10 @@ export default function TunnelManager() {
                       setFormData({ name: '', external_port: '', max_bandwidth: '' });
                     }}
                   >
-                    CANCEL
+                    {t('general.cancel')}
                   </button>
                   <button className="nb-btn nb-btn-primary" type="submit">
-                    {editingTunnel ? 'UPDATE' : 'CREATE'} TUNNEL
+                    {editingTunnel ? t('tunnelManager.edit') : t('tunnelManager.create')} {t('tunnelManager.tunnel')}
                   </button>
                 </div>
               </form>

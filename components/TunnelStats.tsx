@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
 import { formatForDisplay } from '../src/utils/timeUtils';
 import { useMobile } from './ResponsiveLayout';
@@ -34,6 +35,7 @@ interface TunnelStatsResponse {
 }
 
 export default function TunnelStats() {
+  const { t } = useTranslation();
   const { token } = useAuth();
   const [stats, setStats] = useState<TunnelStatsResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,15 +57,15 @@ export default function TunnelStats() {
         setStats(data.stats);
       } else {
         const errorData = await response.json();
-        setError(errorData.error || 'Failed to fetch statistics');
+        setError(errorData.error || t('console.failedToFetchStatistics'));
       }
     } catch (err) {
-      console.error('Failed to fetch statistics:', err);
-      setError('Network error');
+      console.error(t('console.failedToFetchStatistics'), err);
+      setError(t('settings.networkError'));
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [token, t]);
 
   useEffect(() => {
     // Also fetch the refresh interval
@@ -112,7 +114,7 @@ export default function TunnelStats() {
       <div className="flex flex-col items-center justify-center" style={{ padding: isSmallMobile ? '20px' : '40px' }}>
         <div className="nb-loader"></div>
         <h2 className={`font-bold ${isSmallMobile ? 'text-lg' : 'text-2xl'}`} style={{ marginTop: '20px' }}>
-          LOADING STATISTICS...
+          {t('tunnelManager.loadingStatistics')}
         </h2>
       </div>
     );
@@ -122,7 +124,7 @@ export default function TunnelStats() {
     <div className="space-y-6">
       <div className="nb-box nb-card">
         <div className="nb-card-header">
-          <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>TUNNEL STATISTICS</h2>
+          <h2 className={`nb-card-title ${isSmallMobile ? 'text-lg' : ''}`}>{t('tunnelManager.tunnelStatistics')}</h2>
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -147,7 +149,7 @@ export default function TunnelStats() {
                   fontSize: isSmallMobile ? '0.8rem' : '0.9rem'
                 }}
               >
-                AUTO-REFRESH ({refreshInterval / 1000}s)
+                {t('tunnelManager.autoRefresh', { seconds: refreshInterval / 1000 })}
               </label>
             </div>
             <button 
@@ -158,14 +160,14 @@ export default function TunnelStats() {
                 fontSize: isSmallMobile ? '0.75rem' : '0.8rem'
               }}
             >
-              REFRESH NOW
+              {t('tunnelManager.refreshNow')}
             </button>
           </div>
         </div>
         
         <div className="nb-card-body">
           <p style={{ marginBottom: '20px' }}>
-            Monitor your tunnel traffic and connection status in real-time
+            {t('tunnelManager.monitorTraffic')}
           </p>
           
           {error && (
@@ -206,7 +208,7 @@ export default function TunnelStats() {
                         {stat.tunnel_name}
                       </h3>
                       <p style={{ fontFamily: 'monospace', fontSize: isSmallMobile ? '0.9rem' : '1rem' }}>
-                        EXTERNAL PORT: {stat.external_port}
+                        {t('tunnelManager.externalPort')}: {stat.external_port}
                       </p>
                     </div>
                     <div 
@@ -219,7 +221,7 @@ export default function TunnelStats() {
                         alignSelf: isMobile ? 'flex-start' : 'flex-end'
                       }}
                     >
-                      {stat.is_online ? `${stat.active_connections} ACTIVE` : 'INACTIVE'}
+                      {stat.is_online ? `${stat.active_connections} ${t('tunnelManager.active')}` : t('tunnelManager.inactive')}
                     </div>
                   </div>
 
@@ -237,15 +239,15 @@ export default function TunnelStats() {
                         marginBottom: '10px',
                         fontFamily: 'monospace'
                       }}>
-                        Total Traffic
+                        {t('tunnelManager.totalTraffic')}
                       </div>
                       <div style={{ fontSize: '0.9rem', fontFamily: 'monospace' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                          <span>Received:</span>
+                          <span>{t('tunnelManager.received')}:</span>
                           <span>{stat.formatted?.total_bytes_received}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span>Sent:</span>
+                          <span>{t('tunnelManager.sent')}:</span>
                           <span>{stat.formatted?.total_bytes_sent}</span>
                         </div>
                       </div>
@@ -261,15 +263,15 @@ export default function TunnelStats() {
                             marginBottom: '10px',
                             fontFamily: 'monospace'
                           }}>
-                            Current Session
+                            {t('tunnelManager.currentSession')}
                           </div>
                           <div style={{ fontSize: '0.9rem', fontFamily: 'monospace' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                              <span>Received:</span>
+                              <span>{t('tunnelManager.received')}:</span>
                               <span>{stat.formatted?.current_bytes_received}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span>Sent:</span>
+                              <span>{t('tunnelManager.sent')}:</span>
                               <span>{stat.formatted?.current_bytes_sent}</span>
                             </div>
                           </div>
@@ -287,11 +289,11 @@ export default function TunnelStats() {
                           </div>
                           <div style={{ fontSize: '0.9rem', fontFamily: 'monospace' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                              <span>Received:</span>
+                              <span>{t('tunnelManager.received')}:</span>
                               <span>{stat.formatted?.rate_received}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span>Sent:</span>
+                              <span>{t('tunnelManager.sent')}:</span>
                               <span>{stat.formatted?.rate_sent}</span>
                             </div>
                           </div>
@@ -314,7 +316,7 @@ export default function TunnelStats() {
                     flexDirection: isSmallMobile ? 'column' : 'row',
                     gap: isSmallMobile ? '5px' : '0'
                   }}>
-                    <span>Last updated: {formatDate(stat.updated_at)}</span>
+                    <span>{t('tunnelManager.lastUpdated')}: {formatDate(stat.updated_at)}</span>
                   </div>
 
                   <div style={{ 
@@ -329,7 +331,7 @@ export default function TunnelStats() {
                     background: stat.is_online ? 'var(--accent-color)' : 'var(--gray-light)',
                     color: stat.is_online ? 'var(--bg-color)' : 'var(--fg-color)'
                   }}>
-                    {stat.is_online ? 'ONLINE' : 'OFFLINE'}
+                    {stat.is_online ? t('tunnelManager.online') : t('tunnelManager.offline')}
                   </div>
                 </div>
               ))}

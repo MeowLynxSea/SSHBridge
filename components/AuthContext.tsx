@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface User {
   id: number;
@@ -18,6 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Login failed');
+      throw new Error(error.error || t('auth.loginFailed'));
     }
 
     const data = await response.json();
@@ -72,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Registration failed');
+      throw new Error(error.error || t('auth.registrationFailed'));
     }
 
     const data = await response.json();
