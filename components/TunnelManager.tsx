@@ -5,7 +5,7 @@ import Settings from './Settings';
 import BandwidthMonitor from './BandwidthMonitor';
 import { formatForDisplay } from '../src/utils/timeUtils';
 import { useMobile } from './ResponsiveLayout';
-import MobileTestGuide from './MobileTestGuide';
+
 
 interface Tunnel {
   id: number;
@@ -708,8 +708,7 @@ export default function TunnelManager() {
         />
       )}
 
-      {/* Mobile Test Guide */}
-      <MobileTestGuide />
+
 
     </div>
   );

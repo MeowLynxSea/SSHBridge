@@ -37,6 +37,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(400).json({ error: 'External port must be a number' });
         }
 
+        const port = parseInt(external_port);
+        if (port < 10000 || port > 65535) {
+          return res.status(400).json({ error: 'External port must be in range 10000-65535' });
+        }
+
         if (max_bandwidth && (isNaN(max_bandwidth) || parseInt(max_bandwidth) <= 0)) {
           return res.status(400).json({ error: 'Max bandwidth must be a positive number (bytes per second)' });
         }
@@ -49,13 +54,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const updatedTunnel = await database.updateTunnel(
           tunnelId,
           name,
-          parseInt(external_port),
+          port,
           max_bandwidth ? parseInt(max_bandwidth) : undefined
         );
 
         res.status(200).json({ tunnel: updatedTunnel });
       } catch (error) {
         console.error('Update tunnel error:', error);
+        
+        // Handle specific validation errors
+        if (error instanceof Error) {
+          if (error.message.includes('is already in use')) {
+            return res.status(409).json({ error: error.message });
+          }
+          if (error.message.includes('not allowed') || error.message.includes('Port must be in range')) {
+            return res.status(400).json({ error: error.message });
+          }
+        }
+        
         res.status(500).json({ error: 'Internal server error' });
       }
       break;

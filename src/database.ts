@@ -314,6 +314,21 @@ class Database {
   }
 
   async createTunnel(userId: number, name: string, externalPort: number, maxBandwidth?: number): Promise<Tunnel> {
+    // Check port range (must be between 10000 and 65535)
+    if (externalPort < 10000 || externalPort > 65535) {
+      throw new Error(`Port ${externalPort} is not allowed. Port must be in range 10000-65535`);
+    }
+
+    // Check if port is already in use by any tunnel
+    if (await this.isPortInUse(externalPort)) {
+      throw new Error(`Port ${externalPort} is already in use by another tunnel`);
+    }
+
+    // Check if name is already in use by the same user
+    if (await this.isNameInUseForUser(userId, name)) {
+      throw new Error(`Name "${name}" is already in use for your tunnels`);
+    }
+
     const { run } = promisifyDb(this.db);
     
     const result = await run(
@@ -343,6 +358,27 @@ class Database {
   }
 
   async updateTunnel(id: number, name: string, externalPort: number, maxBandwidth?: number): Promise<Tunnel | null> {
+    // Check port range (must be between 10000 and 65535)
+    if (externalPort < 10000 || externalPort > 65535) {
+      throw new Error(`Port ${externalPort} is not allowed. Port must be in range 10000-65535`);
+    }
+
+    // Get the current tunnel to compare
+    const currentTunnel = await this.getTunnelById(id);
+    if (!currentTunnel) {
+      throw new Error('Tunnel not found');
+    }
+
+    // Check if port is already in use by another tunnel (exclude current tunnel)
+    if (currentTunnel.external_port !== externalPort && await this.isPortInUse(externalPort)) {
+      throw new Error(`Port ${externalPort} is already in use by another tunnel`);
+    }
+
+    // Check if name is already in use by another tunnel of the same user (exclude current tunnel)
+    if (currentTunnel.name !== name && await this.isNameInUseForUser(currentTunnel.user_id, name)) {
+      throw new Error(`Name "${name}" is already in use for your tunnels`);
+    }
+
     const { run } = promisifyDb(this.db);
     
     await run(
@@ -368,6 +404,20 @@ class Database {
     const { run } = promisifyDb(this.db);
     const result = await run('DELETE FROM tunnels WHERE id = ?', [id]);
     return result.changes > 0;
+  }
+
+  // Method to check if a port is already used by any tunnel
+  async isPortInUse(externalPort: number): Promise<boolean> {
+    const { get } = promisifyDb(this.db);
+    const row = await get('SELECT id FROM tunnels WHERE external_port = ?', [externalPort]);
+    return !!row;
+  }
+
+  // Method to check if a name is already used by the same user
+  async isNameInUseForUser(userId: number, name: string): Promise<boolean> {
+    const { get } = promisifyDb(this.db);
+    const row = await get('SELECT id FROM tunnels WHERE user_id = ? AND name = ?', [userId, name]);
+    return !!row;
   }
 
   private mapRowToTunnel(row: Row): Tunnel {
