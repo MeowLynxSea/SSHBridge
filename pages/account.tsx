@@ -120,11 +120,17 @@ function AccountManagerPage() {
               SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
             </h1>
             <button
-              className="nb-btn"
+              className={`nb-btn ${isSmallMobile ? 'px-2 text-xs' : ''}`}
               onClick={handleBack}
-              style={{ fontSize: isSmallMobile ? '0.9rem' : '1rem' }}
+              style={{ 
+                fontSize: isSmallMobile ? '0.75rem' : '1rem',
+                minWidth: isSmallMobile ? '60px' : '120px',
+                maxWidth: isSmallMobile ? '80px' : 'none',
+                whiteSpace: 'nowrap',
+                padding: isSmallMobile ? '8px 4px' : 'auto'
+              }}
             >
-              {t('account.backToHome')}
+              {isSmallMobile ? '主页' : t('account.backToHome')}
             </button>
           </div>
         </div>
@@ -264,18 +270,6 @@ function AccountManagerPage() {
                         }}
                       >
                         {isLoading ? t('account.updating') : t('account.updatePassword')}
-                      </button>
-
-                      <button
-                        className={`nb-btn ${isMobile ? 'w-full' : 'w-full'}`}
-                        type="button"
-                        onClick={handleBack}
-                        style={{
-                          fontSize: isSmallMobile ? '0.9rem' : '1rem',
-                          padding: isSmallMobile ? '12px 16px' : '12px 24px',
-                        }}
-                      >
-                        {t('account.cancel')}
                       </button>
                     </div>
                   </form>
