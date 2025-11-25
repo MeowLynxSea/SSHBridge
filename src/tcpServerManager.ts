@@ -27,6 +27,7 @@ export interface TcpConnectionInfo {
   bytesReceived: number;
   bytesSent: number;
   tunnelId: number;
+  isActive: boolean; // Track if connection is still active
 }
 
 export interface TcpServerInfo {
@@ -45,6 +46,7 @@ export class TcpServerManager {
   private database: Database;
   private readonly maxConnections: number = 1000; // Maximum connections per tunnel
   private readonly connectionTimeout: number = 30000; // 30 seconds default timeout
+  private connectionCounters: Map<number, number> = new Map(); // Track active connections per tunnel
   private rateLimiter: IntegratedRateLimiter;
 
   constructor(database: Database, maxConnections?: number, connectionTimeout?: number) {
@@ -119,8 +121,8 @@ export class TcpServerManager {
     sshConnection: SSH2Connection
   ): Promise<void> {
     // Check if we've reached the maximum connections for this tunnel
-    const tunnelConnections = this.connections.get(tunnelId);
-    if (tunnelConnections && tunnelConnections.size >= this.maxConnections) {
+    const currentCount = this.connectionCounters.get(tunnelId) || 0;
+    if (currentCount >= this.maxConnections) {
       console.log(`Refusing new connection to ${bindAddr}:${bindPort} - maximum connections (${this.maxConnections}) reached`);
       socket.end();
       return;
@@ -152,12 +154,16 @@ export class TcpServerManager {
     }
     this.connections.get(tunnelId)!.add(connectionId);
     
+    // Update connection counter
+    this.connectionCounters.set(tunnelId, currentCount + 1);
+    
     // Update active connections count
     this.updateTunnelConnectionCount(tunnelId);
     
     // Track data transfer for statistics
     let bytesReceived = 0;
     let bytesSent = 0;
+    let connectionClosed = false; // Prevent multiple close operations
     
     // Set socket timeout with configurable value
     socket.setTimeout(this.connectionTimeout);
@@ -176,11 +182,15 @@ export class TcpServerManager {
           return;
         }
       
-        // Create serial data queues to maintain packet order
+        // Create serial data queues to maintain packet order for this connection
         const uploadQueue: Buffer[] = [];
         const downloadQueue: Buffer[] = [];
         let uploadProcessing = false;
         let downloadProcessing = false;
+        
+        // Track if channel is still writable to prevent backpressure issues
+        let isChannelWritable = true;
+        let isSocketWritable = true;
         
         // Serial upload processor (socket → channel)
         const processUploadQueue = async () => {
@@ -199,8 +209,10 @@ export class TcpServerManager {
               await this.rateLimiter.writeWithRateLimit(tunnelId, data, 'upload');
             }
             
-            // Write data to channel (only after bandwidth control is complete)
-            channel.write(data);
+            // Only write if channel is still writable and track write status
+            if (isChannelWritable) {
+              channel.write(data);
+            }
           }
           
           uploadProcessing = false;
@@ -223,13 +235,24 @@ export class TcpServerManager {
               await this.rateLimiter.writeWithRateLimit(tunnelId, data, 'download');
             }
             
-            // Write data to socket (only after bandwidth control is complete)
-            socket.write(data);
+            // Only write if socket is still writable
+            if (isSocketWritable) {
+              isSocketWritable = socket.write(data);
+            }
           }
           
           downloadProcessing = false;
         };
       
+        // Track write status to prevent writing to closed connections
+        socket.on('drain', () => {
+          isSocketWritable = true;
+        });
+        
+        channel.on('drain', () => {
+          isChannelWritable = true;
+        });
+        
         // Forward data between socket and channel with bandwidth limiting
         socket.on('data', (data: Buffer) => {
           // Queue data for serial processing (socket → channel)
@@ -246,7 +269,14 @@ export class TcpServerManager {
         });
       
       socket.on('close', () => {
+        if (connectionClosed) return; // Prevent multiple close operations
+        connectionClosed = true;
+        
         try {
+          // Send EOF signal to notify the SSH client that this specific connection is closed
+          // This prevents the internal server from continuing to send data for this connection
+          channel.eof();
+          // Then close the channel
           channel.close();
         } catch {
           // Channel might already be closed, ignore error
@@ -256,16 +286,31 @@ export class TcpServerManager {
       });
       
       socket.on('timeout', () => {
+        if (connectionClosed) return; // Prevent multiple close operations
+        connectionClosed = true;
+        
         console.log(`Socket timeout for ${bindAddr}:${bindPort}`);
+        try {
+          // Send EOF signal before closing
+          channel.eof();
+          channel.close();
+        } catch {
+          // Channel might already be closed, ignore error
+        }
         socket.destroy();
       });
       
       socket.on('error', (err?: Error) => {
+        if (connectionClosed) return; // Prevent multiple close operations
+        connectionClosed = true;
+        
         console.error(`Socket error: ${err?.message || 'unknown'}`);
         this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
         
         // Close the channel but do NOT affect the SSH connection itself
         try {
+          // Send EOF signal to notify the SSH client that this specific connection is closed
+          channel.eof();
           channel.close();
         } catch {
           // Channel might already be closed, ignore error
@@ -273,7 +318,11 @@ export class TcpServerManager {
       });
       
       channel.on('close', () => {
+        if (connectionClosed) return; // Prevent multiple close operations
+        connectionClosed = true;
+        
         try {
+          // Ensure socket is closed to prevent sending data to disconnected client
           socket.destroy(); // Use destroy instead of end for immediate closure
         } catch {
           // Socket might already be closed, ignore error
@@ -281,11 +330,15 @@ export class TcpServerManager {
       });
       
       channel.on('error', (err: Error) => {
+        if (connectionClosed) return; // Prevent multiple close operations
+        connectionClosed = true;
+        
         console.error(`Channel error: ${err.message}`);
         this.cleanupConnection(connectionId, tunnelId, bytesReceived, bytesSent);
         
         // Close the socket but do NOT affect the SSH connection itself
         try {
+          // Ensure socket is closed to prevent sending data to disconnected client
           socket.destroy(); // Use destroy instead of end for immediate closure
         } catch {
           // Socket might already be closed, ignore error
@@ -337,12 +390,17 @@ export class TcpServerManager {
     }
     this.connections.get(tunnel.id)!.add(connectionId);
     
+    // Update connection counter
+    const currentCount = this.connectionCounters.get(tunnel.id) || 0;
+    this.connectionCounters.set(tunnel.id, currentCount + 1);
+    
     // Update active connections count
     this.updateTunnelConnectionCount(tunnel.id);
     
     // Track data transfer for statistics
     let totalBytesReceived = 0;
     let totalBytesSent = 0;
+    let connectionClosed = false; // Prevent multiple close operations
 
     socket.on('connect', () => {
       console.log(`Connected to target ${info.destAddr}:${info.destPort}`);
@@ -406,6 +464,9 @@ export class TcpServerManager {
     });
     
     channel.on('error', (err: Error) => {
+      if (connectionClosed) return; // Prevent multiple close operations
+      connectionClosed = true;
+      
       console.error(`Channel error in direct-tcpip: ${err.message}`);
       this.cleanupConnection(connectionId, tunnel.id, totalBytesReceived, totalBytesSent);
       
@@ -418,7 +479,13 @@ export class TcpServerManager {
     });
 
     socket.on('close', () => {
+      if (connectionClosed) return; // Prevent multiple close operations
+      connectionClosed = true;
+      
       try {
+        // Send EOF signal to notify the SSH client that this specific connection is closed
+        // This prevents the internal server from continuing to send data for this connection
+        channel.eof();
         channel.close();
       } catch {
         // Channel might already be closed, ignore error
@@ -427,11 +494,21 @@ export class TcpServerManager {
       // Update statistics and remove connection tracking
       this.updateTunnelStats(tunnel.id, totalBytesReceived, totalBytesSent);
       this.connections.get(tunnel.id)?.delete(connectionId);
+      
+      // Update connection counter
+      const count = this.connectionCounters.get(tunnel.id) || 0;
+      this.connectionCounters.set(tunnel.id, Math.max(0, count - 1));
+      
       this.updateTunnelConnectionCount(tunnel.id);
     });
 
     socket.on('end', () => {
+      if (connectionClosed) return; // Prevent multiple close operations
+      connectionClosed = true;
+      
       try {
+        // Send EOF signal to notify the SSH client that this specific connection is closed
+        channel.eof();
         channel.close();
       } catch {
         // Channel might already be closed, ignore error
@@ -439,7 +516,11 @@ export class TcpServerManager {
     });
 
     channel.on('end', () => {
+      if (connectionClosed) return; // Prevent multiple close operations
+      connectionClosed = true;
+      
       try {
+        // Ensure socket is closed to prevent sending data to disconnected client
         socket.end();
       } catch {
         // Socket might already be closed, ignore error
@@ -508,6 +589,9 @@ export class TcpServerManager {
       });
     }
     
+    // Reset connection counter for this tunnel
+    this.connectionCounters.delete(serverInfo.tunnelId);
+    
     // Close the server
     if (serverInfo.server.listening) {
       return new Promise<void>((resolve, reject) => {
@@ -548,6 +632,9 @@ export class TcpServerManager {
     // Clean up all bandwidth limiters
     this.rateLimiter.destroy();
     
+    // Clear all connection counters
+    this.connectionCounters.clear();
+    
     const closePromises: Promise<void>[] = [];
     this.servers.forEach((serverInfo, key) => {
       const [username, portStr] = key.split('_');
@@ -569,6 +656,10 @@ export class TcpServerManager {
       const connections = this.connections.get(tunnelId);
       if (connections) {
         connections.delete(connectionId);
+        
+        // Update connection counter
+        const currentCount = this.connectionCounters.get(tunnelId) || 0;
+        this.connectionCounters.set(tunnelId, Math.max(0, currentCount - 1));
         
         // Clean up empty connection sets to prevent memory leaks
         if (connections.size === 0) {
@@ -593,8 +684,9 @@ export class TcpServerManager {
    * Update tunnel connection count
    */
   private updateTunnelConnectionCount(tunnelId: number): void {
-    const connections = this.connections.get(tunnelId);
-    const count = connections ? connections.size : 0;
+    // Use the connection counter instead of the connections set size
+    // This ensures consistency with the getConnectionCount method
+    const count = this.connectionCounters.get(tunnelId) || 0;
     this.database.updateTunnelConnections(tunnelId, count);
   }
 
@@ -602,8 +694,8 @@ export class TcpServerManager {
    * Get connection count for a tunnel
    */
   getConnectionCount(tunnelId: number): number {
-    const connections = this.connections.get(tunnelId);
-    return connections ? connections.size : 0;
+    // Use the connection counter for efficiency and accuracy
+    return this.connectionCounters.get(tunnelId) || 0;
   }
 
   /**
@@ -653,5 +745,22 @@ export class TcpServerManager {
       // Remove bandwidth limiters
       this.rateLimiter.removeBucket(tunnelId);
     }
+  }
+
+  /**
+   * Get connection statistics for monitoring
+   */
+  getConnectionStats(): {
+    totalConnections: number;
+    tunnelConnections: Map<number, number>;
+    connectionDetails: Map<number, Set<string>>;
+  } {
+    const totalConnections = Array.from(this.connectionCounters.values()).reduce((sum, count) => sum + count, 0);
+    
+    return {
+      totalConnections,
+      tunnelConnections: new Map(this.connectionCounters),
+      connectionDetails: new Map(this.connections)
+    };
   }
 }

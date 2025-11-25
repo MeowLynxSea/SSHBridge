@@ -46,6 +46,7 @@ declare module 'ssh2' {
     on(event: 'close' | 'error', callback: () => void): void;
     close(): void;
     end(): void;
+    eof(): void; // Send EOF signal to indicate no more data will be sent
   }
   
   export interface TCPForwardingInfo {

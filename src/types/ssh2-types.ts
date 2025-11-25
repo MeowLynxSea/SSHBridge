@@ -90,6 +90,7 @@ export interface SSH2Channel {
   close(): void;
   end(): void;
   destroy(): void;
+  eof(): void; // Send EOF signal to indicate no more data will be sent
   _conn?: SSH2Connection;
   listeners(event: string): Array<(...args: unknown[]) => void>;
   removeAllListeners(event?: string): void;
