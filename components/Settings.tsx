@@ -6,8 +6,8 @@ import { useLanguage } from './LanguageContext';
 import { useTheme } from './ThemeContext';
 
 interface SettingsProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 interface UserSettings {
@@ -18,7 +18,7 @@ interface UserSettings {
 
 type Theme = 'dark' | 'light' | 'auto';
 
-export default function Settings({ isOpen, onClose }: SettingsProps) {
+export default function Settings({ isOpen = true }: SettingsProps) {
   const { t } = useTranslation();
   const { token } = useAuth();
   const { availableLanguages, changeLanguage, currentLanguage } = useLanguage();
@@ -31,7 +31,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const { isMobile, isSmallMobile } = useMobile();
+  const { isMobile } = useMobile();
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -66,12 +66,12 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
     }
   }, [token, currentLanguage, t]);
 
-  // Fetch current settings when modal opens
+  // Fetch current settings when component mounts
   useEffect(() => {
-    if (isOpen && token) {
+    if (token) {
       fetchSettings();
     }
-  }, [isOpen, token, fetchSettings]);
+  }, [token, fetchSettings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,29 +128,11 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="nb-dialog-overlay" style={{ display: 'grid' }}>
-      <div 
-        className="nb-dialog-card" 
-        style={{ 
-          maxWidth: isSmallMobile ? '100%' : '600px', 
-          width: isSmallMobile ? '100%' : '90%',
-          maxHeight: isSmallMobile ? '100vh' : '90vh',
-          overflowY: 'auto'
-        }}
-      >
-        <div className="nb-dialog-header">
-          <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: '900', textTransform: 'uppercase' }}>
-            {t('settings.title')}
-          </h2>
-          <button 
-            className="nb-btn" 
-            style={{ background: 'none', border: 'none', boxShadow: 'none', padding: '5px' }}
-            onClick={onClose}
-          >
-            {t('general.close')}
-          </button>
-        </div>
-        <div className="nb-dialog-body">
+    <div className="nb-box nb-card">
+      <div className="nb-card-header">
+        <h2 className="nb-card-title">{t('settings.title')}</h2>
+      </div>
+      <div className="nb-card-body">
           <p style={{ marginBottom: '20px' }}>
             {t('settings.description')}
           </p>
@@ -259,7 +241,6 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
               <button
                 className="nb-btn"
                 type="button"
-                onClick={onClose}
                 disabled={loading}
                 style={{ width: isMobile ? '100%' : 'auto' }}
               >
@@ -277,6 +258,5 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
           </form>
         </div>
       </div>
-    </div>
   );
 }

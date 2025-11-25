@@ -36,9 +36,8 @@ export default function TunnelManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingTunnel, setEditingTunnel] = useState<Tunnel | null>(null);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'tunnels' | 'stats'>('tunnels');
+  const [activeTab, setActiveTab] = useState<'tunnels' | 'stats' | 'settings'>('tunnels');
   const [tunnelStatuses, setTunnelStatuses] = useState<Map<number, boolean>>(new Map());
-  const [showSettings, setShowSettings] = useState(false);
   const [selectedTunnelForBandwidth, setSelectedTunnelForBandwidth] = useState<Tunnel | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const { isMobile, isSmallMobile } = useMobile();
@@ -243,20 +242,6 @@ export default function TunnelManager() {
                     <button 
                       className="nb-btn w-full" 
                       onClick={() => {
-                        setShowSettings(true);
-                        setShowMobileMenu(false);
-                      }}
-                      style={{ 
-                        background: 'var(--gray-light)', 
-                        color: 'var(--fg-color)',
-                        fontSize: isSmallMobile ? '0.9rem' : '1rem'
-                      }}
-                    >
-                      {t('tunnelManager.settings')}
-                    </button>
-                    <button 
-                      className="nb-btn w-full" 
-                      onClick={() => {
                         logout();
                         setShowMobileMenu(false);
                       }}
@@ -284,6 +269,13 @@ export default function TunnelManager() {
                 >
                   {t('tunnelManager.statistics')}
                 </button>
+                <button 
+                  className={`nb-tab ${activeTab === 'settings' ? 'nb-tab-active' : ''}`}
+                  onClick={() => setActiveTab('settings')}
+                  style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
+                >
+                  {t('tunnelManager.settings')}
+                </button>
               </div>
             </div>
           ) : (
@@ -302,16 +294,6 @@ export default function TunnelManager() {
                     }}
                   >
                     {t('tunnelManager.createTunnel')}
-                  </button>
-                  <button 
-                    className="nb-btn" 
-                    onClick={() => setShowSettings(true)}
-                    style={{ 
-                      background: 'var(--gray-light)', 
-                      color: 'var(--fg-color)' 
-                    }}
-                  >
-                    {t('tunnelManager.settings')}
                   </button>
                   <button className="nb-btn" onClick={logout}>
                     {t('tunnelManager.logout')}
@@ -332,6 +314,12 @@ export default function TunnelManager() {
                   onClick={() => setActiveTab('stats')}
                 >
                   {t('tunnelManager.statistics')}
+                </button>
+                <button 
+                  className={`nb-tab ${activeTab === 'settings' ? 'nb-tab-active' : ''}`}
+                  onClick={() => setActiveTab('settings')}
+                >
+                  {t('tunnelManager.settings')}
                 </button>
               </div>
             </div>
@@ -591,6 +579,12 @@ export default function TunnelManager() {
             <TunnelStats />
           </div>
         )}
+        
+        {activeTab === 'settings' && (
+          <div style={{ marginTop: isSmallMobile ? '20px' : '40px' }}>
+            <Settings />
+          </div>
+        )}
       </main>
 
       {/* Dialog for Create/Edit Tunnel */}
@@ -695,12 +689,6 @@ export default function TunnelManager() {
           </div>
         </div>
       )}
-      {/* Settings Dialog */}
-      <Settings 
-        isOpen={showSettings} 
-        onClose={() => setShowSettings(false)} 
-      />
-      
       {/* Bandwidth Monitor Dialog */}
       {selectedTunnelForBandwidth && (
         <BandwidthMonitor
