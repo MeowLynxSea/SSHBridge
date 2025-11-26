@@ -112,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     case 'DELETE':
       try {
         const { otpToken } = req.body;
-        
+
         // Get full user info to check OTP
         const fullUser = await database.getUserById(user.id);
         if (!fullUser) {

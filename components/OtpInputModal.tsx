@@ -77,7 +77,7 @@ export default function OtpInputModal({
           </p>
         )}
       </div>
-      
+
       <div className="nb-dialog-body">
         <div className="form-group" style={{ marginBottom: '20px' }}>
           <label className="nb-label" htmlFor="otpToken">

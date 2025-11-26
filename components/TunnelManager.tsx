@@ -190,7 +190,7 @@ export default function TunnelManager() {
       confirmDelete();
       return;
     }
-    
+
     showOtpModal({
       id: 'delete-tunnel',
       title: t('otp.tunnelDeleteOtpRequired'),
@@ -199,7 +199,7 @@ export default function TunnelManager() {
         confirmDelete(otpToken);
         setShowDeleteConfirm(false);
         setTunnelToDelete(null);
-      }
+      },
     });
   };
 

@@ -31,7 +31,7 @@ function AccountManagerPage() {
       router.push('/');
       return;
     }
-    
+
     // Check if user has OTP enabled from user state
     if (user && user.otp_enabled) {
       setRequiresOtp(true);
@@ -43,7 +43,7 @@ function AccountManagerPage() {
   // Separate effect to check OTP status when needed
   useEffect(() => {
     if (!token) return;
-    
+
     const checkOtpStatus = async () => {
       try {
         const response = await fetch('/api/auth/otp-status', {
@@ -89,7 +89,7 @@ function AccountManagerPage() {
         description: t('account.passwordChangeOtpDescription'),
         onConfirm: async (otpToken: string) => {
           await performPasswordChange(otpToken);
-        }
+        },
       });
       return;
     }
@@ -119,14 +119,14 @@ function AccountManagerPage() {
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        
+
         // Re-check OTP status after password change
         const userResponse = await fetch('/api/auth/otp-status', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        
+
         if (userResponse.ok) {
           const userData = await userResponse.json();
           setRequiresOtp(userData.otp_enabled);
@@ -188,12 +188,12 @@ function AccountManagerPage() {
             <button
               className={`nb-btn ${isSmallMobile ? 'px-2 text-xs' : ''}`}
               onClick={handleBack}
-              style={{ 
+              style={{
                 fontSize: isSmallMobile ? '0.75rem' : '1rem',
                 minWidth: isSmallMobile ? '60px' : '120px',
                 maxWidth: isSmallMobile ? '80px' : 'none',
                 whiteSpace: 'nowrap',
-                padding: isSmallMobile ? '8px 4px' : 'auto'
+                padding: isSmallMobile ? '8px 4px' : 'auto',
               }}
             >
               {isSmallMobile ? t('account.backToHome') : t('account.backToHome')}

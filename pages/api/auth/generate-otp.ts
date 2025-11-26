@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Store secret temporarily (not enabled yet)
     // In a real implementation, you might want to store this temporarily
     // or require the user to verify before enabling
-    
+
     res.status(200).json({
       secret: secret.base32,
       qrCode: qrCodeUrl,

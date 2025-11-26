@@ -8,7 +8,10 @@ import TunnelManager from '../components/TunnelManager';
 import ResponsiveLayout from '../components/ResponsiveLayout';
 
 // Custom hook to sync user settings
-function useUserSettingsSync(token: string | null, user: { id: number; username: string; created_at: string } | null) {
+function useUserSettingsSync(
+  token: string | null,
+  user: { id: number; username: string; created_at: string } | null
+) {
   const { changeLanguage } = useLanguage();
   const { setTheme } = useTheme();
   const [settingsSynced, setSettingsSynced] = useState(false);
@@ -30,12 +33,12 @@ function useUserSettingsSync(token: string | null, user: { id: number; username:
               if (data.language) {
                 changeLanguage(data.language);
               }
-              
+
               // Apply user's saved theme
               if (data.theme) {
                 setTheme(data.theme);
               }
-              
+
               setSettingsSynced(true);
             }
           }
@@ -57,7 +60,7 @@ function useUserSettingsSync(token: string | null, user: { id: number; username:
 function AppContent() {
   const { user, token, isLoading } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  
+
   // Sync user settings when user logs in
   useUserSettingsSync(token, user);
 

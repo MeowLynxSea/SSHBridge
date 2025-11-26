@@ -10,6 +10,7 @@ interface ErrorMessages {
   userNotFound: string;
   otpAlreadyEnabled: string;
   otpNotEnabled: string;
+  otpNotEnabledForAccount: string;
   otpSecretNotFound: string;
   otpTokenRequired: string;
   otpTokenRequiredToDisable: string;
@@ -115,26 +116,20 @@ function getLocale(req: NextApiRequest): 'en' | 'zh' {
     const lang = acceptLanguage.split(',')[0].split('-')[0];
     if (lang === 'zh') return 'zh';
   }
-  
+
   // 从自定义头获取
   const langHeader = req.headers['x-language'];
   if (langHeader === 'zh') return 'zh';
-  
+
   // 默认返回英文
   return 'en';
 }
 
 // 获取错误消息
-export function getErrorMessage(req: NextApiRequest, key: keyof Omit<ErrorMessages, 'otpNotEnabledForAccount'> | 'otpNotEnabledForAccount'): string {
+export function getErrorMessage(req: NextApiRequest, key: keyof ErrorMessages): string {
   const locale = getLocale(req);
   const errors = locale === 'zh' ? zhErrors : enErrors;
-  
-  // 处理特殊情况
-  if (key === 'otpNotEnabledForAccount') {
-    return locale === 'zh' ? zhErrors.otpNotEnabledForAccount : enErrors.otpNotEnabledForAccount;
-  }
-  
-  return errors[key as keyof ErrorMessages];
+  return errors[key];
 }
 
 // 便捷方法：发送错误响应
@@ -147,7 +142,7 @@ export function sendLocalizedError(
   req: NextApiRequest,
   res: NextApiResponse,
   status: number,
-  errorKey: keyof Omit<ErrorMessages, 'otpNotEnabledForAccount'> | 'otpNotEnabledForAccount'
+  errorKey: keyof ErrorMessages
 ) {
   const message = getErrorMessage(req, errorKey);
   return sendError(res, status, message);

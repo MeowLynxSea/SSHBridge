@@ -19,7 +19,7 @@ export const esTranslation = {
       securityEnforced: 'SEGURIDAD: APLICADA',
       securityCreating: 'SEGURIDAD: CREANDO',
       loginFailed: 'Error al iniciar sesión',
-      registrationFailed: 'Error en el registro'
+      registrationFailed: 'Error en el registro',
     },
     tunnelManager: {
       createTunnel: 'CREAR TÚNEL',
@@ -30,7 +30,7 @@ export const esTranslation = {
       statistics: 'ESTADÍSTICAS',
       loadingStatistics: 'CARGANDO ESTADÍSTICAS...',
       tunnelStatistics: 'ESTADÍSTICAS DE TÚNEL',
-      autoRefresh: "ACTUALIZACIÓN AUTOMÁTICA ({{seconds}}s)",
+      autoRefresh: 'ACTUALIZACIÓN AUTOMÁTICA ({{seconds}}s)',
       refreshNow: 'ACTUALIZAR AHORA',
       monitorTraffic: 'Monitoree su tráfico de túnel y estado de conexión en tiempo real',
       noTunnels: 'NINGÚN TÚNEL CONFIGURADO',
@@ -77,7 +77,8 @@ export const esTranslation = {
       failedToSaveTunnel: 'Error al guardar el túnel',
       portPlaceholder: '8080',
       bandwidthPlaceholder: '1048576 (1MB/s)',
-      bandwidthDescription: 'Deje vacío para ancho de banda ilimitado. El ancho de banda está limitado por túnel.',
+      bandwidthDescription:
+        'Deje vacío para ancho de banda ilimitado. El ancho de banda está limitado por túnel.',
       bandwidthConfiguration: 'CONFIGURACIÓN DE ANCHO DE BANDA',
       trafficStatistics: 'ESTADÍSTICAS DE TRÁFICO',
       currentSession: 'SESIÓN ACTUAL',
@@ -89,12 +90,15 @@ export const esTranslation = {
       inactive: 'INACTIVO',
       totalTraffic: 'Tráfico total',
       step1Title: 'Crear Túnel SSH',
-      step1Description: 'Conéctese al servidor SSH con el indicador -R para reenviar su servicio local a un puerto externo:',
+      step1Description:
+        'Conéctese al servidor SSH con el indicador -R para reenviar su servicio local a un puerto externo:',
       step2Title: 'Exponer Su Servicio',
-      step2Description: 'Los usuarios externos ahora pueden acceder a su servicio local a través del servidor en:',
+      step2Description:
+        'Los usuarios externos ahora pueden acceder a su servicio local a través del servidor en:',
       step3Title: 'Múltiples Túneles y Mejores Prácticas',
       step3Description: 'Puede crear múltiples túneles para diferentes servicios:',
-      step3Option1: 'Cree múltiples túneles para diferentes servicios locales (puertos 3000, 8080, etc.)',
+      step3Option1:
+        'Cree múltiples túneles para diferentes servicios locales (puertos 3000, 8080, etc.)',
       step3Option2: 'Cada túnel obtiene su propio puerto externo para acceso independiente',
       step3Note: 'Los límites de ancho de banda se aplican por túnel',
       created: 'CREADO',
@@ -107,13 +111,15 @@ export const esTranslation = {
       commandCopied: '¡Comando SSH copiado al portapapeles!',
       failedToCopyCommand: 'Error al copiar comando al portapapeles',
       logoutConfirmTitle: 'CONFIRMAR CIERRE DE SESIÓN',
-      logoutConfirmMessage: '¿Está seguro de que quiere cerrar la sesión? Necesitará iniciar sesión nuevamente para acceder a sus túneles.',
+      logoutConfirmMessage:
+        '¿Está seguro de que quiere cerrar la sesión? Necesitará iniciar sesión nuevamente para acceder a sus túneles.',
       commandDialog: {
         title: 'GENERADOR DE COMANDOS SSH',
         description: 'Generar comando SSH para túnel "{{tunnelName}}" (Puerto: {{externalPort}})',
         localIP: 'Dirección IP Local',
         localIPPlaceholder: 'ej: 127.0.0.1 o localhost',
-        localIPDescription: 'La dirección IP de su servicio local que se expondrá a través del túnel',
+        localIPDescription:
+          'La dirección IP de su servicio local que se expondrá a través del túnel',
         localPort: 'Puerto Local',
         localPortPlaceholder: 'ej: 3000',
         localPortDescription: 'El puerto de su servicio local que se expondrá a través del túnel',
@@ -123,18 +129,20 @@ export const esTranslation = {
         localIPRequired: 'La IP local es requerida',
         localPortRequired: 'El puerto local es requerido',
         invalidPort: 'Por favor ingrese un número de puerto válido (1-65535)',
-        copyFailed: 'Error al copiar comando al portapapeles'
-      }
+        copyFailed: 'Error al copiar comando al portapapeles',
+      },
     },
     settings: {
       title: 'CONFIGURACIÓN',
       description: 'Configure sus preferencias de SSHBridge',
       refreshInterval: 'INTERVALO DE ACTUALIZACIÓN DE ESTADO PTY (MILISEGUNDOS)',
-      refreshIntervalDescription: 'Mínimo: 1000ms (1 segundo). Esto controla la frecuencia con la que se actualiza la pantalla de estado PTY.',
+      refreshIntervalDescription:
+        'Mínimo: 1000ms (1 segundo). Esto controla la frecuencia con la que se actualiza la pantalla de estado PTY.',
       language: 'IDIOMA',
       theme: 'TEMA',
       languageDescription: 'Seleccione su idioma preferido para la interfaz.',
-      themeDescription: 'Elija su esquema de color preferido. Auto sigue la preferencia del sistema.',
+      themeDescription:
+        'Elija su esquema de color preferido. Auto sigue la preferencia del sistema.',
       themeAuto: 'AUTO (SISTEMA)',
       themeDark: 'OSCURO',
       themeLight: 'CLARO',
@@ -151,7 +159,8 @@ export const esTranslation = {
       failedToSaveTunnel: 'Error al guardar túnel',
       portPlaceholder: '8080',
       bandwidthPlaceholder: '1048576 (1MB/s)',
-      bandwidthDescription: 'Deje vacío para ancho de banda ilimitado. El ancho de banda está limitado por túnel.'
+      bandwidthDescription:
+        'Deje vacío para ancho de banda ilimitado. El ancho de banda está limitado por túnel.',
     },
     general: {
       loading: 'Cargando...',
@@ -162,7 +171,7 @@ export const esTranslation = {
       add: 'AGREGAR',
       close: 'CERRAR',
       save: 'GUARDAR',
-      cancel: 'CANCELAR'
+      cancel: 'CANCELAR',
     },
     account: {
       title: 'GESTIÓN DE CUENTA',
@@ -182,7 +191,7 @@ export const esTranslation = {
       passwordMismatch: 'La nueva contraseña y la confirmación no coinciden',
       passwordTooShort: 'La nueva contraseña debe tener al menos 6 caracteres',
       networkError: 'Error de red, intente más tarde',
-      passwordChangeOtpDescription: 'Ingrese su código 2FA para confirmar el cambio de contraseña'
+      passwordChangeOtpDescription: 'Ingrese su código 2FA para confirmar el cambio de contraseña',
     },
     console: {
       failedToFetchTunnelStatuses: 'Error al obtener estados de túneles',
@@ -190,31 +199,39 @@ export const esTranslation = {
       failedToFetchStatistics: 'Error al obtener estadísticas',
       failedToFetchTunnels: 'Error al obtener túneles',
       failedToFetchSettings: 'Error al obtener configuraciones:',
-      failedToSaveTunnel: 'Error al guardar túnel:'
+      failedToSaveTunnel: 'Error al guardar túnel:',
     },
     otp: {
       title: 'Autenticación de dos factores (2FA)',
-      enabledDescription: 'Su cuenta tiene activada la autenticación de dos factores. Necesitará ingresar un código de verificación al iniciar sesión.',
-      disabledDescription: 'La autenticación de dos factores proporciona seguridad adicional para su cuenta.',
+      enabledDescription:
+        'Su cuenta tiene activada la autenticación de dos factores. Necesitará ingresar un código de verificación al iniciar sesión.',
+      disabledDescription:
+        'La autenticación de dos factores proporciona seguridad adicional para su cuenta.',
       statusEnabled: 'La autenticación de dos factores está activada',
       statusDisabled: 'La autenticación de dos factores está desactivada',
       setup: 'Activar autenticación de dos factores',
       setupTitle: 'Configurar autenticación de dos factores',
-      setupDescription: 'Escanee el código QR a continuación con su aplicación de autenticación, o ingrese la clave manualmente:',
+      setupDescription:
+        'Escanee el código QR a continuación con su aplicación de autenticación, o ingrese la clave manualmente:',
       manualKey: 'Clave de entrada manual',
       verificationCode: 'Código de verificación',
       verificationPlaceholder: 'Ingrese el código de 6 dígitos',
       enable: 'Activar',
       disable: 'Desactivar',
       disableTitle: 'Desactivar autenticación de dos factores',
-      disableDescription: 'Desactivar la autenticación de dos factores reducirá la seguridad de su cuenta. Por favor ingrese un código de verificación para confirmar:',
+      disableDescription:
+        'Desactivar la autenticación de dos factores reducirá la seguridad de su cuenta. Por favor ingrese un código de verificación para confirmar:',
       verifyAndLogin: 'Verificar e iniciar sesión',
       verificationRequired: 'Verificación requerida',
-      loginOtpRequired: 'Por favor ingrese su código de autenticación de dos factores para completar el inicio de sesión',
-      passwordChangeOtpRequired: 'Por favor ingrese su código de autenticación de dos factores para cambiar la contraseña',
-      tunnelDeleteOtpRequired: 'Por favor ingrese su código de autenticación de dos factores para eliminar el túnel',
+      loginOtpRequired:
+        'Por favor ingrese su código de autenticación de dos factores para completar el inicio de sesión',
+      passwordChangeOtpRequired:
+        'Por favor ingrese su código de autenticación de dos factores para cambiar la contraseña',
+      tunnelDeleteOtpRequired:
+        'Por favor ingrese su código de autenticación de dos factores para eliminar el túnel',
       tunnelDeleteOtpDescription: 'Ingrese su código 2FA para confirmar la eliminación del túnel',
-      otpDisableOtpRequired: 'Por favor ingrese su código de autenticación de dos factores para desactivar 2FA'
-    }
-  }
+      otpDisableOtpRequired:
+        'Por favor ingrese su código de autenticación de dos factores para desactivar 2FA',
+    },
+  },
 };

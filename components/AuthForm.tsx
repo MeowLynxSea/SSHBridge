@@ -39,7 +39,7 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             },
             onCancel: () => {
               setPendingCredentials({ username: '', password: '' });
-            }
+            },
           });
           setIsLoading(false);
           return;
@@ -54,8 +54,6 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       setIsLoading(false);
     }
   };
-
-
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

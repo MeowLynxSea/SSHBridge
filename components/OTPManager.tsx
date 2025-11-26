@@ -8,7 +8,7 @@ interface OTPManagerProps {
   onClose: () => void;
 }
 
-export default function OTPManager({ _onClose }: OTPManagerProps) {
+export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
   const { t } = useTranslation();
   const { token, updateUser } = useAuth();
   const { showOtpModal } = useOtp();
@@ -106,7 +106,7 @@ export default function OTPManager({ _onClose }: OTPManagerProps) {
       setStep('status');
       setSecret('');
       setQrCode('');
-      
+
       // Update user state to reflect OTP enabled
       updateUser({ otp_enabled: true });
     } catch (error: unknown) {
@@ -124,7 +124,7 @@ export default function OTPManager({ _onClose }: OTPManagerProps) {
       description: t('otp.setupDescription'),
       onConfirm: async (otpToken: string) => {
         enableOTP(otpToken);
-      }
+      },
     });
   };
 
@@ -155,14 +155,14 @@ export default function OTPManager({ _onClose }: OTPManagerProps) {
 
           setIsEnabled(false);
           setStep('status');
-          
+
           // Update user state to reflect OTP disabled
           updateUser({ otp_enabled: false });
         } catch (error: unknown) {
           const err = error as Error;
           setError(err.message);
         }
-      }
+      },
     });
   };
 
@@ -204,10 +204,7 @@ export default function OTPManager({ _onClose }: OTPManagerProps) {
                   {isGenerating ? t('general.loading') : t('otp.setup')}
                 </button>
               ) : (
-                <button
-                  className="nb-btn nb-btn-secondary"
-                  onClick={() => setStep('disable')}
-                >
+                <button className="nb-btn nb-btn-secondary" onClick={() => setStep('disable')}>
                   {t('otp.disable')}
                 </button>
               )}
@@ -272,10 +269,7 @@ export default function OTPManager({ _onClose }: OTPManagerProps) {
             </div>
 
             <div className="flex gap-4">
-              <button
-                className="nb-btn nb-btn-danger"
-                onClick={handleDisableOtp}
-              >
+              <button className="nb-btn nb-btn-danger" onClick={handleDisableOtp}>
                 {t('otp.disable')}
               </button>
               <button

@@ -1,5 +1,11 @@
 import { Database } from '../database';
-import { cuiTranslations, getFixedWidthText, tableColumnWidths, TableColumnWidths, addStringExtensions } from './i18n';
+import {
+  cuiTranslations,
+  getFixedWidthText,
+  tableColumnWidths,
+  TableColumnWidths,
+  addStringExtensions,
+} from './i18n';
 
 export type Language = 'en' | 'zh' | 'es' | 'de' | 'ja' | 'ru' | 'ar' | 'fr';
 
@@ -13,7 +19,7 @@ export class CUII18n {
     this.userId = userId;
     this.database = database;
     this.columnWidths = tableColumnWidths[this.currentLanguage];
-    
+
     // 初始化String扩展方法
     addStringExtensions();
   }
@@ -54,14 +60,14 @@ export class CUII18n {
 
     // 映射常见的语言代码
     const langMap: Record<string, Language> = {
-      'en': 'en',
-      'zh': 'zh',
-      'es': 'es',
-      'de': 'de',
-      'ja': 'ja',
-      'ru': 'ru',
-      'ar': 'ar',
-      'fr': 'fr',
+      en: 'en',
+      zh: 'zh',
+      es: 'es',
+      de: 'de',
+      ja: 'ja',
+      ru: 'ru',
+      ar: 'ar',
+      fr: 'fr',
     };
 
     return langMap[langCode] || 'en';
@@ -174,7 +180,8 @@ export class CUII18n {
     middle: string;
     bottom: string;
   } {
-    const { status, tunnelName, externalPort, duration, activeConnections, sessionTraffic } = this.columnWidths;
+    const { status, tunnelName, externalPort, duration, activeConnections, sessionTraffic } =
+      this.columnWidths;
 
     const top = `┌─${'─'.repeat(status)}─┬─${'─'.repeat(tunnelName)}─┬─${'─'.repeat(externalPort)}─┬─${'─'.repeat(duration)}─┬─${'─'.repeat(activeConnections)}─┬─${'─'.repeat(sessionTraffic)}─┐`;
     const header = `│ ${this.getFixedWidthText('status', this.t('status.status'), 'center')} │ ${this.getFixedWidthText('tunnelName', this.t('status.tunnelName'), 'center')} │ ${this.getFixedWidthText('externalPort', this.t('status.externalPort'), 'center')} │ ${this.getFixedWidthText('duration', this.t('status.duration'), 'center')} │ ${this.getFixedWidthText('activeConnections', this.t('status.activeConnections'), 'center')} │ ${this.getFixedWidthText('sessionTraffic', this.t('status.sessionTraffic'), 'center')} │`;

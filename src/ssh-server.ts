@@ -109,11 +109,11 @@ export class SSHBridgeServer implements CUIDataProvider {
     // 初始化i18n实例
     const i18n = new CUII18n(user.id, this.database);
     await i18n.init();
-    
+
     const welcome = i18n.t('welcome.welcome');
     const userLabel = `${i18n.t('welcome.user')}: ${user.username}`;
     const pressAnyKey = i18n.t('welcome.pressAnyKey');
-    
+
     // ASCII标题
     const bridgeArt = [
       '\r\n',
@@ -125,19 +125,23 @@ export class SSHBridgeServer implements CUIDataProvider {
       '╚══════╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝╚═════╝  ╚═════╝ ╚══════╝\r\n',
       '\r\n',
     ].join('');
-    
+
     // 构建欢迎界面
     const welcomeScreen = [
       `\x1b[2J\x1b[H`, // 清屏
       bridgeArt,
       ' '.repeat(Math.max(0, Math.floor((70 - getDisplayWidth(welcome)) / 2))) + welcome + '\r\n',
       '\r\n',
-      ' '.repeat(Math.max(0, Math.floor((70 - getDisplayWidth(userLabel)) / 2))) + userLabel + '\r\n',
+      ' '.repeat(Math.max(0, Math.floor((70 - getDisplayWidth(userLabel)) / 2))) +
+        userLabel +
+        '\r\n',
       '\r\n',
-      ' '.repeat(Math.max(0, Math.floor((70 - getDisplayWidth(pressAnyKey)) / 2))) + pressAnyKey + '\r\n',
+      ' '.repeat(Math.max(0, Math.floor((70 - getDisplayWidth(pressAnyKey)) / 2))) +
+        pressAnyKey +
+        '\r\n',
       '\r\n',
     ].join('');
-    
+
     return welcomeScreen;
   }
 

@@ -1197,9 +1197,9 @@ class Database {
   async getUserTheme(userId: number): Promise<string> {
     const { get } = promisifyDb(this.db);
     try {
-      const setting = (await get('SELECT theme FROM user_settings WHERE user_id = ?', [
-        userId,
-      ])) as { theme: string } | undefined;
+      const setting = (await get('SELECT theme FROM user_settings WHERE user_id = ?', [userId])) as
+        | { theme: string }
+        | undefined;
 
       return setting ? setting.theme : 'light'; // Default light theme
     } catch (error) {
@@ -1209,21 +1209,21 @@ class Database {
   }
 
   async setUserSettings(
-    userId: number, 
-    refreshInterval?: number, 
-    language?: string, 
+    userId: number,
+    refreshInterval?: number,
+    language?: string,
     theme?: string
   ): Promise<boolean> {
     const { run, get } = promisifyDb(this.db);
     try {
       // First check if user settings exist
       const existing = await get('SELECT user_id FROM user_settings WHERE user_id = ?', [userId]);
-      
+
       if (existing) {
         // Update existing settings
         const updates = [];
         const params = [];
-        
+
         if (refreshInterval !== undefined) {
           updates.push('refresh_interval = ?');
           params.push(refreshInterval);
@@ -1236,15 +1236,12 @@ class Database {
           updates.push('theme = ?');
           params.push(theme);
         }
-        
+
         if (updates.length > 0) {
           updates.push('updated_at = CURRENT_TIMESTAMP');
           params.push(userId);
-          
-          await run(
-            `UPDATE user_settings SET ${updates.join(', ')} WHERE user_id = ?`,
-            params
-          );
+
+          await run(`UPDATE user_settings SET ${updates.join(', ')} WHERE user_id = ?`, params);
         }
       } else {
         // Insert new settings
@@ -1253,12 +1250,7 @@ class Database {
           INSERT INTO user_settings (user_id, refresh_interval, language, theme, updated_at)
           VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
           `,
-          [
-            userId,
-            refreshInterval || 2000,
-            language || 'zh',
-            theme || 'light'
-          ]
+          [userId, refreshInterval || 2000, language || 'zh', theme || 'light']
         );
       }
 
@@ -1281,7 +1273,7 @@ class Database {
         [userId]
       )) as { refresh_interval: number; language: string; theme: string } | undefined;
 
-      return setting 
+      return setting
         ? {
             refresh_interval: setting.refresh_interval,
             language: setting.language,
@@ -1367,7 +1359,11 @@ class Database {
     return row ? Number(row.otp_enabled) === 1 : false;
   }
 
-  async validatePasswordWithOtp(username: string, password: string, otpToken?: string): Promise<User | null> {
+  async validatePasswordWithOtp(
+    username: string,
+    password: string,
+    otpToken?: string
+  ): Promise<User | null> {
     const user = await this.getUserByUsername(username);
     if (!user) return null;
 
@@ -1379,7 +1375,7 @@ class Database {
       if (!otpToken) {
         throw new Error('OTP token required');
       }
-      
+
       const speakeasy = await import('speakeasy');
       const isValidOtp = speakeasy.totp.verify({
         secret: user.otp_secret!,
@@ -1387,7 +1383,7 @@ class Database {
         token: otpToken,
         window: 2, // Allow 2 time windows before and after
       });
-      
+
       if (!isValidOtp) {
         throw new Error('Invalid OTP token');
       }

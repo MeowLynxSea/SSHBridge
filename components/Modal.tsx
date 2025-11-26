@@ -34,18 +34,20 @@ export default function Modal({
   // Handle modal opening/closing
   useEffect(() => {
     if (isOpen) {
-      setShouldRender(true);
       // Add to DOM first, then trigger animation in the next frame
       requestAnimationFrame(() => {
+        setShouldRender(true);
         setAnimationState('open');
       });
     } else {
-      setAnimationState('closed');
       // Wait for animation to complete before removing from DOM
-      const timer = setTimeout(() => {
-        setShouldRender(false);
-      }, 400); // Match this to the CSS transition duration
-      return () => clearTimeout(timer);
+      requestAnimationFrame(() => {
+        setAnimationState('closed');
+        const timer = setTimeout(() => {
+          setShouldRender(false);
+        }, 400); // Match this to the CSS transition duration
+        return () => clearTimeout(timer);
+      });
     }
   }, [isOpen]);
 

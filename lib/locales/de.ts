@@ -19,7 +19,7 @@ export const deTranslation = {
       securityEnforced: 'SICHERHEIT: ERZWUNGEN',
       securityCreating: 'SICHERHEIT: WIRD ERSTELLT',
       loginFailed: 'Anmeldung fehlgeschlagen',
-      registrationFailed: 'Registrierung fehlgeschlagen'
+      registrationFailed: 'Registrierung fehlgeschlagen',
     },
     tunnelManager: {
       createTunnel: 'TUNNEL ERSTELLEN',
@@ -30,7 +30,7 @@ export const deTranslation = {
       statistics: 'STATISTIK',
       loadingStatistics: 'STATISTIKEN WERDEN GELADEN...',
       tunnelStatistics: 'TUNNEL-STATISTIKEN',
-      autoRefresh: "AUTOMATISCH AKTUALISIEREN ({{seconds}}s)",
+      autoRefresh: 'AUTOMATISCH AKTUALISIEREN ({{seconds}}s)',
       refreshNow: 'JETZT AKTUALISIEREN',
       loadingBandwidth: 'Bandbreitenstatistiken werden geladen...',
       monitorTraffic: 'Überwachen Sie Ihren Tunnelverkehr und Verbindungsstatus in Echtzeit',
@@ -50,7 +50,8 @@ export const deTranslation = {
       offline: 'OFFLINE',
       createNewTunnel: 'NEUEN TUNNEL ERSTELLEN',
       createFirstTunnel: 'ERSTELLEN SIE IHREN ERSTEN TUNNEL',
-      createFirstTunnelDescription: 'Erstellen Sie Ihren ersten Tunnel, um mit SSHBridge zu beginnen.',
+      createFirstTunnelDescription:
+        'Erstellen Sie Ihren ersten Tunnel, um mit SSHBridge zu beginnen.',
       editTunnel: 'TUNNEL BEARBEITEN',
       tunnelName: 'TUNNEL-NAME',
       tunnelNamePlaceholder: 'z.B. Web-Server',
@@ -73,11 +74,13 @@ export const deTranslation = {
       port: 'PORT',
       howToUseTunnels: 'WIE SIE IHRE TUNNEL VERWENDEN',
       updateTunnel: 'Tunnel-Konfiguration unten aktualisieren.',
-      createTunnelDescription: 'Erstellen Sie einen neuen SSH-Tunnel, um Ihre lokalen Dienste bereitzustellen.',
+      createTunnelDescription:
+        'Erstellen Sie einen neuen SSH-Tunnel, um Ihre lokalen Dienste bereitzustellen.',
       failedToSaveTunnel: 'Fehler beim Speichern des Tunnels',
       portPlaceholder: '8080',
       bandwidthPlaceholder: '1048576 (1MB/s)',
-      bandwidthDescription: 'Leer lassen für unbegrenzte Bandbreite. Bandbreite ist pro Tunnel begrenzt.',
+      bandwidthDescription:
+        'Leer lassen für unbegrenzte Bandbreite. Bandbreite ist pro Tunnel begrenzt.',
       bandwidthConfiguration: 'BANDBREITEN-KONFIGURATION',
       trafficStatistics: 'VERKEHRSSTATISTIK',
       currentSession: 'AKTUELLE SITZUNG',
@@ -89,12 +92,15 @@ export const deTranslation = {
       inactive: 'INAKTIV',
       totalTraffic: 'Gesamtverkehr',
       step1Title: 'SSH-Tunnel Erstellen',
-      step1Description: 'Verbinden Sie sich mit dem SSH-Server mit dem -R-Flag, um Ihren lokalen Dienst an einen externen Port weiterzuleiten:',
+      step1Description:
+        'Verbinden Sie sich mit dem SSH-Server mit dem -R-Flag, um Ihren lokalen Dienst an einen externen Port weiterzuleiten:',
       step2Title: 'Ihren Dienst Bereitstellen',
-      step2Description: 'Externe Benutzer können jetzt auf Ihren lokalen Dienst über den Server zugreifen unter:',
+      step2Description:
+        'Externe Benutzer können jetzt auf Ihren lokalen Dienst über den Server zugreifen unter:',
       step3Title: 'Mehrere Tunnel & Best Practices',
       step3Description: 'Sie können mehrere Tunnel für verschiedene Dienste erstellen:',
-      step3Option1: 'Erstellen Sie mehrere Tunnel für verschiedene lokale Dienste (Ports 3000, 8080, etc.)',
+      step3Option1:
+        'Erstellen Sie mehrere Tunnel für verschiedene lokale Dienste (Ports 3000, 8080, etc.)',
       step3Option2: 'Jeder Tunnel erhält seinen eigenen externen Port für unabhängigen Zugriff',
       step3Note: 'Bandbreitenlimits werden pro Tunnel angewendet',
       created: 'ERSTELLT',
@@ -107,13 +113,15 @@ export const deTranslation = {
       commandCopied: 'SSH-Befehl in die Zwischenablage kopiert!',
       failedToCopyCommand: 'Fehler beim Kopieren des Befehls in die Zwischenablage',
       logoutConfirmTitle: 'ABMELDUNG BESTÄTIGEN',
-      logoutConfirmMessage: 'Möchten Sie sich wirklich abmelden? Sie müssen sich erneut anmelden, um auf Ihre Tunnel zuzugreifen.',
+      logoutConfirmMessage:
+        'Möchten Sie sich wirklich abmelden? Sie müssen sich erneut anmelden, um auf Ihre Tunnel zuzugreifen.',
       commandDialog: {
         title: 'SSH-BEFEHLSGENERATOR',
         description: 'SSH-Befehl für Tunnel "{{tunnelName}}" generieren (Port: {{externalPort}})',
         localIP: 'Lokale IP-Adresse',
         localIPPlaceholder: 'z.B.: 127.0.0.1 oder localhost',
-        localIPDescription: 'Die IP-Adresse Ihres lokalen Dienstes, der über den Tunnel exposed wird',
+        localIPDescription:
+          'Die IP-Adresse Ihres lokalen Dienstes, der über den Tunnel exposed wird',
         localPort: 'Lokaler Port',
         localPortPlaceholder: 'z.B.: 3000',
         localPortDescription: 'Der Port Ihres lokalen Dienstes, der über den Tunnel exposed wird',
@@ -123,14 +131,15 @@ export const deTranslation = {
         localIPRequired: 'Lokale IP ist erforderlich',
         localPortRequired: 'Lokaler Port ist erforderlich',
         invalidPort: 'Bitte geben Sie eine gültige Portnummer ein (1-65535)',
-        copyFailed: 'Fehler beim Kopieren des Befehls in die Zwischenablage'
-      }
+        copyFailed: 'Fehler beim Kopieren des Befehls in die Zwischenablage',
+      },
     },
     settings: {
       title: 'EINSTELLUNGEN',
       description: 'Konfigurieren Sie Ihre SSHBridge-Präferenzen',
       refreshInterval: 'PTY-STATUS AKTUALISIERUNGSINTERVALL (MILLISEKUNDEN)',
-      refreshIntervalDescription: 'Minimum: 1000ms (1 Sekunde). Dies steuert, wie oft die PTY-Statusanzeige aktualisiert wird.',
+      refreshIntervalDescription:
+        'Minimum: 1000ms (1 Sekunde). Dies steuert, wie oft die PTY-Statusanzeige aktualisiert wird.',
       language: 'SPRACHE',
       theme: 'THEMA',
       languageDescription: 'Wählen Sie Ihre bevorzugte Sprache für die Benutzeroberfläche.',
@@ -151,7 +160,8 @@ export const deTranslation = {
       failedToSaveTunnel: 'Fehler beim Speichern des Tunnels',
       portPlaceholder: '8080',
       bandwidthPlaceholder: '1048576 (1MB/s)',
-      bandwidthDescription: 'Leer lassen für unbegrenzte Bandbreite. Bandbreite ist pro Tunnel begrenzt.'
+      bandwidthDescription:
+        'Leer lassen für unbegrenzte Bandbreite. Bandbreite ist pro Tunnel begrenzt.',
     },
     general: {
       loading: 'Wird geladen...',
@@ -162,7 +172,7 @@ export const deTranslation = {
       add: 'HINZUFÜGEN',
       close: 'SCHLIESSEN',
       save: 'SPEICHERN',
-      cancel: 'ABBRECHEN'
+      cancel: 'ABBRECHEN',
     },
     account: {
       title: 'KONTOVERWALTUNG',
@@ -182,7 +192,8 @@ export const deTranslation = {
       passwordMismatch: 'Neues Passwort und Bestätigung stimmen nicht überein',
       passwordTooShort: 'Neues Passwort muss mindestens 6 Zeichen lang sein',
       networkError: 'Netzwerkfehler, bitte versuchen Sie es später erneut',
-      passwordChangeOtpDescription: 'Geben Sie Ihren 2FA-Code ein, um die Passwortänderung zu bestätigen'
+      passwordChangeOtpDescription:
+        'Geben Sie Ihren 2FA-Code ein, um die Passwortänderung zu bestätigen',
     },
     console: {
       failedToFetchTunnelStatuses: 'Fehler beim Abrufen der Tunnel-Status',
@@ -190,31 +201,40 @@ export const deTranslation = {
       failedToFetchStatistics: 'Fehler beim Abrufen der Statistiken',
       failedToFetchTunnels: 'Fehler beim Abrufen der Tunnel',
       failedToFetchSettings: 'Fehler beim Abrufen der Einstellungen:',
-      failedToSaveTunnel: 'Fehler beim Speichern des Tunnels:'
+      failedToSaveTunnel: 'Fehler beim Speichern des Tunnels:',
     },
     otp: {
       title: 'Zwei-Faktor-Authentifizierung (2FA)',
-      enabledDescription: 'Ihr Konto hat die Zwei-Faktor-Authentifizierung aktiviert. Sie müssen bei der Anmeldung einen Bestätigungscode eingeben.',
-      disabledDescription: 'Die Zwei-Faktor-Authentifizierung bietet zusätzliche Sicherheit für Ihr Konto.',
+      enabledDescription:
+        'Ihr Konto hat die Zwei-Faktor-Authentifizierung aktiviert. Sie müssen bei der Anmeldung einen Bestätigungscode eingeben.',
+      disabledDescription:
+        'Die Zwei-Faktor-Authentifizierung bietet zusätzliche Sicherheit für Ihr Konto.',
       statusEnabled: 'Zwei-Faktor-Authentifizierung ist aktiviert',
       statusDisabled: 'Zwei-Faktor-Authentifizierung ist deaktiviert',
       setup: 'Zwei-Faktor-Authentifizierung aktivieren',
       setupTitle: 'Zwei-Faktor-Authentifizierung einrichten',
-      setupDescription: 'Scannen Sie den QR-Code unten mit Ihrer Authenticator-App oder geben Sie den Schlüssel manuell ein:',
+      setupDescription:
+        'Scannen Sie den QR-Code unten mit Ihrer Authenticator-App oder geben Sie den Schlüssel manuell ein:',
       manualKey: 'Manueller Eintragsschlüssel',
       verificationCode: 'Bestätigungscode',
       verificationPlaceholder: '6-stelligen Code eingeben',
       enable: 'Aktivieren',
       disable: 'Deaktivieren',
       disableTitle: 'Zwei-Faktor-Authentifizierung deaktivieren',
-      disableDescription: 'Das Deaktivieren der Zwei-Faktor-Authentifizierung verringert die Sicherheit Ihres Kontos. Bitte geben Sie einen Bestätigungscode ein, um zu bestätigen:',
+      disableDescription:
+        'Das Deaktivieren der Zwei-Faktor-Authentifizierung verringert die Sicherheit Ihres Kontos. Bitte geben Sie einen Bestätigungscode ein, um zu bestätigen:',
       verifyAndLogin: 'Verifizieren und Anmelden',
       verificationRequired: 'Verifizierung erforderlich',
-      loginOtpRequired: 'Bitte geben Sie Ihren Zwei-Faktor-Authentifizierungscode ein, um die Anmeldung abzuschließen',
-      passwordChangeOtpRequired: 'Bitte geben Sie Ihren Zwei-Faktor-Authentifizierungscode ein, um das Passwort zu ändern',
-      tunnelDeleteOtpRequired: 'Bitte geben Sie Ihren Zwei-Faktor-Authentifizierungscode ein, um den Tunnel zu löschen',
-      tunnelDeleteOtpDescription: 'Geben Sie Ihren 2FA-Code ein, um das Löschen des Tunnels zu bestätigen',
-      otpDisableOtpRequired: 'Bitte geben Sie Ihren Zwei-Faktor-Authentifizierungscode ein, um 2FA zu deaktivieren'
-    }
-  }
+      loginOtpRequired:
+        'Bitte geben Sie Ihren Zwei-Faktor-Authentifizierungscode ein, um die Anmeldung abzuschließen',
+      passwordChangeOtpRequired:
+        'Bitte geben Sie Ihren Zwei-Faktor-Authentifizierungscode ein, um das Passwort zu ändern',
+      tunnelDeleteOtpRequired:
+        'Bitte geben Sie Ihren Zwei-Faktor-Authentifizierungscode ein, um den Tunnel zu löschen',
+      tunnelDeleteOtpDescription:
+        'Geben Sie Ihren 2FA-Code ein, um das Löschen des Tunnels zu bestätigen',
+      otpDisableOtpRequired:
+        'Bitte geben Sie Ihren Zwei-Faktor-Authentifizierungscode ein, um 2FA zu deaktivieren',
+    },
+  },
 };

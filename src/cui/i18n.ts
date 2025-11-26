@@ -16,51 +16,53 @@ export function getDisplayWidth(str: string): number {
         continue;
       }
     }
-    
+
     // CJK统一表意文字及扩展（中文、日文、韩文等）
     // CJK统一表意文字
-    if ((code >= 0x4e00 && code <= 0x9fff) ||
-        // CJK扩展A-F区
-        (code >= 0x3400 && code <= 0x4dbf) ||
-        (code >= 0x20000 && code <= 0x2a6df) ||
-        (code >= 0x2a700 && code <= 0x2b73f) ||
-        (code >= 0x2b740 && code <= 0x2b81f) ||
-        (code >= 0x2b820 && code <= 0x2ceaf) ||
-        // CJK兼容表意文字
-        (code >= 0xf900 && code <= 0xfaff) ||
-        (code >= 0x2f800 && code <= 0x2fa1f) ||
-        // 日文假名（平假名和片假名）
-        (code >= 0x3040 && code <= 0x309f) ||
-        (code >= 0x30a0 && code <= 0x30ff) ||
-        // 韩文音节
-        (code >= 0xac00 && code <= 0xd7af) ||
-        // 韩文兼容字母
-        (code >= 0x3130 && code <= 0x318f) ||
-        (code >= 0xffa0 && code <= 0xffdc) ||
-        // 全角符号和字母
-        (code >= 0xff00 && code <= 0xffef) ||
-        // 中文标点符号
-        (code >= 0x3000 && code <= 0x303f) ||
-        // 其他亚洲语言符号
-        (code >= 0x3200 && code <= 0x32ff) ||
-        (code >= 0x3300 && code <= 0x33ff) ||
-        // 数学符号（部分为全角）
-        (code >= 0x2200 && code <= 0x22ff) ||
-        // 盒子绘制字符
-        (code >= 0x2500 && code <= 0x257f) ||
-        (code >= 0x2580 && code <= 0x259f) ||
-        // 几何图形
-        (code >= 0x25a0 && code <= 0x25ff) ||
-        // 装饰符号
-        (code >= 0x2600 && code <= 0x26ff) ||
-        // 杂项符号
-        (code >= 0x2700 && code <= 0x27bf) ||
-        // 箭头符号
-        (code >= 0x2190 && code <= 0x21ff) ||
-        // 其他技术符号
-        (code >= 0x2300 && code <= 0x23ff) ||
-        // 光学字符识别
-        (code >= 0x2440 && code <= 0x245f)) {
+    if (
+      (code >= 0x4e00 && code <= 0x9fff) ||
+      // CJK扩展A-F区
+      (code >= 0x3400 && code <= 0x4dbf) ||
+      (code >= 0x20000 && code <= 0x2a6df) ||
+      (code >= 0x2a700 && code <= 0x2b73f) ||
+      (code >= 0x2b740 && code <= 0x2b81f) ||
+      (code >= 0x2b820 && code <= 0x2ceaf) ||
+      // CJK兼容表意文字
+      (code >= 0xf900 && code <= 0xfaff) ||
+      (code >= 0x2f800 && code <= 0x2fa1f) ||
+      // 日文假名（平假名和片假名）
+      (code >= 0x3040 && code <= 0x309f) ||
+      (code >= 0x30a0 && code <= 0x30ff) ||
+      // 韩文音节
+      (code >= 0xac00 && code <= 0xd7af) ||
+      // 韩文兼容字母
+      (code >= 0x3130 && code <= 0x318f) ||
+      (code >= 0xffa0 && code <= 0xffdc) ||
+      // 全角符号和字母
+      (code >= 0xff00 && code <= 0xffef) ||
+      // 中文标点符号
+      (code >= 0x3000 && code <= 0x303f) ||
+      // 其他亚洲语言符号
+      (code >= 0x3200 && code <= 0x32ff) ||
+      (code >= 0x3300 && code <= 0x33ff) ||
+      // 数学符号（部分为全角）
+      (code >= 0x2200 && code <= 0x22ff) ||
+      // 盒子绘制字符
+      (code >= 0x2500 && code <= 0x257f) ||
+      (code >= 0x2580 && code <= 0x259f) ||
+      // 几何图形
+      (code >= 0x25a0 && code <= 0x25ff) ||
+      // 装饰符号
+      (code >= 0x2600 && code <= 0x26ff) ||
+      // 杂项符号
+      (code >= 0x2700 && code <= 0x27bf) ||
+      // 箭头符号
+      (code >= 0x2190 && code <= 0x21ff) ||
+      // 其他技术符号
+      (code >= 0x2300 && code <= 0x23ff) ||
+      // 光学字符识别
+      (code >= 0x2440 && code <= 0x245f)
+    ) {
       width += 2;
     } else {
       width += 1;

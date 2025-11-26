@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
       const user = await database.validatePasswordWithOtp(username, password, otpToken);
-      
+
       if (!user) {
         return sendLocalizedError(req, res, 401, 'invalidCredentials');
       }
@@ -38,9 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const err = error as Error;
       // Handle specific OTP errors
       if (err.message === 'OTP token required') {
-        return res.status(401).json({ 
+        return res.status(401).json({
           error: 'OTP token required',
-          requiresOtp: true 
+          requiresOtp: true,
         });
       }
       if (err.message === 'Invalid OTP token') {

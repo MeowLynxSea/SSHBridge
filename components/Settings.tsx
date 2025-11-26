@@ -103,7 +103,7 @@ export default function Settings({ isOpen = true }: SettingsProps) {
             language: data.language || settings.language,
             theme: data.theme || settings.theme,
           });
-          
+
           // Apply the settings immediately
           if (data.language && data.language !== currentLanguage) {
             changeLanguage(data.language);

@@ -23,24 +23,29 @@ export const enTranslation = {
     },
     otp: {
       title: 'Two-Factor Authentication (2FA)',
-      enabledDescription: 'Your account has two-factor authentication enabled. You will need to enter a verification code when logging in.',
-      disabledDescription: 'Two-factor authentication provides additional security for your account.',
+      enabledDescription:
+        'Your account has two-factor authentication enabled. You will need to enter a verification code when logging in.',
+      disabledDescription:
+        'Two-factor authentication provides additional security for your account.',
       statusEnabled: 'Two-factor authentication is enabled',
       statusDisabled: 'Two-factor authentication is disabled',
       setup: 'Enable Two-Factor Authentication',
       setupTitle: 'Setup Two-Factor Authentication',
-      setupDescription: 'Scan the QR code below with your authenticator app, or manually enter the key:',
+      setupDescription:
+        'Scan the QR code below with your authenticator app, or manually enter the key:',
       manualKey: 'Manual Entry Key',
       verificationCode: 'Verification Code',
       verificationPlaceholder: 'Enter 6-digit code',
       enable: 'Enable',
       disable: 'Disable',
       disableTitle: 'Disable Two-Factor Authentication',
-      disableDescription: 'Disabling two-factor authentication will reduce your account security. Please enter a verification code to confirm:',
+      disableDescription:
+        'Disabling two-factor authentication will reduce your account security. Please enter a verification code to confirm:',
       verifyAndLogin: 'Verify and Login',
       verificationRequired: 'Verification Required',
       loginOtpRequired: 'Please enter your two-factor authentication code to complete login',
-      passwordChangeOtpRequired: 'Please enter your two-factor authentication code to change password',
+      passwordChangeOtpRequired:
+        'Please enter your two-factor authentication code to change password',
       tunnelDeleteOtpRequired: 'Please enter your two-factor authentication code to delete tunnel',
       tunnelDeleteOtpDescription: 'Enter your 2FA code to confirm tunnel deletion',
       otpDisableOtpRequired: 'Please enter your two-factor authentication code to disable 2FA',

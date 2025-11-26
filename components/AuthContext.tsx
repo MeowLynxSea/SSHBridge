@@ -11,7 +11,11 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (username: string, password: string, otpToken?: string) => Promise<{ requiresOtp: boolean }>;
+  login: (
+    username: string,
+    password: string,
+    otpToken?: string
+  ) => Promise<{ requiresOtp: boolean }>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
   updateUser: (userUpdates: Partial<User>) => void;
@@ -69,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(data.token);
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
-    
+
     return { requiresOtp: false };
   };
 
@@ -116,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUser = (userUpdates: Partial<User>) => {
     if (!user) return;
-    
+
     const updatedUser = { ...user, ...userUpdates };
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));

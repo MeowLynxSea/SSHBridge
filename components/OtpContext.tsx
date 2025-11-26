@@ -40,7 +40,7 @@ export function OtpProvider({ children }: OtpProviderProps) {
 
   const handleConfirm = async (otpToken: string) => {
     if (!currentAction) return;
-    
+
     setIsLoading(true);
     try {
       await currentAction.onConfirm(otpToken);
