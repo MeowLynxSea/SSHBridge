@@ -22,11 +22,24 @@ RUN npm ci --ignore-scripts
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Debug: Check if src files exist and inspect tsconfig
+RUN echo "--- Checking src files ---"
+RUN ls -la src/server.ts src/database.ts src/ssh-server.ts
 
-# Verify dist directory was created and contains server.js
+RUN echo "--- Checking tsconfig.server.json ---"
+RUN cat tsconfig.server.json
+
+RUN echo "--- Running build:server ---"
+RUN npm run build:server
+
+RUN echo "--- Checking build output ---"
+RUN ls -la dist/ || echo "Dist directory not found"
+
+# Verify server.js was created
 RUN ls -la dist/server.js || (echo "server.js not found in dist directory" && exit 1)
+
+RUN echo "--- Running build:web ---"
+RUN npm run build:web
 
 # Production stage
 FROM base AS runner
