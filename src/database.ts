@@ -2,6 +2,7 @@ import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import * as path from 'path';
 import {
   TunnelStats,
   RealtimeStats,
@@ -105,8 +106,10 @@ class Database {
   private activeConnections: Map<string, { tunnelId: number; startTime: Date; clientIP: string }> =
     new Map();
 
-  private constructor(dbPath: string = './sshbridge.db') {
-    this.db = new sqlite3.Database(dbPath);
+  private constructor(dbPath?: string) {
+    const databasePath =
+      dbPath || process.env.DATABASE_PATH || path.join(process.cwd(), 'database.sqlite');
+    this.db = new sqlite3.Database(databasePath);
     this.jwtSecret = process.env.JWT_SECRET || 'default-secret-key-change-in-production';
     this.init();
   }

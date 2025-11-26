@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  sshbridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sshbridge
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - NODE_ENV=production
+      - WEB_PORT=3000
+      - SSH_PORT=2222
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-change-in-production}
+    volumes:
+      - sshbridge_data:/app/data
+      - sshbridge_hostkey:/app/hostkey
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'sh',
+          '-c',
+          'node -e "require(''http'').get(''http://localhost:${WEB_PORT:-3000}'', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  sshbridge_data:
+    driver: local
+  sshbridge_hostkey:
+    driver: local

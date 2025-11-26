@@ -5,9 +5,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const sshPort = parseInt(process.env.SSH_PORT || '2222', 10);
+const webPort = parseInt(process.env.WEB_PORT || '3000', 10);
 
 async function generateHostKey(): Promise<string> {
-  const keyPath = path.join(process.cwd(), 'host.key');
+  const keyPath = process.env.HOST_KEY_PATH || path.join(process.cwd(), 'host.key');
 
   if (fs.existsSync(keyPath)) {
     return fs.readFileSync(keyPath, 'utf8');
@@ -41,7 +42,7 @@ async function startServer() {
   try {
     console.log('Starting SSHBridge server...');
 
-    const database = getDatabaseInstance();
+    const database = getDatabaseInstance(process.env.DATABASE_PATH);
     await new Promise((resolve) => setTimeout(resolve, 100)); // Give database time to initialize
 
     const hostKey = await generateHostKey();
@@ -58,6 +59,21 @@ async function startServer() {
 
     await sshServer.start();
     console.log(`SSH server started on port ${sshPort}`);
+
+    // Start the Next.js server
+    const { spawn } = require('child_process');
+    const nextServer = spawn('next', ['start', '-p', webPort.toString()], {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        PORT: webPort.toString(),
+      },
+    });
+
+    nextServer.on('error', (error: Error) => {
+      console.error('Failed to start Next.js server:', error);
+      gracefulShutdown();
+    });
 
     // Handle multiple shutdown signals
     process.on('SIGINT', gracefulShutdown);
