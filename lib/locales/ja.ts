@@ -19,7 +19,7 @@ export const jaTranslation = {
       securityEnforced: 'セキュリティ: 強制',
       securityCreating: 'セキュリティ: 作成中',
       loginFailed: 'ログインに失敗しました',
-      registrationFailed: '登録に失敗しました',
+      registrationFailed: '登録に失敗しました'
     },
     tunnelManager: {
       createTunnel: 'トンネルを作成',
@@ -30,7 +30,7 @@ export const jaTranslation = {
       statistics: '統計',
       loadingStatistics: '統計を読み込み中...',
       tunnelStatistics: 'トンネル統計',
-      autoRefresh: '自動更新（{{seconds}}秒）',
+      autoRefresh: "自動更新（{{seconds}}秒）",
       refreshNow: '今すぐ更新',
       loadingBandwidth: '帯域統計を読み込み中...',
       monitorTraffic: 'トンネルのトラフィックと接続状態をリアルタイムで監視',
@@ -77,8 +77,7 @@ export const jaTranslation = {
       failedToSaveTunnel: 'トンネルの保存に失敗しました',
       portPlaceholder: '8080',
       bandwidthPlaceholder: '1048576 (1MB/s)',
-      bandwidthDescription:
-        '空欄のままにすると無制限の帯域幅になります。帯域幅はトンネルごとに制限されます。',
+      bandwidthDescription: '空欄のままにすると無制限の帯域幅になります。帯域幅はトンネルごとに制限されます。',
       bandwidthConfiguration: '帯域設定',
       trafficStatistics: 'トラフィック統計',
       currentSession: '現在のセッション',
@@ -90,8 +89,7 @@ export const jaTranslation = {
       inactive: '非アクティブ',
       totalTraffic: '合計トラフィック',
       step1Title: 'SSHトンネルを作成',
-      step1Description:
-        '-Rフラグを使用してSSHサーバーに接続し、ローカルサービスを外部ポートに転送します：',
+      step1Description: '-Rフラグを使用してSSHサーバーに接続し、ローカルサービスを外部ポートに転送します：',
       step2Title: 'サービスを公開',
       step2Description: '外部ユーザーは現在、サーバーを介してローカルサービスにアクセスできます：',
       step3Title: '複数のトンネルとベストプラクティス',
@@ -109,11 +107,10 @@ export const jaTranslation = {
       commandCopied: 'SSHコマンドをクリップボードにコピーしました！',
       failedToCopyCommand: 'コマンドのクリップボードへのコピーに失敗しました',
       logoutConfirmTitle: 'ログアウトの確認',
-      logoutConfirmMessage:
-        'ログアウトしてもよろしいですか？トンネルにアクセスするには、再度サインインする必要があります。',
+      logoutConfirmMessage: 'ログアウトしてもよろしいですか？トンネルにアクセスするには、再度サインインする必要があります。',
       commandDialog: {
         title: 'SSHコマンドジェネレーター',
-        description: "トンネル'{{tunnelName}}'のSSHコマンドを生成します (ポート: {{externalPort}})",
+        description: 'トンネル"{{tunnelName}}"のSSHコマンドを生成します (ポート: {{externalPort}})',
         localIP: 'ローカルIPアドレス',
         localIPPlaceholder: '例: 127.0.0.1またはlocalhost',
         localIPDescription: 'トンネルを介して公開されるローカルサービスのIPアドレス',
@@ -126,8 +123,8 @@ export const jaTranslation = {
         localIPRequired: 'ローカルIPが必要です',
         localPortRequired: 'ローカルポートが必要です',
         invalidPort: '有効なポート番号を入力してください（1-65535）',
-        copyFailed: 'コマンドをクリップボードにコピーできませんでした',
-      },
+        copyFailed: 'コマンドをクリップボードにコピーできませんでした'
+      }
     },
     settings: {
       title: '設定',
@@ -154,8 +151,7 @@ export const jaTranslation = {
       failedToSaveTunnel: 'トンネルの保存に失敗しました',
       portPlaceholder: '8080',
       bandwidthPlaceholder: '1048576 (1MB/s)',
-      bandwidthDescription:
-        '空欄のままにすると無制限の帯域幅になります。帯域幅はトンネルごとに制限されます。',
+      bandwidthDescription: '空欄のままにすると無制限の帯域幅になります。帯域幅はトンネルごとに制限されます。'
     },
     general: {
       loading: '読み込み中...',
@@ -166,7 +162,7 @@ export const jaTranslation = {
       add: '追加',
       close: '閉じる',
       save: '保存',
-      cancel: 'キャンセル',
+      cancel: 'キャンセル'
     },
     account: {
       title: 'アカウント管理',
@@ -186,6 +182,7 @@ export const jaTranslation = {
       passwordMismatch: '新しいパスワードと確認が一致しません',
       passwordTooShort: '新しいパスワードは少なくとも6文字である必要があります',
       networkError: 'ネットワークエラー、後でもう一度お試しください',
+      passwordChangeOtpDescription: 'パスワード変更を確認するために2FAコードを入力してください'
     },
     console: {
       failedToFetchTunnelStatuses: 'トンネルステータスの取得に失敗しました',
@@ -193,7 +190,31 @@ export const jaTranslation = {
       failedToFetchStatistics: '統計の取得に失敗しました',
       failedToFetchTunnels: 'トンネルの取得に失敗しました',
       failedToFetchSettings: '設定の取得に失敗しました：',
-      failedToSaveTunnel: 'トンネルの保存に失敗しました：',
+      failedToSaveTunnel: 'トンネルの保存に失敗しました：'
     },
-  },
+    otp: {
+      title: '二要素認証 (2FA)',
+      enabledDescription: 'あなたのアカウントでは二要素認証が有効になっています。ログイン時に認証コードを入力する必要があります。',
+      disabledDescription: '二要素認証はアカウントに追加のセキュリティを提供します。',
+      statusEnabled: '二要素認証が有効になっています',
+      statusDisabled: '二要素認証が無効になっています',
+      setup: '二要素認証を有効にする',
+      setupTitle: '二要素認証を設定',
+      setupDescription: '認証アプリで以下のQRコードをスキャンするか、手動でキーを入力してください：',
+      manualKey: '手動入力キー',
+      verificationCode: '認証コード',
+      verificationPlaceholder: '6桁のコードを入力',
+      enable: '有効にする',
+      disable: '無効にする',
+      disableTitle: '二要素認証を無効にする',
+      disableDescription: '二要素認証を無効にすると、アカウントのセキュリティが低下します。確認のため認証コードを入力してください：',
+      verifyAndLogin: '認証してログイン',
+      verificationRequired: '認証が必要',
+      loginOtpRequired: 'ログインを完了するために二要素認証コードを入力してください',
+      passwordChangeOtpRequired: 'パスワードを変更するために二要素認証コードを入力してください',
+      tunnelDeleteOtpRequired: 'トンネルを削除するために二要素認証コードを入力してください',
+      tunnelDeleteOtpDescription: 'トンネル削除を確認するために2FAコードを入力してください',
+      otpDisableOtpRequired: '2FAを無効にするために二要素認証コードを入力してください'
+    }
+  }
 };

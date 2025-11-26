@@ -66,6 +66,8 @@ export interface User {
   id: number;
   username: string;
   password: string;
+  otp_secret?: string;
+  otp_enabled: boolean;
   created_at: string;
 }
 
@@ -124,6 +126,7 @@ class Database {
 
   private async init() {
     const { run } = promisifyDb(this.db);
+    const { all: dbAll } = promisifyDb(this.db);
 
     await run(
       `
@@ -131,11 +134,31 @@ class Database {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        otp_secret TEXT,
+        otp_enabled INTEGER NOT NULL DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `,
       []
     );
+
+    // Check if we need to add OTP columns to users table
+    const usersTableInfo = (await dbAll(
+      'PRAGMA table_info(users)',
+      []
+    )) as unknown as TableColumn[];
+    const hasOtpSecretColumn = usersTableInfo.some((col) => col.name === 'otp_secret');
+    const hasOtpEnabledColumn = usersTableInfo.some((col) => col.name === 'otp_enabled');
+
+    if (!hasOtpSecretColumn) {
+      console.log('Adding otp_secret column to users table');
+      await run('ALTER TABLE users ADD COLUMN otp_secret TEXT', []);
+    }
+
+    if (!hasOtpEnabledColumn) {
+      console.log('Adding otp_enabled column to users table');
+      await run('ALTER TABLE users ADD COLUMN otp_enabled INTEGER NOT NULL DEFAULT 0', []);
+    }
 
     await run(
       `
@@ -177,7 +200,7 @@ class Database {
 
     if (tableInfo) {
       // Check if we need to migrate from old schema to new schema
-      const columns = (await all('PRAGMA table_info(tunnels)', [])) as unknown as TableColumn[];
+      const columns = (await dbAll('PRAGMA table_info(tunnels)', [])) as unknown as TableColumn[];
       const hasOldColumns =
         columns.some((col) => col.name === 'local_port') &&
         !columns.some((col) => col.name === 'external_port');
@@ -364,6 +387,8 @@ class Database {
       id: Number(row.id),
       username: String(row.username),
       password: String(row.password),
+      otp_secret: row.otp_secret ? String(row.otp_secret) : undefined,
+      otp_enabled: Number(row.otp_enabled) === 1,
       created_at: parseDatabaseDate(String(row.created_at)).toISOString(),
     };
   }
@@ -414,8 +439,8 @@ class Database {
   }
 
   async getTunnelsByUserId(userId: number): Promise<Tunnel[]> {
-    const { all } = promisifyDb(this.db);
-    const rows = await all('SELECT * FROM tunnels WHERE user_id = ?', [userId]);
+    const { all: dbAll } = promisifyDb(this.db);
+    const rows = await dbAll('SELECT * FROM tunnels WHERE user_id = ?', [userId]);
     return rows.map((row) => this.mapRowToTunnel(row));
   }
 
@@ -1305,6 +1330,70 @@ class Database {
       expires_at: parseDatabaseDate(String(row.expires_at)).toISOString(),
       created_at: parseDatabaseDate(String(row.created_at)).toISOString(),
     };
+  }
+
+  // OTP Methods
+  async enableOTP(userId: number, secret: string): Promise<boolean> {
+    const { run } = promisifyDb(this.db);
+    try {
+      await run('UPDATE users SET otp_secret = ?, otp_enabled = 1 WHERE id = ?', [secret, userId]);
+      return true;
+    } catch (error) {
+      console.error('Error enabling OTP:', error);
+      return false;
+    }
+  }
+
+  async disableOTP(userId: number): Promise<boolean> {
+    const { run } = promisifyDb(this.db);
+    try {
+      await run('UPDATE users SET otp_secret = NULL, otp_enabled = 0 WHERE id = ?', [userId]);
+      return true;
+    } catch (error) {
+      console.error('Error disabling OTP:', error);
+      return false;
+    }
+  }
+
+  async getUserOtpSecret(userId: number): Promise<string | null> {
+    const { get } = promisifyDb(this.db);
+    const row = await get('SELECT otp_secret FROM users WHERE id = ?', [userId]);
+    return row && row.otp_secret ? String(row.otp_secret) : null;
+  }
+
+  async isUserOtpEnabled(userId: number): Promise<boolean> {
+    const { get } = promisifyDb(this.db);
+    const row = await get('SELECT otp_enabled FROM users WHERE id = ?', [userId]);
+    return row ? Number(row.otp_enabled) === 1 : false;
+  }
+
+  async validatePasswordWithOtp(username: string, password: string, otpToken?: string): Promise<User | null> {
+    const user = await this.getUserByUsername(username);
+    if (!user) return null;
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) return null;
+
+    // If OTP is enabled, validate the OTP token
+    if (user.otp_enabled) {
+      if (!otpToken) {
+        throw new Error('OTP token required');
+      }
+      
+      const speakeasy = await import('speakeasy');
+      const isValidOtp = speakeasy.totp.verify({
+        secret: user.otp_secret!,
+        encoding: 'base32',
+        token: otpToken,
+        window: 2, // Allow 2 time windows before and after
+      });
+      
+      if (!isValidOtp) {
+        throw new Error('Invalid OTP token');
+      }
+    }
+
+    return user;
   }
 }
 

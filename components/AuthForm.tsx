@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
 import { useMobile } from './ResponsiveLayout';
+import { useOtp } from './OtpContext';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -14,7 +15,9 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [, setPendingCredentials] = useState({ username: '', password: '' });
   const { login, register } = useAuth();
+  const { showOtpModal } = useOtp();
   const { isMobile, isSmallMobile } = useMobile();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,7 +27,23 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
 
     try {
       if (mode === 'login') {
-        await login(username, password);
+        const result = await login(username, password);
+        if (result.requiresOtp) {
+          const currentCredentials = { username, password };
+          setPendingCredentials(currentCredentials);
+          showOtpModal({
+            id: 'login',
+            title: t('otp.loginOtpRequired'),
+            onConfirm: async (otpToken: string) => {
+              await login(currentCredentials.username, currentCredentials.password, otpToken);
+            },
+            onCancel: () => {
+              setPendingCredentials({ username: '', password: '' });
+            }
+          });
+          setIsLoading(false);
+          return;
+        }
       } else {
         await register(username, password);
       }
@@ -35,6 +54,8 @@ export default function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       setIsLoading(false);
     }
   };
+
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

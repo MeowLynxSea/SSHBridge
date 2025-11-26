@@ -4,15 +4,17 @@ import { useTranslation } from 'react-i18next';
 interface User {
   id: number;
   username: string;
+  otp_enabled: boolean;
   created_at: string;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, otpToken?: string) => Promise<{ requiresOtp: boolean }>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (userUpdates: Partial<User>) => void;
   isLoading: boolean;
 }
 
@@ -42,25 +44,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, otpToken?: string) => {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, otpToken }),
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || t('auth.loginFailed'));
+    const data = await response.json();
+
+    // Special handling for OTP required (only check on 401 status)
+    if (response.status === 401 && data.requiresOtp) {
+      return { requiresOtp: true };
     }
 
-    const data = await response.json();
+    // For all other non-200 responses, throw an error
+    if (!response.ok) {
+      throw new Error(data.error || t('auth.loginFailed'));
+    }
+
     setUser(data.user);
     setToken(data.token);
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
+    
+    return { requiresOtp: false };
   };
 
   const register = async (username: string, password: string) => {
@@ -104,8 +114,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user');
   };
 
+  const updateUser = (userUpdates: Partial<User>) => {
+    if (!user) return;
+    
+    const updatedUser = { ...user, ...userUpdates };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database';
+import { sendLocalizedError } from '../../../lib/apiErrors';
 
 const database = getDatabaseInstance();
 
@@ -14,12 +15,12 @@ async function authenticate(req: NextApiRequest): Promise<{ id: number; username
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const user = await authenticate(req);
   if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return sendLocalizedError(req, res, 401, 'unauthorized');
   }
 
   const { id } = req.query;
   if (!id || isNaN(Number(id))) {
-    return res.status(400).json({ error: 'Invalid tunnel ID' });
+    return sendLocalizedError(req, res, 400, 'invalidTunnelId');
   }
 
   const tunnelId = Number(id);
@@ -30,22 +31,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { name, external_port, max_bandwidth } = req.body;
 
         if (!name || !external_port) {
-          return res.status(400).json({ error: 'Name and external_port are required' });
+          return sendLocalizedError(req, res, 400, 'nameAndPortRequired');
         }
 
         if (isNaN(external_port)) {
-          return res.status(400).json({ error: 'External port must be a number' });
+          return sendLocalizedError(req, res, 400, 'portMustBeNumber');
         }
 
         const port = parseInt(external_port);
         if (port < 10000 || port > 65535) {
-          return res.status(400).json({ error: 'External port must be in range 10000-65535' });
+          return sendLocalizedError(req, res, 400, 'portOutOfRange');
         }
 
         if (max_bandwidth && (isNaN(max_bandwidth) || parseInt(max_bandwidth) <= 0)) {
-          return res.status(400).json({
-            error: 'Max bandwidth must be a positive number (bytes per second)',
-          });
+          return sendLocalizedError(req, res, 400, 'bandwidthMustBePositive');
         }
 
         const tunnel = await database.getTunnelById(tunnelId);
@@ -67,13 +66,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Handle specific validation errors
         if (error instanceof Error) {
           if (error.message.includes('is already in use')) {
-            return res.status(409).json({ error: error.message });
+            return sendLocalizedError(req, res, 409, 'portInUse');
           }
           if (
             error.message.includes('not allowed') ||
             error.message.includes('Port must be in range')
           ) {
-            return res.status(400).json({ error: error.message });
+            return sendLocalizedError(req, res, 400, 'portOutOfRange');
           }
         }
 
@@ -86,13 +85,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { max_bandwidth } = req.body;
 
         if (!max_bandwidth) {
-          return res.status(400).json({ error: 'Max bandwidth is required for PATCH operation' });
+          return sendLocalizedError(req, res, 400, 'bandwidthRequiredForPatch');
         }
 
         if (isNaN(max_bandwidth) || parseInt(max_bandwidth) <= 0) {
-          return res.status(400).json({
-            error: 'Max bandwidth must be a positive number (bytes per second)',
-          });
+          return sendLocalizedError(req, res, 400, 'bandwidthMustBePositive');
         }
 
         const tunnel = await database.getTunnelById(tunnelId);
@@ -108,12 +105,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         res.status(200).json({ tunnel: updatedTunnel });
       } catch (error) {
         console.error('Update tunnel bandwidth error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        sendLocalizedError(req, res, 500, 'internalServerError');
       }
       break;
 
     case 'DELETE':
       try {
+        const { otpToken } = req.body;
+        
+        // Get full user info to check OTP
+        const fullUser = await database.getUserById(user.id);
+        if (!fullUser) {
+          return sendLocalizedError(req, res, 404, 'userNotFound');
+        }
+
+        // If OTP is enabled, require OTP token
+        if (fullUser.otp_enabled) {
+          if (!otpToken) {
+            return sendLocalizedError(req, res, 400, 'otpTokenRequired');
+          }
+
+          // Get the OTP secret
+          const secret = await database.getUserOtpSecret(user.id);
+          if (!secret) {
+            return res.status(400).json({ error: 'OTP secret not found' });
+          }
+
+          // Verify the OTP token
+          const { default: speakeasy } = await import('speakeasy');
+          const verified = speakeasy.totp.verify({
+            secret,
+            encoding: 'base32',
+            token: otpToken,
+            window: 2,
+          });
+
+          if (!verified) {
+            return sendLocalizedError(req, res, 400, 'invalidOtpToken');
+          }
+        }
+
         const tunnel = await database.getTunnelById(tunnelId);
         if (!tunnel || tunnel.user_id !== user.id) {
           return res.status(404).json({ error: 'Tunnel not found' });
@@ -123,16 +154,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (success) {
           res.status(200).json({ message: 'Tunnel deleted successfully' });
         } else {
-          res.status(404).json({ error: 'Tunnel not found' });
+          sendLocalizedError(req, res, 404, 'tunnelNotFound');
         }
       } catch (error) {
         console.error('Delete tunnel error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        sendLocalizedError(req, res, 500, 'internalServerError');
       }
       break;
 
     default:
-      res.status(405).json({ error: 'Method not allowed' });
+      sendLocalizedError(req, res, 405, 'methodNotAllowed');
       break;
   }
 }

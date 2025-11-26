@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../components/AuthContext';
+import { useOtp } from '../components/OtpContext';
+import OTPManager from '../components/OTPManager';
 import { LanguageProvider } from '../components/LanguageContext';
 import { ThemeProvider } from '../components/ThemeContext';
 import { useMobile } from '../components/ResponsiveLayout';
@@ -9,7 +11,8 @@ import '../lib/i18n';
 
 function AccountManagerPage() {
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { user, token } = useAuth();
+  const { showOtpModal } = useOtp();
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -18,34 +21,84 @@ function AccountManagerPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [isPasswordFormExpanded, setIsPasswordFormExpanded] = useState(false);
+  const [showOtpManager, setShowOtpManager] = useState(false);
+  const [requiresOtp, setRequiresOtp] = useState(false);
   const { isMobile, isSmallMobile } = useMobile();
 
   useEffect(() => {
     // Check if user is authenticated
     if (!token) {
       router.push('/');
+      return;
     }
-  }, [token, router]);
+    
+    // Check if user has OTP enabled from user state
+    if (user && user.otp_enabled) {
+      setRequiresOtp(true);
+    } else {
+      setRequiresOtp(false);
+    }
+  }, [token, user, router]);
+
+  // Separate effect to check OTP status when needed
+  useEffect(() => {
+    if (!token) return;
+    
+    const checkOtpStatus = async () => {
+      try {
+        const response = await fetch('/api/auth/otp-status', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setRequiresOtp(data.otp_enabled);
+        }
+      } catch (error) {
+        console.error('Failed to check OTP status:', error);
+      }
+    };
+
+    checkOtpStatus();
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    setIsLoading(true);
 
     // Validate passwords match
     if (newPassword !== confirmPassword) {
       setError(t('account.passwordMismatch'));
-      setIsLoading(false);
       return;
     }
 
     // Validate password length
     if (newPassword.length < 6) {
       setError(t('account.passwordTooShort'));
-      setIsLoading(false);
       return;
     }
+
+    // If OTP is enabled, show OTP modal first
+    if (requiresOtp) {
+      showOtpModal({
+        id: 'password-change',
+        title: t('otp.passwordChangeOtpRequired'),
+        description: t('account.passwordChangeOtpDescription'),
+        onConfirm: async (otpToken: string) => {
+          await performPasswordChange(otpToken);
+        }
+      });
+      return;
+    }
+
+    await performPasswordChange('');
+  };
+
+  const performPasswordChange = async (otpToken: string) => {
+    setIsLoading(true);
 
     try {
       const response = await fetch('/api/auth/change-password', {
@@ -57,6 +110,7 @@ function AccountManagerPage() {
         body: JSON.stringify({
           currentPassword,
           newPassword,
+          otpToken: requiresOtp ? otpToken : undefined,
         }),
       });
 
@@ -65,6 +119,18 @@ function AccountManagerPage() {
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
+        
+        // Re-check OTP status after password change
+        const userResponse = await fetch('/api/auth/otp-status', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setRequiresOtp(userData.otp_enabled);
+        }
 
         // Keep form expanded after success
         // Don't redirect to home
@@ -116,7 +182,7 @@ function AccountManagerPage() {
               alignItems: 'center',
             }}
           >
-            <h1 className={`${isSmallMobile ? 'text-2xl' : 'text-3xl'} font-black uppercase`}>
+            <h1 className={`${isSmallMobile ? 'text-3xl' : 'text-4xl'} font-black uppercase`}>
               SSH<span style={{ color: 'var(--accent-color)' }}>Bridge</span>
             </h1>
             <button
@@ -130,7 +196,7 @@ function AccountManagerPage() {
                 padding: isSmallMobile ? '8px 4px' : 'auto'
               }}
             >
-              {isSmallMobile ? '主页' : t('account.backToHome')}
+              {isSmallMobile ? t('account.backToHome') : t('account.backToHome')}
             </button>
           </div>
         </div>
@@ -273,6 +339,44 @@ function AccountManagerPage() {
                       </button>
                     </div>
                   </form>
+                </div>
+              )}
+            </div>
+
+            {/* OTP Management Section */}
+            <div style={{ marginBottom: '20px' }}>
+              <div
+                className="nb-box"
+                style={{
+                  padding: '15px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+                onClick={() => setShowOtpManager(!showOtpManager)}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      fontWeight: 'bold',
+                      margin: 0,
+                    }}
+                  >
+                    {t('otp.title')}
+                  </h3>
+                  <span style={{ fontSize: '1.2rem' }}>{showOtpManager ? '▼' : '▶'}</span>
+                </div>
+              </div>
+
+              {showOtpManager && (
+                <div style={{ marginTop: '15px' }}>
+                  <OTPManager onClose={() => setShowOtpManager(false)} />
                 </div>
               )}
             </div>

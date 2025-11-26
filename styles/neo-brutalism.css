@@ -20,6 +20,16 @@
   --font-mono: 'Courier New', Courier, monospace;
 }
 
+/* OTP相关样式 */
+.nb-monospace {
+  font-family: var(--font-mono);
+  word-break: break-all;
+  background-color: var(--gray-light);
+  padding: 8px 12px;
+  border: var(--border-width) solid var(--fg-color);
+  font-size: 0.9rem;
+}
+
 /* 暗色主题变量 */
 .dark {
   /* 暗色主题配色方案 - 基于明亮模式的反转 */

@@ -1,37 +1,55 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database';
+import { sendLocalizedError } from '../../../lib/apiErrors';
 
 const database = getDatabaseInstance();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return sendLocalizedError(req, res, 405, 'methodNotAllowed');
   }
 
   try {
-    const { username, password } = req.body;
+    const { username, password, otpToken } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    const user = await database.validatePassword(username, password);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    try {
+      const user = await database.validatePasswordWithOtp(username, password, otpToken);
+      
+      if (!user) {
+        return sendLocalizedError(req, res, 401, 'invalidCredentials');
+      }
+
+      const token = await database.createSession(user.id);
+
+      res.status(200).json({
+        user: {
+          id: user.id,
+          username: user.username,
+          otp_enabled: user.otp_enabled,
+          created_at: user.created_at,
+        },
+        token,
+      });
+    } catch (error: unknown) {
+      const err = error as Error;
+      // Handle specific OTP errors
+      if (err.message === 'OTP token required') {
+        return res.status(401).json({ 
+          error: 'OTP token required',
+          requiresOtp: true 
+        });
+      }
+      if (err.message === 'Invalid OTP token') {
+        return sendLocalizedError(req, res, 401, 'invalidOtpToken');
+      }
+      throw error; // Re-throw other errors
     }
-
-    const token = await database.createSession(user.id);
-
-    res.status(200).json({
-      user: {
-        id: user.id,
-        username: user.username,
-        created_at: user.created_at,
-      },
-      token,
-    });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    sendLocalizedError(req, res, 500, 'internalServerError');
   }
 }

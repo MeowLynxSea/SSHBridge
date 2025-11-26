@@ -62,6 +62,7 @@ export default function DeleteConfirmDialog({
             <strong>{t('tunnelManager.externalPort')}:</strong> {tunnel.external_port}
           </div>
         </div>
+
         <div
           style={{
             display: 'flex',

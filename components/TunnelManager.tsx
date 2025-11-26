@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
+import { useOtp } from './OtpContext';
 import TunnelStats from './TunnelStats';
 import Settings from './Settings';
 import BandwidthMonitor from './BandwidthMonitor';
@@ -24,6 +25,7 @@ export default function TunnelManager() {
   const router = useRouter();
   const { t } = useTranslation();
   const { token, logout, user } = useAuth();
+  const { showOtpModal } = useOtp();
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -154,28 +156,51 @@ export default function TunnelManager() {
     setShowDeleteConfirm(true);
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = async (otpToken?: string) => {
     if (!tunnelToDelete) return;
 
     try {
       const response = await fetch(`/api/tunnels/${tunnelToDelete.id}`, {
         method: 'DELETE',
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          otpToken,
+        }),
       });
 
       if (response.ok) {
         fetchTunnels();
+        setShowDeleteConfirm(false);
+        setTunnelToDelete(null);
       } else {
-        setError(t('settings.failedToDeleteTunnel'));
+        const data = await response.json();
+        setError(data.error || t('settings.failedToDeleteTunnel'));
       }
     } catch (err) {
       console.error(t('settings.failedToDeleteTunnel'), err);
       setError(t('settings.networkError'));
-    } finally {
-      setTunnelToDelete(null);
     }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!user?.otp_enabled) {
+      confirmDelete();
+      return;
+    }
+    
+    showOtpModal({
+      id: 'delete-tunnel',
+      title: t('otp.tunnelDeleteOtpRequired'),
+      description: t('otp.tunnelDeleteOtpDescription'),
+      onConfirm: async (otpToken: string) => {
+        confirmDelete(otpToken);
+        setShowDeleteConfirm(false);
+        setTunnelToDelete(null);
+      }
+    });
   };
 
   const fetchBaseTunnelHost = async () => {
@@ -833,7 +858,7 @@ export default function TunnelManager() {
           setShowDeleteConfirm(false);
           setTunnelToDelete(null);
         }}
-        onConfirm={confirmDelete}
+        onConfirm={handleDeleteConfirm}
       />
     </div>
   );

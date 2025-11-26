@@ -19,7 +19,7 @@ export const arTranslation = {
       securityEnforced: 'الأمان: مفروض',
       securityCreating: 'الأمان: إنشاء',
       loginFailed: 'فشل تسجيل الدخول',
-      registrationFailed: 'فشل التسجيل',
+      registrationFailed: 'فشل التسجيل'
     },
     tunnelManager: {
       createTunnel: 'إنشاء نفق',
@@ -30,7 +30,7 @@ export const arTranslation = {
       statistics: 'الإحصائيات',
       loadingStatistics: 'تحميل الإحصائيات...',
       tunnelStatistics: 'إحصائيات النفق',
-      autoRefresh: 'تحديث تلقائي ({{seconds}}ث)',
+      autoRefresh: "تحديث تلقائي ({{seconds}}ث)",
       refreshNow: 'تحديث الآن',
       loadingBandwidth: 'تحميل إحصائيات النطاق الترددي...',
       monitorTraffic: 'راقب حركة مرور النفق وحالة الاتصال في الوقت الفعلي',
@@ -89,8 +89,7 @@ export const arTranslation = {
       inactive: 'غير نشط',
       totalTraffic: 'إجمالي حركة المرور',
       step1Title: 'إنشاء نفق SSH',
-      step1Description:
-        'اتصل بخادم SSH باستخدام علامة -R لإعادة توجيه خدمتك المحلية إلى منفذ خارجي:',
+      step1Description: 'اتصل بخادم SSH باستخدام علامة -R لإعادة توجيه خدمتك المحلية إلى منفذ خارجي:',
       step2Title: 'كشف خدمتك',
       step2Description: 'يمكن للمستخدمين الخارجيين الآن الوصول إلى خدمتك المحلية عبر الخادم على:',
       step3Title: 'عدة أنفاق وأفضل الممارسات',
@@ -108,11 +107,10 @@ export const arTranslation = {
       commandCopied: 'تم نسخ أمر SSH إلى الحافظة!',
       failedToCopyCommand: 'فشل في نسخ الأمر إلى الحافظة',
       logoutConfirmTitle: 'تأكيد تسجيل الخروج',
-      logoutConfirmMessage:
-        'هل أنت متأكد من أنك تريد تسجيل الخروج؟ ستحتاج إلى تسجيل الدخول مرة أخرى للوصول إلى أنفاقك.',
+      logoutConfirmMessage: 'هل أنت متأكد من أنك تريد تسجيل الخروج؟ ستحتاج إلى تسجيل الدخول مرة أخرى للوصول إلى أنفاقك.',
       commandDialog: {
         title: 'مولد أوامر SSH',
-        description: "إنشاء أمر SSH للنفق '{{tunnelName}}' (المنفذ: {{externalPort}})",
+        description: 'إنشاء أمر SSH للنفق "{{tunnelName}}" (المنفذ: {{externalPort}})',
         localIP: 'عنوان IP المحلي',
         localIPPlaceholder: 'مثال: 127.0.0.1 أو localhost',
         localIPDescription: 'عنوان IP لخدمتك المحلية التي ستكون متاحة عبر النفق',
@@ -125,15 +123,14 @@ export const arTranslation = {
         localIPRequired: 'مطلوب IP محلي',
         localPortRequired: 'مطلوب منفذ محلي',
         invalidPort: 'الرجاء إدخال رقم منفذ صالح (1-65535)',
-        copyFailed: 'فشل في نسخ الأمر إلى الحافظة',
-      },
+        copyFailed: 'فشل في نسخ الأمر إلى الحافظة'
+      }
     },
     settings: {
       title: 'الإعدادات',
       description: 'تكوين تفضيلات SSHBridge الخاصة بك',
       refreshInterval: 'فاصل تحديث حالة PTY (مللي ثانية)',
-      refreshIntervalDescription:
-        'الحد الأدنى: 1000 مللي ثانية (1 ثانية). هذا يتحكم في عدد مرات تحديث عرض حالة PTY.',
+      refreshIntervalDescription: 'الحد الأدنى: 1000 مللي ثانية (1 ثانية). هذا يتحكم في عدد مرات تحديث عرض حالة PTY.',
       language: 'اللغة',
       theme: 'المظهر',
       languageDescription: 'حدد لغتك المفضلة للواجهة.',
@@ -154,7 +151,7 @@ export const arTranslation = {
       failedToSaveTunnel: 'فشل في حفظ النفق',
       portPlaceholder: '8080',
       bandwidthPlaceholder: '1048576 (1مب/ث)',
-      bandwidthDescription: 'اترك فارغاً لنطاق ترددي غير محدود. النطاق الترددي محدود لكل نفق.',
+      bandwidthDescription: 'اترك فارغاً لنطاق ترددي غير محدود. النطاق الترددي محدود لكل نفق.'
     },
     general: {
       loading: 'جاري التحميل...',
@@ -165,7 +162,7 @@ export const arTranslation = {
       add: 'إضافة',
       close: 'إغلاق',
       save: 'حفظ',
-      cancel: 'إلغاء',
+      cancel: 'إلغاء'
     },
     account: {
       title: 'إدارة الحساب',
@@ -185,6 +182,7 @@ export const arTranslation = {
       passwordMismatch: 'كلمة المرور الجديدة والتأكيد لا يتطابقان',
       passwordTooShort: 'كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل',
       networkError: 'خطأ في الشبكة، يرجى المحاولة مرة أخرى لاحقًا',
+      passwordChangeOtpDescription: 'أدخل رمز المصادقة الثنائية لتأكيد تغيير كلمة المرور'
     },
     console: {
       failedToFetchTunnelStatuses: 'فشل في جلب حالات الأنفاق',
@@ -192,7 +190,31 @@ export const arTranslation = {
       failedToFetchStatistics: 'فشل في جلب الإحصائيات',
       failedToFetchTunnels: 'فشل في جلب الأنفاق',
       failedToFetchSettings: 'فشل في جلب الإعدادات:',
-      failedToSaveTunnel: 'فشل في حفظ النفق:',
+      failedToSaveTunnel: 'فشل في حفظ النفق:'
     },
-  },
+    otp: {
+      title: 'المصادقة الثنائية (2FA)',
+      enabledDescription: 'حسابك لديه المصادقة الثنائية مفعلة. ستحتاج إلى إدخال رمز التحقق عند تسجيل الدخول.',
+      disabledDescription: 'توفر المصادقة الثنائية أماناً إضافياً لحسابك.',
+      statusEnabled: 'المصادقة الثنائية مفعلة',
+      statusDisabled: 'المصادقة الثنائية معطلة',
+      setup: 'تفعيل المصادقة الثنائية',
+      setupTitle: 'إعداد المصادقة الثنائية',
+      setupDescription: 'امسح رمز QR أدناه بتطبيق المصادق، أو أدخل المفتاح يدوياً:',
+      manualKey: 'مفتاح الإدخال اليدوي',
+      verificationCode: 'رمز التحقق',
+      verificationPlaceholder: 'أدخل الرمز المكون من 6 أرقام',
+      enable: 'تفعيل',
+      disable: 'تعطيل',
+      disableTitle: 'تعطيل المصادقة الثنائية',
+      disableDescription: 'تعطيل المصادقة الثنائية سيقلل من أمان حسابك. يرجى إدخال رمز التحقق للتأكيد:',
+      verifyAndLogin: 'تحقق وتسجيل الدخول',
+      verificationRequired: 'مطلوب تحقق',
+      loginOtpRequired: 'يرجى إدخال رمز المصادقة الثنائية لإكمال تسجيل الدخول',
+      passwordChangeOtpRequired: 'يرجى إدخال رمز المصادقة الثنائية لتغيير كلمة المرور',
+      tunnelDeleteOtpRequired: 'يرجى إدخال رمز المصادقة الثنائية لحذف النفق',
+      tunnelDeleteOtpDescription: 'أدخل رمز المصادقة الثنائية لتأكيد حذف النفق',
+      otpDisableOtpRequired: 'يرجى إدخال رمز المصادقة الثنائية لتعطيل المصادقة الثنائية'
+    }
+  }
 };

@@ -1,11 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database';
+import { sendLocalizedError } from '../../../lib/apiErrors';
 
 const database = getDatabaseInstance();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return sendLocalizedError(req, res, 405, 'methodNotAllowed');
   }
 
   try {
@@ -29,9 +30,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error: unknown) {
     const err = error as Error;
     if (err.message && err.message.includes('UNIQUE constraint failed')) {
-      return res.status(409).json({ error: 'Username already exists' });
+      return sendLocalizedError(req, res, 409, 'usernameExists');
     }
     console.error('Registration error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    sendLocalizedError(req, res, 500, 'internalServerError');
   }
 }
