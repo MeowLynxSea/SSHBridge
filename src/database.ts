@@ -315,9 +315,7 @@ class Database {
       []
     );
 
-    // Clean up old rate history (keep only last hour)
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    await run(`DELETE FROM rate_history WHERE timestamp < ?`, [oneHourAgo]);
+    // Note: Old rate history cleanup is now handled in calculateAndStoreRates for regular maintenance
 
     // Check if we need to add language and theme columns to user_settings
     const settingsTableInfo = (await all(
@@ -1027,6 +1025,13 @@ class Database {
         // Also sync in-memory stats to database periodically
         await this.syncSessionStatsToDatabase(tunnelId, currentReceived, currentSent);
       }
+
+      // Clean up old rate history records (keep only last 2 minutes)
+      // This is executed after all tunnel rates are calculated to minimize impact
+      // 2 minutes is sufficient for real-time monitoring while keeping database size minimal
+      const { run } = promisifyDb(this.db);
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      await run(`DELETE FROM rate_history WHERE timestamp < ?`, [twoMinutesAgo]);
     } catch (error) {
       console.error('Error calculating rates:', error);
     }
