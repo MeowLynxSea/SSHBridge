@@ -12,7 +12,8 @@ RUN npm ci --ignore-scripts
 
 # Build stage
 FROM base AS builder
-RUN apk add --no-cache libc6-compat python3 make g++
+RUN apk add --no-cache libc6-compat python3 make g++ sqlite-dev
+ENV npm_config_build_from_source=true
 WORKDIR /app
 
 # Copy package files
@@ -43,6 +44,7 @@ RUN npm run build:web
 
 # Production stage
 FROM base AS runner
+RUN apk add --no-cache libc6-compat sqlite
 WORKDIR /app
 
 ENV NODE_ENV=production
