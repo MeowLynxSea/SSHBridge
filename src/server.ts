@@ -9,7 +9,7 @@ const sshPort = parseInt(process.env.SSH_PORT || '2222', 10);
 const webPort = parseInt(process.env.WEB_PORT || '3000', 10);
 
 async function generateHostKey(): Promise<string> {
-  const keyPath = process.env.HOST_KEY_PATH || path.join(process.cwd(), 'host.key');
+  const keyPath = process.env.HOST_KEY_PATH || path.join(process.cwd(), 'keys', 'host.key');
 
   if (fs.existsSync(keyPath)) {
     return fs.readFileSync(keyPath, 'utf8');
