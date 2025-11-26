@@ -28,6 +28,22 @@ interface Database {
   ): void;
   updateTunnelConnections(tunnelId: number, connections: number): void;
   getTunnelById(id: number): Promise<Tunnel | null>;
+  logClientConnection(
+    tunnelId: number,
+    connectionId: string,
+    clientIP: string,
+    userAgent?: string
+  ): Promise<void>;
+  logClientDisconnection(
+    connectionId: string,
+    finalBytesSent: number,
+    finalBytesReceived: number
+  ): Promise<void>;
+  updateClientConnectionData(
+    connectionId: string,
+    bytesSent: number,
+    bytesReceived: number
+  ): Promise<void>;
 }
 
 export interface TcpConnectionInfo {
@@ -39,6 +55,8 @@ export interface TcpConnectionInfo {
   tunnelId: number;
   isActive: boolean; // Track if connection is still active
   sshConnectionId: string; // Track which SSH connection this belongs to
+  clientIP: string; // Client IP address for logging
+  connectionStartTime: Date; // Connection start time for duration calculation
 }
 
 export interface TcpServerInfo {
@@ -195,9 +213,31 @@ export class TcpServerManager {
     // Update active connections count
     await this.updateTunnelConnectionCount(tunnelId);
 
-    // Track data transfer for statistics
-    let bytesReceived = 0;
-    let bytesSent = 0;
+    // Get client IP for logging
+    const clientIP = socket.remoteAddress || 'unknown';
+
+    // Log client connection to database
+    await this.database.logClientConnection(
+      tunnelId,
+      tcpConnectionId,
+      clientIP,
+      'SSH-Tunnel' // User agent for SSH tunnel connections
+    );
+
+    // Track connection info for logging
+    const connectionInfo: TcpConnectionInfo = {
+      connectionId: tcpConnectionId,
+      socket,
+      channel: null as unknown as SSH2Channel, // Will be set below
+      bytesReceived: 0,
+      bytesSent: 0,
+      tunnelId,
+      isActive: true,
+      sshConnectionId: connectionId,
+      clientIP,
+      connectionStartTime: new Date(),
+    };
+
     let connectionClosed = false; // Prevent multiple close operations
 
     // Set socket timeout with configurable value
@@ -216,8 +256,8 @@ export class TcpServerManager {
             tcpConnectionId,
             tunnelId,
             connectionId,
-            bytesReceived,
-            bytesSent
+            connectionInfo.bytesReceived,
+            connectionInfo.bytesSent
           );
           socket.end();
           return;
@@ -240,11 +280,14 @@ export class TcpServerManager {
 
           while (uploadQueue.length > 0) {
             const data = uploadQueue.shift()!;
-            bytesReceived += data.length;
+            connectionInfo.bytesReceived += data.length;
 
             // Update session stats in real-time for rate calculation
             const currentConnections = this.connectionCounters.get(tunnelConnectionKey) || 0;
             this.database.updateSessionStats(tunnelId, data.length, 0, currentConnections);
+
+            // Update client connection data
+            await this.database.updateClientConnectionData(tcpConnectionId, 0, data.length);
 
             // Apply bandwidth limit BEFORE sending data
             if (tunnel?.max_bandwidth) {
@@ -268,11 +311,14 @@ export class TcpServerManager {
 
           while (downloadQueue.length > 0) {
             const data = downloadQueue.shift()!;
-            bytesSent += data.length;
+            connectionInfo.bytesSent += data.length;
 
             // Update session stats in real-time for rate calculation
             const currentConnections = this.connectionCounters.get(tunnelConnectionKey) || 0;
             this.database.updateSessionStats(tunnelId, 0, data.length, currentConnections);
+
+            // Update client connection data
+            await this.database.updateClientConnectionData(tcpConnectionId, data.length, 0);
 
             // Apply bandwidth limit BEFORE sending data
             if (tunnel?.max_bandwidth) {
@@ -331,8 +377,8 @@ export class TcpServerManager {
             tcpConnectionId,
             tunnelId,
             connectionId,
-            bytesReceived,
-            bytesSent
+            connectionInfo.bytesReceived,
+            connectionInfo.bytesSent
           );
           socket.destroy(); // Ensure socket is fully closed
         });
@@ -355,8 +401,8 @@ export class TcpServerManager {
             tcpConnectionId,
             tunnelId,
             connectionId,
-            bytesReceived,
-            bytesSent
+            connectionInfo.bytesReceived,
+            connectionInfo.bytesSent
           );
           socket.destroy();
         });
@@ -370,8 +416,8 @@ export class TcpServerManager {
             tcpConnectionId,
             tunnelId,
             connectionId,
-            bytesReceived,
-            bytesSent
+            connectionInfo.bytesReceived,
+            connectionInfo.bytesSent
           );
 
           // Close the channel but do NOT affect the SSH connection itself
@@ -400,8 +446,8 @@ export class TcpServerManager {
             tcpConnectionId,
             tunnelId,
             connectionId,
-            bytesReceived,
-            bytesSent
+            connectionInfo.bytesReceived,
+            connectionInfo.bytesSent
           );
         });
 
@@ -414,8 +460,8 @@ export class TcpServerManager {
             tcpConnectionId,
             tunnelId,
             connectionId,
-            bytesReceived,
-            bytesSent
+            connectionInfo.bytesReceived,
+            connectionInfo.bytesSent
           );
 
           // Close the socket but do NOT affect the SSH connection itself
@@ -805,6 +851,9 @@ export class TcpServerManager {
     const tunnelConnectionKey = `${tunnelId}:${sshConnectionId}`;
 
     try {
+      // Log client disconnection to database
+      await this.database.logClientDisconnection(tcpConnectionId, bytesSent, bytesReceived);
+
       // Update statistics first
       this.updateTunnelStats(tunnelId, bytesReceived, bytesSent);
 

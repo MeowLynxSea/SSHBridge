@@ -2,8 +2,14 @@ import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { TunnelStats, RealtimeStats, TunnelStatsWithInfo } from './types/stats';
+import {
+  TunnelStats,
+  RealtimeStats,
+  TunnelStatsWithInfo,
+  ClientAccessLog as ClientAccessLogType,
+} from './types/stats';
 import { parseDatabaseDate, createFutureTime } from './utils/timeUtils';
+import * as geoip from 'geoip-lite';
 
 // SQLite types
 interface RunResult {
@@ -96,6 +102,8 @@ class Database {
   private currentBytesReceived: Map<number, number> = new Map();
   private currentBytesSent: Map<number, number> = new Map();
   private rateHistory: Map<number, Array<RealtimeStats>> = new Map();
+  private activeConnections: Map<string, { tunnelId: number; startTime: Date; clientIP: string }> =
+    new Map();
 
   private constructor(dbPath: string = './sshbridge.db') {
     this.db = new sqlite3.Database(dbPath);
@@ -315,6 +323,44 @@ class Database {
       []
     );
 
+    // Create client_access_logs table to store detailed client access information
+    await run(
+      `
+      CREATE TABLE IF NOT EXISTS client_access_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tunnel_id INTEGER NOT NULL,
+        connection_id TEXT NOT NULL,
+        client_ip TEXT NOT NULL,
+        client_country TEXT,
+        client_region TEXT,
+        client_city TEXT,
+        connection_start_time DATETIME NOT NULL,
+        connection_end_time DATETIME,
+        duration_seconds INTEGER,
+        bytes_sent INTEGER DEFAULT 0,
+        bytes_received INTEGER DEFAULT 0,
+        user_agent TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (tunnel_id) REFERENCES tunnels (id) ON DELETE CASCADE
+      )
+    `,
+      []
+    );
+
+    // Create indexes for client_access_logs for faster queries
+    await run(
+      `CREATE INDEX IF NOT EXISTS idx_client_access_logs_tunnel_id ON client_access_logs(tunnel_id)`,
+      []
+    );
+    await run(
+      `CREATE INDEX IF NOT EXISTS idx_client_access_logs_connection_id ON client_access_logs(connection_id)`,
+      []
+    );
+    await run(
+      `CREATE INDEX IF NOT EXISTS idx_client_access_logs_start_time ON client_access_logs(connection_start_time)`,
+      []
+    );
+
     // Note: Old rate history cleanup is now handled in calculateAndStoreRates for regular maintenance
 
     // Check if we need to add language and theme columns to user_settings
@@ -352,6 +398,9 @@ class Database {
 
     // Initialize stats tracking
     this.startStatsTracking();
+
+    // Start cleanup task for old access logs (older than 31 days)
+    this.startAccessLogCleanup();
   }
 
   async createUser(username: string, password: string): Promise<User> {
@@ -954,6 +1003,47 @@ class Database {
     }
   }
 
+  private startAccessLogCleanup(): void {
+    // Run cleanup daily at 2 AM
+    const now = new Date();
+    const nextCleanup = new Date(now);
+    nextCleanup.setHours(2, 0, 0, 0); // 2:00 AM
+
+    // If it's already past 2 AM today, schedule for tomorrow
+    if (now.getTime() > nextCleanup.getTime()) {
+      nextCleanup.setDate(nextCleanup.getDate() + 1);
+    }
+
+    const timeUntilCleanup = nextCleanup.getTime() - now.getTime();
+
+    console.log(
+      `Scheduling access log cleanup in ${Math.round(timeUntilCleanup / (1000 * 60 * 60))} hours`
+    );
+
+    setTimeout(() => {
+      this.cleanupOldAccessLogs();
+      // Schedule daily cleanup
+      setInterval(() => this.cleanupOldAccessLogs(), 24 * 60 * 60 * 1000); // Every 24 hours
+    }, timeUntilCleanup);
+  }
+
+  private async cleanupOldAccessLogs(): Promise<void> {
+    const { run } = promisifyDb(this.db);
+
+    try {
+      // Delete logs older than 31 days
+      const thirtyOneDaysAgo = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+
+      const result = await run(`DELETE FROM client_access_logs WHERE connection_start_time < ?`, [
+        thirtyOneDaysAgo,
+      ]);
+
+      console.log(`Cleaned up ${result.changes} old access log entries (older than 31 days)`);
+    } catch (error) {
+      console.error('Error cleaning up old access logs:', error);
+    }
+  }
+
   private async calculateAndStoreRates(): Promise<void> {
     const now = new Date();
 
@@ -1395,6 +1485,252 @@ class Database {
     }
 
     return user;
+  }
+
+  // Client Access Logs methods
+  async logClientConnection(
+    tunnelId: number,
+    connectionId: string,
+    clientIP: string,
+    userAgent?: string
+  ): Promise<void> {
+    const { run } = promisifyDb(this.db);
+
+    // Get location information for the IP
+    const locationInfo = await this.getLocationInfo(clientIP);
+
+    // Store the connection start
+    this.activeConnections.set(connectionId, {
+      tunnelId,
+      startTime: new Date(),
+      clientIP,
+    });
+
+    await run(
+      `
+      INSERT INTO client_access_logs 
+      (tunnel_id, connection_id, client_ip, client_country, client_region, client_city, connection_start_time, user_agent)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        tunnelId,
+        connectionId,
+        clientIP,
+        locationInfo.country,
+        locationInfo.region,
+        locationInfo.city,
+        new Date().toISOString(),
+        userAgent || null,
+      ]
+    );
+  }
+
+  async updateClientConnectionData(
+    connectionId: string,
+    bytesSent: number,
+    bytesReceived: number
+  ): Promise<void> {
+    // This method will be called frequently during data transfer
+    // For performance, we'll log this data in batches during cleanup
+    // Or we could update the record periodically
+    // For now, we'll skip this and rely on final data during disconnection
+    console.log(
+      `Updating connection data for ${connectionId}: sent=${bytesSent}, received=${bytesReceived}`
+    );
+  }
+
+  async logClientDisconnection(
+    connectionId: string,
+    finalBytesSent: number = 0,
+    finalBytesReceived: number = 0
+  ): Promise<void> {
+    const { run } = promisifyDb(this.db);
+
+    const connection = this.activeConnections.get(connectionId);
+    if (!connection) return;
+
+    const endTime = new Date();
+    const duration = Math.floor((endTime.getTime() - connection.startTime.getTime()) / 1000);
+
+    await run(
+      `
+      UPDATE client_access_logs 
+      SET connection_end_time = ?, duration_seconds = ?, bytes_sent = COALESCE(bytes_sent, 0) + ?, bytes_received = COALESCE(bytes_received, 0) + ?
+      WHERE connection_id = ? AND connection_end_time IS NULL
+      `,
+      [endTime.toISOString(), duration, finalBytesSent, finalBytesReceived, connectionId]
+    );
+
+    this.activeConnections.delete(connectionId);
+  }
+
+  async getClientAccessLogs(tunnelId: number, limit: number = 100): Promise<ClientAccessLogType[]> {
+    const { all } = promisifyDb(this.db);
+    const rows = await all(
+      `
+      SELECT * FROM client_access_logs 
+      WHERE tunnel_id = ? 
+      ORDER BY connection_start_time DESC 
+      LIMIT ?
+      `,
+      [tunnelId, limit]
+    );
+
+    return rows.map((row) => this.mapRowToClientAccessLog(row));
+  }
+
+  async getClientAccessLogStats(
+    tunnelId: number,
+    days: number = 7
+  ): Promise<{
+    totalConnections: number;
+    uniqueIPs: number;
+    totalBytesTransferred: number;
+    averageConnectionDuration: number;
+    topCountries: Array<{ country: string; count: number }>;
+    hourlyActivity: Array<{ hour: number; count: number }>;
+  }> {
+    const { all } = promisifyDb(this.db);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Get total connections
+    const totalResult = await all(
+      `SELECT COUNT(*) as count FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ?`,
+      [tunnelId, startDate.toISOString()]
+    );
+    const totalConnections = Number(totalResult[0]?.count) || 0;
+
+    // Get unique IPs
+    const uniqueIPsResult = await all(
+      `SELECT COUNT(DISTINCT client_ip) as count FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ?`,
+      [tunnelId, startDate.toISOString()]
+    );
+    const uniqueIPs = Number(uniqueIPsResult[0]?.count) || 0;
+
+    // Get total bytes transferred
+    const bytesResult = await all(
+      `SELECT SUM(bytes_sent + bytes_received) as total FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ?`,
+      [tunnelId, startDate.toISOString()]
+    );
+    const totalBytesTransferred = Number(bytesResult[0]?.total) || 0;
+
+    // Get average connection duration
+    const avgDurationResult = await all(
+      `SELECT AVG(duration_seconds) as avg FROM client_access_logs WHERE tunnel_id = ? AND duration_seconds IS NOT NULL AND connection_start_time >= ?`,
+      [tunnelId, startDate.toISOString()]
+    );
+    const averageConnectionDuration = Number(avgDurationResult[0]?.avg) || 0;
+
+    // Get top countries
+    const topCountriesResult = await all(
+      `SELECT client_country as country, COUNT(*) as count FROM client_access_logs WHERE tunnel_id = ? AND client_country IS NOT NULL AND connection_start_time >= ? GROUP BY client_country ORDER BY count DESC LIMIT 5`,
+      [tunnelId, startDate.toISOString()]
+    );
+    const topCountries = topCountriesResult.map((row) => ({
+      country: String(row.country),
+      count: Number(row.count),
+    }));
+
+    // Get hourly activity
+    const hourlyActivityResult = await all(
+      `SELECT CAST(strftime('%H', connection_start_time) AS INTEGER) as hour, COUNT(*) as count FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ? GROUP BY hour ORDER BY hour`,
+      [tunnelId, startDate.toISOString()]
+    );
+    const hourlyActivity = hourlyActivityResult.map((row) => ({
+      hour: Number(row.hour),
+      count: Number(row.count),
+    }));
+
+    return {
+      totalConnections,
+      uniqueIPs,
+      totalBytesTransferred,
+      averageConnectionDuration,
+      topCountries,
+      hourlyActivity,
+    };
+  }
+
+  private async getLocationInfo(ip: string): Promise<{
+    country: string | null;
+    region: string | null;
+    city: string | null;
+  }> {
+    // Handle private IPs with special identifiers
+    if (this.isPrivateIP(ip)) {
+      let locationType = 'Private Network';
+
+      if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') {
+        locationType = 'Localhost';
+      } else if (/^10\./.test(ip)) {
+        locationType = 'Private Network (10.x.x.x)';
+      } else if (/^192\.168\./.test(ip)) {
+        locationType = 'Private Network (192.168.x.x)';
+      } else if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)) {
+        locationType = 'Private Network (172.16-31.x.x)';
+      } else if (/^fe80:/.test(ip)) {
+        locationType = 'Link-Local IPv6';
+      }
+
+      return {
+        country: 'Local',
+        region: locationType,
+        city: ip,
+      };
+    }
+
+    try {
+      // Use offline geoip-lite database
+      const geo = geoip.lookup(ip);
+      if (geo) {
+        return {
+          country: geo.country,
+          region: geo.region,
+          city: geo.city,
+        };
+      }
+    } catch (error) {
+      console.error('Error getting location info:', error);
+    }
+
+    return { country: null, region: null, city: null };
+  }
+
+  private isPrivateIP(ip: string): boolean {
+    // Check for private IP ranges
+    const privateRanges = [
+      /^10\./,
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+      /^192\.168\./,
+      /^127\./,
+      /^localhost$/,
+      /^::1$/,
+      /^fe80:/,
+    ];
+
+    return privateRanges.some((range) => range.test(ip));
+  }
+
+  private mapRowToClientAccessLog(row: Row): ClientAccessLogType {
+    return {
+      id: Number(row.id),
+      tunnel_id: Number(row.tunnel_id),
+      connection_id: String(row.connection_id),
+      client_ip: String(row.client_ip),
+      client_country: row.client_country ? String(row.client_country) : undefined,
+      client_region: row.client_region ? String(row.client_region) : undefined,
+      client_city: row.client_city ? String(row.client_city) : undefined,
+      connection_start_time: parseDatabaseDate(String(row.connection_start_time)).toISOString(),
+      connection_end_time: row.connection_end_time
+        ? parseDatabaseDate(String(row.connection_end_time)).toISOString()
+        : undefined,
+      duration_seconds: row.duration_seconds ? Number(row.duration_seconds) : undefined,
+      bytes_sent: Number(row.bytes_sent),
+      bytes_received: Number(row.bytes_received),
+      user_agent: row.user_agent ? String(row.user_agent) : undefined,
+      created_at: parseDatabaseDate(String(row.created_at)).toISOString(),
+    };
   }
 }
 

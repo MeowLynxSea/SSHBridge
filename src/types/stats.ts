@@ -24,3 +24,20 @@ export interface TunnelStatsWithInfo extends TunnelStats {
   external_port: number;
   user_id: number;
 }
+
+export interface ClientAccessLog {
+  id: number;
+  tunnel_id: number;
+  connection_id: string;
+  client_ip: string;
+  client_country?: string;
+  client_region?: string;
+  client_city?: string;
+  connection_start_time: string;
+  connection_end_time?: string;
+  duration_seconds?: number;
+  bytes_sent: number;
+  bytes_received: number;
+  user_agent?: string;
+  created_at: string;
+}

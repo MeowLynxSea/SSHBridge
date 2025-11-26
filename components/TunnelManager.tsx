@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { useOtp } from './OtpContext';
 import TunnelStats from './TunnelStats';
 import Settings from './Settings';
+import TunnelAnalysis from './TunnelAnalysis';
 import BandwidthMonitor from './BandwidthMonitor';
 import CommandDialog from './CommandDialog';
 import LogoutConfirmDialog from './LogoutConfirmDialog';
@@ -31,7 +32,9 @@ export default function TunnelManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingTunnel, setEditingTunnel] = useState<Tunnel | null>(null);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'tunnels' | 'stats' | 'settings'>('tunnels');
+  const [activeTab, setActiveTab] = useState<'tunnels' | 'stats' | 'analysis' | 'settings'>(
+    'tunnels'
+  );
   const [tunnelStatuses, setTunnelStatuses] = useState<Map<number, boolean>>(new Map());
   const [selectedTunnelForBandwidth, setSelectedTunnelForBandwidth] = useState<Tunnel | null>(null);
   const [selectedTunnelForCommand, setSelectedTunnelForCommand] = useState<Tunnel | null>(null);
@@ -331,6 +334,13 @@ export default function TunnelManager() {
                   {t('tunnelManager.statistics')}
                 </button>
                 <button
+                  className={`nb-tab ${activeTab === 'analysis' ? 'nb-tab-active' : ''}`}
+                  onClick={() => setActiveTab('analysis')}
+                  style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
+                >
+                  分析
+                </button>
+                <button
                   className={`nb-tab ${activeTab === 'settings' ? 'nb-tab-active' : ''}`}
                   onClick={() => setActiveTab('settings')}
                   style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
@@ -374,6 +384,12 @@ export default function TunnelManager() {
                   onClick={() => setActiveTab('stats')}
                 >
                   {t('tunnelManager.statistics')}
+                </button>
+                <button
+                  className={`nb-tab ${activeTab === 'analysis' ? 'nb-tab-active' : ''}`}
+                  onClick={() => setActiveTab('analysis')}
+                >
+                  分析
                 </button>
                 <button
                   className={`nb-tab ${activeTab === 'settings' ? 'nb-tab-active' : ''}`}
@@ -797,6 +813,8 @@ export default function TunnelManager() {
             <TunnelStats />
           </div>
         )}
+
+        {activeTab === 'analysis' && <TunnelAnalysis tunnels={tunnels} />}
 
         {activeTab === 'settings' && (
           <div style={{ marginTop: isSmallMobile ? '20px' : '40px' }}>
