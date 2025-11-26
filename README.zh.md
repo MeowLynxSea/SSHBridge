@@ -28,7 +28,7 @@ SSH服务器和隧道管理系统，具有用户认证、隧道管理和Web UI�
 
 - Node.js + TypeScript
 - ssh2 (SSH服务器)
-- SQLite3 (数据存储)
+- better-sqlite3 (数据存储)
 - bcrypt (密码加密)
 - JWT (会话管理)
 

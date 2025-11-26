@@ -1,5 +1,4 @@
-import sqlite3 from 'sqlite3';
-import { promisify } from 'util';
+import SQLiteDatabase from 'better-sqlite3';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import * as path from 'path';
@@ -13,11 +12,6 @@ import { parseDatabaseDate, createFutureTime } from './utils/timeUtils.js';
 import * as geoip from 'geoip-lite';
 
 // SQLite types
-interface RunResult {
-  lastID: number;
-  changes: number;
-}
-
 interface Row {
   [key: string]: string | number | boolean | null;
 }
@@ -48,27 +42,6 @@ interface RateHistoryRow {
   created_at: string;
 }
 
-// Helper function to promisify database methods
-const promisifyDb = (db: sqlite3.Database) => ({
-  run: promisify(
-    (sql: string, params: unknown[], callback: (err: Error | null, result: RunResult) => void) => {
-      db.run(sql, params, function (err) {
-        callback(err, { lastID: this.lastID, changes: this.changes });
-      });
-    }
-  ),
-  get: promisify(
-    (sql: string, params: unknown[], callback: (err: Error | null, row: Row) => void) => {
-      db.get(sql, params, callback);
-    }
-  ),
-  all: promisify(
-    (sql: string, params: unknown[], callback: (err: Error | null, rows: Row[]) => void) => {
-      db.all(sql, params, callback);
-    }
-  ),
-});
-
 export interface User {
   id: number;
   username: string;
@@ -97,7 +70,7 @@ export interface Session {
 
 class Database {
   private static instance: Database | null = null;
-  private db: sqlite3.Database;
+  private db: SQLiteDatabase.Database;
   private jwtSecret: string;
   private statsUpdateInterval: ReturnType<typeof setInterval> | null = null;
   private currentBytesReceived: Map<number, number> = new Map();
@@ -109,7 +82,7 @@ class Database {
   private constructor(dbPath?: string) {
     const databasePath =
       dbPath || process.env.DATABASE_PATH || path.join(process.cwd(), 'database.sqlite');
-    this.db = new sqlite3.Database(databasePath);
+    this.db = new SQLiteDatabase(databasePath);
     this.jwtSecret = process.env.JWT_SECRET || 'default-secret-key-change-in-production';
     this.init();
   }
@@ -136,11 +109,11 @@ class Database {
   }
 
   private async init() {
-    const { run } = promisifyDb(this.db);
-    const { all: dbAll, get, all } = promisifyDb(this.db);
+    // better-sqlite3 is synchronous, but we need to maintain the async interface
+    // for compatibility with the rest of the code
+    await Promise.resolve(); // Ensure async context
 
-    await run(
-      `
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
@@ -149,30 +122,26 @@ class Database {
         otp_enabled INTEGER NOT NULL DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `,
-      []
-    );
+    `);
 
     // Check if we need to add OTP columns to users table
-    const usersTableInfo = (await dbAll(
-      'PRAGMA table_info(users)',
-      []
-    )) as unknown as TableColumn[];
+    const usersTableInfo = this.db
+      .prepare('PRAGMA table_info(users)')
+      .all() as unknown as TableColumn[];
     const hasOtpSecretColumn = usersTableInfo.some((col) => col.name === 'otp_secret');
     const hasOtpEnabledColumn = usersTableInfo.some((col) => col.name === 'otp_enabled');
 
     if (!hasOtpSecretColumn) {
       console.log('Adding otp_secret column to users table');
-      await run('ALTER TABLE users ADD COLUMN otp_secret TEXT', []);
+      this.db.exec('ALTER TABLE users ADD COLUMN otp_secret TEXT');
     }
 
     if (!hasOtpEnabledColumn) {
       console.log('Adding otp_enabled column to users table');
-      await run('ALTER TABLE users ADD COLUMN otp_enabled INTEGER NOT NULL DEFAULT 0', []);
+      this.db.exec('ALTER TABLE users ADD COLUMN otp_enabled INTEGER NOT NULL DEFAULT 0');
     }
 
-    await run(
-      `
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -181,13 +150,10 @@ class Database {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
       )
-    `,
-      []
-    );
+    `);
 
     // Create user settings table
-    await run(
-      `
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS user_settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL UNIQUE,
@@ -198,13 +164,10 @@ class Database {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
       )
-    `,
-      []
-    );
+    `);
 
     // Create the tunnels table with the new schema if it doesn't exist
-    await run(
-      `
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS tunnels (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -214,19 +177,18 @@ class Database {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
       )
-    `,
-      []
-    );
+    `);
 
     // Check if tunnels table exists for migration purposes
-    const tableInfo = await get(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'",
-      []
-    );
+    const tableInfo = this.db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'")
+      .get();
 
     if (tableInfo) {
       // Check if we need to migrate from old schema to new schema
-      const columns = (await dbAll('PRAGMA table_info(tunnels)', [])) as unknown as TableColumn[];
+      const columns = this.db
+        .prepare('PRAGMA table_info(tunnels)')
+        .all() as unknown as TableColumn[];
       const hasOldColumns =
         columns.some((col) => col.name === 'local_port') &&
         !columns.some((col) => col.name === 'external_port');
@@ -235,8 +197,7 @@ class Database {
         console.log('Migrating tunnels database from old schema to new schema...');
 
         // Create a new table with the updated schema
-        await run(
-          `
+        this.db.exec(`
           CREATE TABLE tunnels_new (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -246,42 +207,35 @@ class Database {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
           )
-        `,
-          []
-        );
+        `);
 
         // Migrate data from old table to new table
-        await run(
-          `
+        this.db.exec(`
           INSERT INTO tunnels_new (id, user_id, name, external_port, created_at)
           SELECT id, user_id, name, local_port, created_at FROM tunnels
-        `,
-          []
-        );
+        `);
 
         // Drop the old table and rename the new one
-        await run('DROP TABLE tunnels', []);
-        await run('ALTER TABLE tunnels_new RENAME TO tunnels', []);
+        this.db.exec('DROP TABLE tunnels');
+        this.db.exec('ALTER TABLE tunnels_new RENAME TO tunnels');
 
         console.log('Database migration completed');
       }
     }
 
     // Check if we need to add max_bandwidth column to existing table
-    const tunnelTableInfo = (await all(
-      'PRAGMA table_info(tunnels)',
-      []
-    )) as unknown as TableColumn[];
+    const tunnelTableInfo = this.db
+      .prepare('PRAGMA table_info(tunnels)')
+      .all() as unknown as TableColumn[];
     const hasBandwidthColumn = tunnelTableInfo.some((col) => col.name === 'max_bandwidth');
 
     if (!hasBandwidthColumn) {
       console.log('Adding max_bandwidth column to tunnels table for bandwidth limiting');
-      await run('ALTER TABLE tunnels ADD COLUMN max_bandwidth INTEGER', []);
+      this.db.exec('ALTER TABLE tunnels ADD COLUMN max_bandwidth INTEGER');
     }
 
     // Create the tunnel_stats table
-    await run(
-      `
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS tunnel_stats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tunnel_id INTEGER NOT NULL,
@@ -295,13 +249,10 @@ class Database {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tunnel_id) REFERENCES tunnels (id) ON DELETE CASCADE
       )
-    `,
-      []
-    );
+    `);
 
     // Create rate_history table to store rate calculations across processes
-    await run(
-      `
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS rate_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tunnel_id INTEGER NOT NULL,
@@ -313,19 +264,15 @@ class Database {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tunnel_id) REFERENCES tunnels (id) ON DELETE CASCADE
       )
-    `,
-      []
-    );
+    `);
 
     // Create index for faster queries
-    await run(
-      `CREATE INDEX IF NOT EXISTS idx_rate_history_tunnel_timestamp ON rate_history(tunnel_id, timestamp)`,
-      []
+    this.db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_rate_history_tunnel_timestamp ON rate_history(tunnel_id, timestamp)`
     );
 
     // Create client_access_logs table to store detailed client access information
-    await run(
-      `
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS client_access_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tunnel_id INTEGER NOT NULL,
@@ -343,54 +290,45 @@ class Database {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (tunnel_id) REFERENCES tunnels (id) ON DELETE CASCADE
       )
-    `,
-      []
-    );
+    `);
 
     // Create indexes for client_access_logs for faster queries
-    await run(
-      `CREATE INDEX IF NOT EXISTS idx_client_access_logs_tunnel_id ON client_access_logs(tunnel_id)`,
-      []
+    this.db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_client_access_logs_tunnel_id ON client_access_logs(tunnel_id)`
     );
-    await run(
-      `CREATE INDEX IF NOT EXISTS idx_client_access_logs_connection_id ON client_access_logs(connection_id)`,
-      []
+    this.db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_client_access_logs_connection_id ON client_access_logs(connection_id)`
     );
-    await run(
-      `CREATE INDEX IF NOT EXISTS idx_client_access_logs_start_time ON client_access_logs(connection_start_time)`,
-      []
+    this.db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_client_access_logs_start_time ON client_access_logs(connection_start_time)`
     );
-
-    // Note: Old rate history cleanup is now handled in calculateAndStoreRates for regular maintenance
 
     // Check if we need to add language and theme columns to user_settings
-    const settingsTableInfo = (await all(
-      'PRAGMA table_info(user_settings)',
-      []
-    )) as unknown as TableColumn[];
+    const settingsTableInfo = this.db
+      .prepare('PRAGMA table_info(user_settings)')
+      .all() as unknown as TableColumn[];
     const hasLanguageColumn = settingsTableInfo.some((col) => col.name === 'language');
     const hasThemeColumn = settingsTableInfo.some((col) => col.name === 'theme');
 
     if (!hasLanguageColumn) {
       console.log('Adding language column to user_settings table');
-      await run('ALTER TABLE user_settings ADD COLUMN language TEXT NOT NULL DEFAULT "zh"', []);
+      this.db.exec('ALTER TABLE user_settings ADD COLUMN language TEXT NOT NULL DEFAULT "zh"');
     }
 
     if (!hasThemeColumn) {
       console.log('Adding theme column to user_settings table');
-      await run('ALTER TABLE user_settings ADD COLUMN theme TEXT NOT NULL DEFAULT "light"', []);
+      this.db.exec('ALTER TABLE user_settings ADD COLUMN theme TEXT NOT NULL DEFAULT "light"');
     }
 
     // Check if we need to add the is_online column (for backward compatibility)
-    const statsTableInfo = (await all(
-      'PRAGMA table_info(tunnel_stats)',
-      []
-    )) as unknown as TableColumn[];
+    const statsTableInfo = this.db
+      .prepare('PRAGMA table_info(tunnel_stats)')
+      .all() as unknown as TableColumn[];
     const hasOnlineColumn = statsTableInfo.some((col) => col.name === 'is_online');
 
     if (!hasOnlineColumn) {
       console.log('Adding is_online column to tunnel_stats table for backward compatibility');
-      await run('ALTER TABLE tunnel_stats ADD COLUMN is_online INTEGER DEFAULT 0', []);
+      this.db.exec('ALTER TABLE tunnel_stats ADD COLUMN is_online INTEGER DEFAULT 0');
     }
 
     // Load existing current session data from database
@@ -405,27 +343,23 @@ class Database {
 
   async createUser(username: string, password: string): Promise<User> {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const { run } = promisifyDb(this.db);
+    const stmt = this.db.prepare('INSERT INTO users (username, password) VALUES (?, ?)');
+    const result = stmt.run(username, hashedPassword);
 
-    const result = await run('INSERT INTO users (username, password) VALUES (?, ?)', [
-      username,
-      hashedPassword,
-    ]);
-
-    const user = await this.getUserById(result.lastID);
+    const user = await this.getUserById(result.lastInsertRowid as number);
     if (!user) throw new Error('Failed to create user');
     return user;
   }
 
   async getUserByUsername(username: string): Promise<User | null> {
-    const { get } = promisifyDb(this.db);
-    const row = await get('SELECT * FROM users WHERE username = ?', [username]);
+    const stmt = this.db.prepare('SELECT * FROM users WHERE username = ?');
+    const row = stmt.get(username) as Row;
     return row ? this.mapRowToUser(row) : null;
   }
 
   async getUserById(id: number): Promise<User | null> {
-    const { get } = promisifyDb(this.db);
-    const row = await get('SELECT * FROM users WHERE id = ?', [id]);
+    const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
+    const row = stmt.get(id) as Row;
     return row ? this.mapRowToUser(row) : null;
   }
 
@@ -469,14 +403,12 @@ class Database {
       throw new Error(`Name "${name}" is already in use for your tunnels`);
     }
 
-    const { run } = promisifyDb(this.db);
-
-    const result = await run(
-      'INSERT INTO tunnels (user_id, name, external_port, max_bandwidth) VALUES (?, ?, ?, ?)',
-      [userId, name, externalPort, maxBandwidth || null]
+    const stmt = this.db.prepare(
+      'INSERT INTO tunnels (user_id, name, external_port, max_bandwidth) VALUES (?, ?, ?, ?)'
     );
+    const result = stmt.run(userId, name, externalPort, maxBandwidth || null);
 
-    const tunnel = await this.getTunnelById(result.lastID);
+    const tunnel = await this.getTunnelById(result.lastInsertRowid as number);
     if (!tunnel) throw new Error('Failed to create tunnel');
 
     // Create stats record for the new tunnel
@@ -486,14 +418,13 @@ class Database {
   }
 
   async getTunnelsByUserId(userId: number): Promise<Tunnel[]> {
-    const { all: dbAll } = promisifyDb(this.db);
-    const rows = await dbAll('SELECT * FROM tunnels WHERE user_id = ?', [userId]);
-    return rows.map((row) => this.mapRowToTunnel(row));
+    const stmt = this.db.prepare('SELECT * FROM tunnels WHERE user_id = ?');
+    return (stmt.all(userId) as unknown as Row[]).map((row) => this.mapRowToTunnel(row));
   }
 
   async getTunnelById(id: number): Promise<Tunnel | null> {
-    const { get } = promisifyDb(this.db);
-    const row = await get('SELECT * FROM tunnels WHERE id = ?', [id]);
+    const stmt = this.db.prepare('SELECT * FROM tunnels WHERE id = ?');
+    const row = stmt.get(id) as Row;
     return row ? this.mapRowToTunnel(row) : null;
   }
 
@@ -527,43 +458,38 @@ class Database {
       throw new Error(`Name "${name}" is already in use for your tunnels`);
     }
 
-    const { run } = promisifyDb(this.db);
-
-    await run('UPDATE tunnels SET name = ?, external_port = ?, max_bandwidth = ? WHERE id = ?', [
-      name,
-      externalPort,
-      maxBandwidth || null,
-      id,
-    ]);
+    const stmt = this.db.prepare(
+      'UPDATE tunnels SET name = ?, external_port = ?, max_bandwidth = ? WHERE id = ?'
+    );
+    stmt.run(name, externalPort, maxBandwidth || null, id);
 
     return this.getTunnelById(id);
   }
 
   async updateTunnelBandwidth(id: number, maxBandwidth: number): Promise<Tunnel | null> {
-    const { run } = promisifyDb(this.db);
-
-    await run('UPDATE tunnels SET max_bandwidth = ? WHERE id = ?', [maxBandwidth, id]);
+    const stmt = this.db.prepare('UPDATE tunnels SET max_bandwidth = ? WHERE id = ?');
+    stmt.run(maxBandwidth, id);
 
     return this.getTunnelById(id);
   }
 
   async deleteTunnel(id: number): Promise<boolean> {
-    const { run } = promisifyDb(this.db);
-    const result = await run('DELETE FROM tunnels WHERE id = ?', [id]);
+    const stmt = this.db.prepare('DELETE FROM tunnels WHERE id = ?');
+    const result = stmt.run(id);
     return result.changes > 0;
   }
 
   // Method to check if a port is already used by any tunnel
   async isPortInUse(externalPort: number): Promise<boolean> {
-    const { get } = promisifyDb(this.db);
-    const row = await get('SELECT id FROM tunnels WHERE external_port = ?', [externalPort]);
+    const stmt = this.db.prepare('SELECT id FROM tunnels WHERE external_port = ?');
+    const row = stmt.get(externalPort);
     return !!row;
   }
 
   // Method to check if a name is already used by the same user
   async isNameInUseForUser(userId: number, name: string): Promise<boolean> {
-    const { get } = promisifyDb(this.db);
-    const row = await get('SELECT id FROM tunnels WHERE user_id = ? AND name = ?', [userId, name]);
+    const stmt = this.db.prepare('SELECT id FROM tunnels WHERE user_id = ? AND name = ?');
+    const row = stmt.get(userId, name);
     return !!row;
   }
 
@@ -588,12 +514,10 @@ class Database {
     const token = jwt.sign({ userId }, this.jwtSecret, { expiresIn: '24h' });
     const expiresAt = createFutureTime(24);
 
-    const { run } = promisifyDb(this.db);
-    await run('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)', [
-      userId,
-      token,
-      expiresAt,
-    ]);
+    const stmt = this.db.prepare(
+      'INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)'
+    );
+    stmt.run(userId, token, expiresAt);
 
     return token;
   }
@@ -609,16 +533,15 @@ class Database {
   }
 
   async deleteSession(token: string): Promise<boolean> {
-    const { run } = promisifyDb(this.db);
-    const result = await run('DELETE FROM sessions WHERE token = ?', [token]);
+    const stmt = this.db.prepare('DELETE FROM sessions WHERE token = ?');
+    const result = stmt.run(token);
     return result.changes > 0;
   }
 
   // Statistics methods
   async createTunnelStats(tunnelId: number): Promise<TunnelStats> {
-    const { run } = promisifyDb(this.db);
-
-    await run('INSERT INTO tunnel_stats (tunnel_id) VALUES (?)', [tunnelId]);
+    const stmt = this.db.prepare('INSERT INTO tunnel_stats (tunnel_id) VALUES (?)');
+    stmt.run(tunnelId);
 
     // Initialize rate history for the new tunnel
     if (!this.rateHistory.has(tunnelId)) {
@@ -639,18 +562,16 @@ class Database {
   }
 
   async getTunnelStatsByTunnelId(tunnelId: number): Promise<TunnelStats | null> {
-    const { get } = promisifyDb(this.db);
-    const row = await get('SELECT * FROM tunnel_stats WHERE tunnel_id = ?', [tunnelId]);
+    const stmt = this.db.prepare('SELECT * FROM tunnel_stats WHERE tunnel_id = ?');
+    const row = stmt.get(tunnelId) as Row;
     return row ? this.mapRowToTunnelStats(row) : null;
   }
 
   async getTunnelStatsByUserId(userId: number): Promise<TunnelStatsWithInfo[]> {
-    const { all } = promisifyDb(this.db);
-
     // First, ensure all tunnels have stats records
-    const tunnels = (await all('SELECT * FROM tunnels WHERE user_id = ?', [
-      userId,
-    ])) as unknown as Tunnel[];
+    const tunnels = this.db
+      .prepare('SELECT * FROM tunnels WHERE user_id = ?')
+      .all(userId) as unknown as Tunnel[];
     for (const tunnel of tunnels) {
       const existingStats = await this.getTunnelStatsByTunnelId(Number(tunnel.id));
       if (!existingStats) {
@@ -658,28 +579,24 @@ class Database {
       }
     }
 
-    const rows = (await all(
-      `
+    const stmt = this.db.prepare(`
       SELECT ts.*, t.name as tunnel_name, t.external_port, t.user_id
       FROM tunnel_stats ts
       JOIN tunnels t ON ts.tunnel_id = t.id
       WHERE t.user_id = ?
-    `,
-      [userId]
-    )) as (Row & { tunnel_name: string; external_port: number; user_id: number })[];
-    const castRows = rows as (Row & {
+    `);
+    const rows = stmt.all(userId) as (Row & {
       tunnel_name: string;
       external_port: number;
       user_id: number;
     })[];
-    return castRows.map((row) => this.mapRowToTunnelStatsWithInfo(row));
+
+    return rows.map((row) => this.mapRowToTunnelStatsWithInfo(row));
   }
 
   async getAllTunnelStats(): Promise<TunnelStatsWithInfo[]> {
-    const { all } = promisifyDb(this.db);
-
     // First, ensure all tunnels have stats records
-    const tunnels = (await all('SELECT * FROM tunnels', [])) as unknown as Tunnel[];
+    const tunnels = this.db.prepare('SELECT * FROM tunnels').all() as unknown as Tunnel[];
     for (const tunnel of tunnels) {
       const existingStats = await this.getTunnelStatsByTunnelId(Number(tunnel.id));
       if (!existingStats) {
@@ -687,20 +604,18 @@ class Database {
       }
     }
 
-    const rows = (await all(
-      `
+    const stmt = this.db.prepare(`
       SELECT ts.*, t.name as tunnel_name, t.external_port, t.user_id
       FROM tunnel_stats ts
       JOIN tunnels t ON ts.tunnel_id = t.id
-    `,
-      []
-    )) as (Row & { tunnel_name: string; external_port: number; user_id: number })[];
-    const castRows = rows as (Row & {
+    `);
+    const rows = stmt.all() as (Row & {
       tunnel_name: string;
       external_port: number;
       user_id: number;
     })[];
-    return castRows.map((row) => this.mapRowToTunnelStatsWithInfo(row));
+
+    return rows.map((row) => this.mapRowToTunnelStatsWithInfo(row));
   }
 
   async updateTunnelStats(
@@ -709,25 +624,21 @@ class Database {
     bytesSent: number,
     activeConnections: number
   ): Promise<void> {
-    const { run } = promisifyDb(this.db);
-
     // Only update active connections and current session values
     // Total traffic is now updated in real-time by updateSessionStats
-    await run(
-      `
+    const stmt = this.db.prepare(`
       UPDATE tunnel_stats 
       SET current_bytes_received = ?,
           current_bytes_sent = ?,
           active_connections = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE tunnel_id = ?
-    `,
-      [
-        Number(this.currentBytesReceived.get(tunnelId)) || 0,
-        Number(this.currentBytesSent.get(tunnelId)) || 0,
-        activeConnections,
-        tunnelId,
-      ]
+    `);
+    stmt.run(
+      Number(this.currentBytesReceived.get(tunnelId)) || 0,
+      Number(this.currentBytesSent.get(tunnelId)) || 0,
+      activeConnections,
+      tunnelId
     );
   }
 
@@ -766,36 +677,30 @@ class Database {
       // Use provided connection count or fall back to reasonable default
       const connections = activeConnections !== undefined ? activeConnections : 0;
 
-      const { run } = promisifyDb(this.db);
-      await run(
-        `
+      const stmt = this.db.prepare(`
         UPDATE tunnel_stats 
         SET total_bytes_received = total_bytes_received + ?, 
             total_bytes_sent = total_bytes_sent + ?,
             active_connections = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE tunnel_id = ?
-      `,
-        [bytesReceived, bytesSent, connections, tunnelId]
-      );
+      `);
+      stmt.run(bytesReceived, bytesSent, connections, tunnelId);
     } catch (error) {
       console.error('Error updating total traffic:', error);
     }
   }
 
   private async loadCurrentSessionData(): Promise<void> {
-    const { all } = promisifyDb(this.db);
-
     try {
       // Check if this is a web process
       const isWebProcess = typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'nodejs';
 
       if (isWebProcess) {
         // Web server: Load current session data from database (read-only)
-        const stats = (await all(
-          'SELECT tunnel_id, current_bytes_received, current_bytes_sent FROM tunnel_stats',
-          []
-        )) as unknown as {
+        const stats = this.db
+          .prepare('SELECT tunnel_id, current_bytes_received, current_bytes_sent FROM tunnel_stats')
+          .all() as unknown as {
           tunnel_id: number;
           current_bytes_received: number;
           current_bytes_sent: number;
@@ -813,7 +718,7 @@ class Database {
         }
       } else {
         // SSH server: Initialize to 0 and let updateSessionStats track data
-        const stats = (await all('SELECT tunnel_id FROM tunnel_stats', [])) as unknown as {
+        const stats = this.db.prepare('SELECT tunnel_id FROM tunnel_stats').all() as unknown as {
           tunnel_id: number;
         }[];
 
@@ -843,80 +748,63 @@ class Database {
 
   // New method to update just the active connections count without modifying byte counters
   async updateTunnelConnections(tunnelId: number, activeConnections: number): Promise<void> {
-    const { run } = promisifyDb(this.db);
-
-    await run(
-      `
+    const stmt = this.db.prepare(`
       UPDATE tunnel_stats 
       SET active_connections = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE tunnel_id = ?
-    `,
-      [activeConnections, tunnelId]
-    );
+    `);
+    stmt.run(activeConnections, tunnelId);
   }
 
   // Method to update tunnel online status based on SSH connection
   async updateTunnelOnlineStatus(tunnelId: number, isOnline: boolean): Promise<void> {
-    const { run } = promisifyDb(this.db);
-
-    await run(
-      `
+    const stmt = this.db.prepare(`
       UPDATE tunnel_stats 
       SET is_online = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE tunnel_id = ?
-    `,
-      [Number(isOnline) ? 1 : 0, tunnelId]
-    );
+    `);
+    stmt.run(Number(isOnline) ? 1 : 0, tunnelId);
   }
 
   // Method to check if a tunnel is online
   async isTunnelOnline(tunnelId: number): Promise<boolean> {
-    const { get } = promisifyDb(this.db);
-    const row = await get('SELECT is_online FROM tunnel_stats WHERE tunnel_id = ?', [tunnelId]);
-    return row ? row.is_online === 1 : false;
+    const stmt = this.db.prepare('SELECT is_online FROM tunnel_stats WHERE tunnel_id = ?');
+    const row = stmt.get(tunnelId) as Row;
+    return row ? (row.is_online as number) === 1 : false;
   }
 
   // Method to check if any tunnel with a specific external port is online
   async isTunnelWithPortOnline(port: number): Promise<boolean> {
-    const { get } = promisifyDb(this.db);
-    const row = await get(
-      `
+    const stmt = this.db.prepare(`
       SELECT ts.is_online 
       FROM tunnel_stats ts
       JOIN tunnels t ON ts.tunnel_id = t.id
       WHERE t.external_port = ?
-    `,
-      [port]
-    );
-    return row ? row.is_online === 1 : false;
+    `);
+    const row = stmt.get(port) as Row;
+    return row ? (row.is_online as number) === 1 : false;
   }
 
   async resetCurrentSessionStats(tunnelId: number): Promise<void> {
-    const { run } = promisifyDb(this.db);
-
     // Only reset in-memory counters, not database
     this.currentBytesReceived.set(tunnelId, 0);
     this.currentBytesSent.set(tunnelId, 0);
 
     // Reset database values for current session only (not total)
-    await run(
-      `
+    const stmt = this.db.prepare(`
       UPDATE tunnel_stats 
       SET current_bytes_received = 0,
           current_bytes_sent = 0,
           updated_at = CURRENT_TIMESTAMP
       WHERE tunnel_id = ?
-    `,
-      [tunnelId]
-    );
+    `);
+    stmt.run(tunnelId);
   }
 
   // New method to clear all tunnels' session statistics, active connections, and online status
   async clearAllTunnelsSessionState(): Promise<void> {
-    const { run } = promisifyDb(this.db);
-
     try {
       console.log('Clearing all tunnels session state...');
 
@@ -943,17 +831,14 @@ class Database {
       }
 
       // Reset all tunnel statistics in database
-      await run(
-        `
+      this.db.exec(`
         UPDATE tunnel_stats 
         SET current_bytes_received = 0,
             current_bytes_sent = 0,
             active_connections = 0,
             is_online = 0,
             updated_at = CURRENT_TIMESTAMP
-      `,
-        []
-      );
+      `);
 
       console.log(`Cleared session state for ${tunnelIds.length} tunnels`);
     } catch (error) {
@@ -1028,15 +913,14 @@ class Database {
   }
 
   private async cleanupOldAccessLogs(): Promise<void> {
-    const { run } = promisifyDb(this.db);
-
     try {
       // Delete logs older than 31 days
       const thirtyOneDaysAgo = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
 
-      const result = await run(`DELETE FROM client_access_logs WHERE connection_start_time < ?`, [
-        thirtyOneDaysAgo,
-      ]);
+      const stmt = this.db.prepare(
+        `DELETE FROM client_access_logs WHERE connection_start_time < ?`
+      );
+      const result = stmt.run(thirtyOneDaysAgo);
 
       console.log(`Cleaned up ${result.changes} old access log entries (older than 31 days)`);
     } catch (error) {
@@ -1096,20 +980,17 @@ class Database {
         this.rateHistory.set(tunnelId, history);
 
         // Save rate data to database for cross-process sharing
-        const { run } = promisifyDb(this.db);
-        await run(
-          `
+        const stmt = this.db.prepare(`
           INSERT INTO rate_history (tunnel_id, timestamp, bytes_per_second_received, bytes_per_second_sent, current_bytes_received, current_bytes_sent)
           VALUES (?, ?, ?, ?, ?, ?)
-        `,
-          [
-            tunnelId,
-            now.toISOString(),
-            newEntry.bytes_per_second_received,
-            newEntry.bytes_per_second_sent,
-            newEntry.current_bytes_received,
-            newEntry.current_bytes_sent,
-          ]
+        `);
+        stmt.run(
+          tunnelId,
+          now.toISOString(),
+          newEntry.bytes_per_second_received,
+          newEntry.bytes_per_second_sent,
+          newEntry.current_bytes_received,
+          newEntry.current_bytes_sent
         );
 
         // Also sync in-memory stats to database periodically
@@ -1119,9 +1000,9 @@ class Database {
       // Clean up old rate history records (keep only last 2 minutes)
       // This is executed after all tunnel rates are calculated to minimize impact
       // 2 minutes is sufficient for real-time monitoring while keeping database size minimal
-      const { run } = promisifyDb(this.db);
       const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-      await run(`DELETE FROM rate_history WHERE timestamp < ?`, [twoMinutesAgo]);
+      const cleanupStmt = this.db.prepare(`DELETE FROM rate_history WHERE timestamp < ?`);
+      cleanupStmt.run(twoMinutesAgo);
     } catch (error) {
       console.error('Error calculating rates:', error);
     }
@@ -1133,42 +1014,34 @@ class Database {
     currentReceived: number,
     currentSent: number
   ): Promise<void> {
-    const { run } = promisifyDb(this.db);
-
     try {
-      await run(
-        `
+      const stmt = this.db.prepare(`
         UPDATE tunnel_stats 
         SET current_bytes_received = ?,
             current_bytes_sent = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE tunnel_id = ?
-      `,
-        [currentReceived, currentSent, tunnelId]
-      );
+      `);
+      stmt.run(currentReceived, currentSent, tunnelId);
     } catch (error) {
       console.error('Error syncing session stats to database:', error);
     }
   }
 
   private async updateCurrentSessionData(): Promise<void> {
-    const { run } = promisifyDb(this.db);
-
     try {
       // Update current session data for all tunnels in memory
       for (const [tunnelId, currentReceived] of this.currentBytesReceived.entries()) {
         const currentSent = this.currentBytesSent.get(tunnelId) || 0;
 
-        await run(
-          `
+        const stmt = this.db.prepare(`
           UPDATE tunnel_stats 
           SET current_bytes_received = ?,
               current_bytes_sent = ?,
               updated_at = CURRENT_TIMESTAMP
           WHERE tunnel_id = ?
-        `,
-          [Number(currentReceived) || 0, Number(currentSent) || 0, tunnelId]
-        );
+        `);
+        stmt.run(Number(currentReceived) || 0, Number(currentSent) || 0, tunnelId);
       }
     } catch (error) {
       console.error('Error updating current session data:', error);
@@ -1176,9 +1049,8 @@ class Database {
   }
 
   async getAllTunnelIds(): Promise<number[]> {
-    const { all } = promisifyDb(this.db);
     try {
-      const tunnels = (await all('SELECT id FROM tunnels', [])) as unknown as TunnelRow[];
+      const tunnels = this.db.prepare('SELECT id FROM tunnels').all() as unknown as TunnelRow[];
       return tunnels.map((t) => Number(t.id));
     } catch (error) {
       console.error('Error fetching tunnel IDs:', error);
@@ -1192,16 +1064,13 @@ class Database {
 
     if (isWebProcess) {
       try {
-        const { get } = promisifyDb(this.db);
-        const latest = (await get(
-          `
+        const stmt = this.db.prepare(`
           SELECT * FROM rate_history 
           WHERE tunnel_id = ? 
           ORDER BY timestamp DESC 
           LIMIT 1
-        `,
-          [tunnelId]
-        )) as unknown as RateHistoryRow | undefined;
+        `);
+        const latest = stmt.get(tunnelId) as unknown as RateHistoryRow | undefined;
 
         if (latest) {
           return {
@@ -1242,11 +1111,9 @@ class Database {
 
   // User Settings Methods
   async getUserRefreshInterval(userId: number): Promise<number> {
-    const { get } = promisifyDb(this.db);
     try {
-      const setting = (await get('SELECT refresh_interval FROM user_settings WHERE user_id = ?', [
-        userId,
-      ])) as { refresh_interval: number } | undefined;
+      const stmt = this.db.prepare('SELECT refresh_interval FROM user_settings WHERE user_id = ?');
+      const setting = stmt.get(userId) as { refresh_interval: number } | undefined;
 
       return setting ? setting.refresh_interval : 2000; // Default 2 seconds
     } catch (error) {
@@ -1256,17 +1123,14 @@ class Database {
   }
 
   async setUserRefreshInterval(userId: number, refreshInterval: number): Promise<boolean> {
-    const { run } = promisifyDb(this.db);
     try {
-      await run(
-        `
+      const stmt = this.db.prepare(`
         INSERT INTO user_settings (user_id, refresh_interval, updated_at)
         VALUES (?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(user_id) 
         DO UPDATE SET refresh_interval = ?, updated_at = CURRENT_TIMESTAMP
-      `,
-        [userId, refreshInterval, refreshInterval]
-      );
+      `);
+      stmt.run(userId, refreshInterval, refreshInterval);
 
       return true;
     } catch (error) {
@@ -1276,11 +1140,9 @@ class Database {
   }
 
   async getUserLanguage(userId: number): Promise<string> {
-    const { get } = promisifyDb(this.db);
     try {
-      const setting = (await get('SELECT language FROM user_settings WHERE user_id = ?', [
-        userId,
-      ])) as { language: string } | undefined;
+      const stmt = this.db.prepare('SELECT language FROM user_settings WHERE user_id = ?');
+      const setting = stmt.get(userId) as { language: string } | undefined;
 
       return setting ? setting.language : 'zh'; // Default Chinese
     } catch (error) {
@@ -1290,11 +1152,9 @@ class Database {
   }
 
   async getUserTheme(userId: number): Promise<string> {
-    const { get } = promisifyDb(this.db);
     try {
-      const setting = (await get('SELECT theme FROM user_settings WHERE user_id = ?', [userId])) as
-        | { theme: string }
-        | undefined;
+      const stmt = this.db.prepare('SELECT theme FROM user_settings WHERE user_id = ?');
+      const setting = stmt.get(userId) as { theme: string } | undefined;
 
       return setting ? setting.theme : 'light'; // Default light theme
     } catch (error) {
@@ -1309,10 +1169,10 @@ class Database {
     language?: string,
     theme?: string
   ): Promise<boolean> {
-    const { run, get } = promisifyDb(this.db);
     try {
       // First check if user settings exist
-      const existing = await get('SELECT user_id FROM user_settings WHERE user_id = ?', [userId]);
+      const stmt = this.db.prepare('SELECT user_id FROM user_settings WHERE user_id = ?');
+      const existing = stmt.get(userId);
 
       if (existing) {
         // Update existing settings
@@ -1336,17 +1196,18 @@ class Database {
           updates.push('updated_at = CURRENT_TIMESTAMP');
           params.push(userId);
 
-          await run(`UPDATE user_settings SET ${updates.join(', ')} WHERE user_id = ?`, params);
+          const updateStmt = this.db.prepare(
+            `UPDATE user_settings SET ${updates.join(', ')} WHERE user_id = ?`
+          );
+          updateStmt.run(params);
         }
       } else {
         // Insert new settings
-        await run(
-          `
+        const insertStmt = this.db.prepare(`
           INSERT INTO user_settings (user_id, refresh_interval, language, theme, updated_at)
           VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-          `,
-          [userId, refreshInterval || 2000, language || 'zh', theme || 'light']
-        );
+          `);
+        insertStmt.run(userId, refreshInterval || 2000, language || 'zh', theme || 'light');
       }
 
       return true;
@@ -1361,12 +1222,13 @@ class Database {
     language: string;
     theme: string;
   }> {
-    const { get } = promisifyDb(this.db);
     try {
-      const setting = (await get(
-        'SELECT refresh_interval, language, theme FROM user_settings WHERE user_id = ?',
-        [userId]
-      )) as { refresh_interval: number; language: string; theme: string } | undefined;
+      const stmt = this.db.prepare(
+        'SELECT refresh_interval, language, theme FROM user_settings WHERE user_id = ?'
+      );
+      const setting = stmt.get(userId) as
+        | { refresh_interval: number; language: string; theme: string }
+        | undefined;
 
       return setting
         ? {
@@ -1390,18 +1252,17 @@ class Database {
   }
 
   async getSession(token: string): Promise<Session | null> {
-    const { get } = promisifyDb(this.db);
-    const row = await get(
-      'SELECT * FROM sessions WHERE token = ? AND expires_at > datetime("now")',
-      [token]
+    const stmt = this.db.prepare(
+      "SELECT * FROM sessions WHERE token = ? AND expires_at > datetime('now')"
     );
+    const row = stmt.get(token) as Row;
     return row ? this.mapRowToSession(row) : null;
   }
 
   async updateUserPassword(userId: number, hashedPassword: string): Promise<boolean> {
-    const { run } = promisifyDb(this.db);
     try {
-      await run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId]);
+      const stmt = this.db.prepare('UPDATE users SET password = ? WHERE id = ?');
+      stmt.run(hashedPassword, userId);
       return true;
     } catch (error) {
       console.error('Error updating user password:', error);
@@ -1421,9 +1282,9 @@ class Database {
 
   // OTP Methods
   async enableOTP(userId: number, secret: string): Promise<boolean> {
-    const { run } = promisifyDb(this.db);
     try {
-      await run('UPDATE users SET otp_secret = ?, otp_enabled = 1 WHERE id = ?', [secret, userId]);
+      const stmt = this.db.prepare('UPDATE users SET otp_secret = ?, otp_enabled = 1 WHERE id = ?');
+      stmt.run(secret, userId);
       return true;
     } catch (error) {
       console.error('Error enabling OTP:', error);
@@ -1432,9 +1293,11 @@ class Database {
   }
 
   async disableOTP(userId: number): Promise<boolean> {
-    const { run } = promisifyDb(this.db);
     try {
-      await run('UPDATE users SET otp_secret = NULL, otp_enabled = 0 WHERE id = ?', [userId]);
+      const stmt = this.db.prepare(
+        'UPDATE users SET otp_secret = NULL, otp_enabled = 0 WHERE id = ?'
+      );
+      stmt.run(userId);
       return true;
     } catch (error) {
       console.error('Error disabling OTP:', error);
@@ -1443,15 +1306,15 @@ class Database {
   }
 
   async getUserOtpSecret(userId: number): Promise<string | null> {
-    const { get } = promisifyDb(this.db);
-    const row = await get('SELECT otp_secret FROM users WHERE id = ?', [userId]);
+    const stmt = this.db.prepare('SELECT otp_secret FROM users WHERE id = ?');
+    const row = stmt.get(userId) as Row;
     return row && row.otp_secret ? String(row.otp_secret) : null;
   }
 
   async isUserOtpEnabled(userId: number): Promise<boolean> {
-    const { get } = promisifyDb(this.db);
-    const row = await get('SELECT otp_enabled FROM users WHERE id = ?', [userId]);
-    return row ? Number(row.otp_enabled) === 1 : false;
+    const stmt = this.db.prepare('SELECT otp_enabled FROM users WHERE id = ?');
+    const row = stmt.get(userId) as Row;
+    return row ? (row.otp_enabled as number) === 1 : false;
   }
 
   async validatePasswordWithOtp(
@@ -1494,8 +1357,6 @@ class Database {
     clientIP: string,
     userAgent?: string
   ): Promise<void> {
-    const { run } = promisifyDb(this.db);
-
     // Get location information for the IP
     const locationInfo = await this.getLocationInfo(clientIP);
 
@@ -1506,22 +1367,20 @@ class Database {
       clientIP,
     });
 
-    await run(
-      `
+    const stmt = this.db.prepare(`
       INSERT INTO client_access_logs 
       (tunnel_id, connection_id, client_ip, client_country, client_region, client_city, connection_start_time, user_agent)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      [
-        tunnelId,
-        connectionId,
-        clientIP,
-        locationInfo.country,
-        locationInfo.region,
-        locationInfo.city,
-        new Date().toISOString(),
-        userAgent || null,
-      ]
+    `);
+    stmt.run(
+      tunnelId,
+      connectionId,
+      clientIP,
+      locationInfo.country,
+      locationInfo.region,
+      locationInfo.city,
+      new Date().toISOString(),
+      userAgent || null
     );
   }
 
@@ -1544,37 +1403,30 @@ class Database {
     finalBytesSent: number = 0,
     finalBytesReceived: number = 0
   ): Promise<void> {
-    const { run } = promisifyDb(this.db);
-
     const connection = this.activeConnections.get(connectionId);
     if (!connection) return;
 
     const endTime = new Date();
     const duration = Math.floor((endTime.getTime() - connection.startTime.getTime()) / 1000);
 
-    await run(
-      `
+    const stmt = this.db.prepare(`
       UPDATE client_access_logs 
       SET connection_end_time = ?, duration_seconds = ?, bytes_sent = COALESCE(bytes_sent, 0) + ?, bytes_received = COALESCE(bytes_received, 0) + ?
       WHERE connection_id = ? AND connection_end_time IS NULL
-      `,
-      [endTime.toISOString(), duration, finalBytesSent, finalBytesReceived, connectionId]
-    );
+    `);
+    stmt.run(endTime.toISOString(), duration, finalBytesSent, finalBytesReceived, connectionId);
 
     this.activeConnections.delete(connectionId);
   }
 
   async getClientAccessLogs(tunnelId: number, limit: number = 100): Promise<ClientAccessLogType[]> {
-    const { all } = promisifyDb(this.db);
-    const rows = await all(
-      `
+    const stmt = this.db.prepare(`
       SELECT * FROM client_access_logs 
       WHERE tunnel_id = ? 
       ORDER BY connection_start_time DESC 
       LIMIT ?
-      `,
-      [tunnelId, limit]
-    );
+    `);
+    const rows = stmt.all(tunnelId, limit) as unknown as Row[];
 
     return rows.map((row) => this.mapRowToClientAccessLog(row));
   }
@@ -1590,54 +1442,63 @@ class Database {
     topCountries: Array<{ country: string; count: number }>;
     hourlyActivity: Array<{ hour: number; count: number }>;
   }> {
-    const { all } = promisifyDb(this.db);
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
     // Get total connections
-    const totalResult = await all(
-      `SELECT COUNT(*) as count FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ?`,
-      [tunnelId, startDate.toISOString()]
+    const totalStmt = this.db.prepare(
+      `SELECT COUNT(*) as count FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ?`
     );
-    const totalConnections = Number(totalResult[0]?.count) || 0;
+    const totalResult = totalStmt.get(tunnelId, startDate.toISOString()) as { count: number };
+    const totalConnections = Number(totalResult?.count) || 0;
 
     // Get unique IPs
-    const uniqueIPsResult = await all(
-      `SELECT COUNT(DISTINCT client_ip) as count FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ?`,
-      [tunnelId, startDate.toISOString()]
+    const uniqueIPsStmt = this.db.prepare(
+      `SELECT COUNT(DISTINCT client_ip) as count FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ?`
     );
-    const uniqueIPs = Number(uniqueIPsResult[0]?.count) || 0;
+    const uniqueIPsResult = uniqueIPsStmt.get(tunnelId, startDate.toISOString()) as {
+      count: number;
+    };
+    const uniqueIPs = Number(uniqueIPsResult?.count) || 0;
 
     // Get total bytes transferred
-    const bytesResult = await all(
-      `SELECT SUM(bytes_sent + bytes_received) as total FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ?`,
-      [tunnelId, startDate.toISOString()]
+    const bytesStmt = this.db.prepare(
+      `SELECT SUM(bytes_sent + bytes_received) as total FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ?`
     );
-    const totalBytesTransferred = Number(bytesResult[0]?.total) || 0;
+    const bytesResult = bytesStmt.get(tunnelId, startDate.toISOString()) as { total: number };
+    const totalBytesTransferred = Number(bytesResult?.total) || 0;
 
     // Get average connection duration
-    const avgDurationResult = await all(
-      `SELECT AVG(duration_seconds) as avg FROM client_access_logs WHERE tunnel_id = ? AND duration_seconds IS NOT NULL AND connection_start_time >= ?`,
-      [tunnelId, startDate.toISOString()]
+    const avgDurationStmt = this.db.prepare(
+      `SELECT AVG(duration_seconds) as avg FROM client_access_logs WHERE tunnel_id = ? AND duration_seconds IS NOT NULL AND connection_start_time >= ?`
     );
-    const averageConnectionDuration = Number(avgDurationResult[0]?.avg) || 0;
+    const avgDurationResult = avgDurationStmt.get(tunnelId, startDate.toISOString()) as {
+      avg: number;
+    };
+    const averageConnectionDuration = Number(avgDurationResult?.avg) || 0;
 
     // Get top countries
-    const topCountriesResult = await all(
-      `SELECT client_country as country, COUNT(*) as count FROM client_access_logs WHERE tunnel_id = ? AND client_country IS NOT NULL AND connection_start_time >= ? GROUP BY client_country ORDER BY count DESC LIMIT 5`,
-      [tunnelId, startDate.toISOString()]
+    const topCountriesStmt = this.db.prepare(
+      `SELECT client_country as country, COUNT(*) as count FROM client_access_logs WHERE tunnel_id = ? AND client_country IS NOT NULL AND connection_start_time >= ? GROUP BY client_country ORDER BY count DESC LIMIT 5`
     );
+    const topCountriesResult = topCountriesStmt.all(tunnelId, startDate.toISOString()) as {
+      country: string;
+      count: number;
+    }[];
     const topCountries = topCountriesResult.map((row) => ({
       country: String(row.country),
       count: Number(row.count),
     }));
 
     // Get hourly activity
-    const hourlyActivityResult = await all(
-      `SELECT CAST(strftime('%H', connection_start_time) AS INTEGER) as hour, COUNT(*) as count FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ? GROUP BY hour ORDER BY hour`,
-      [tunnelId, startDate.toISOString()]
+    const hourlyStmt = this.db.prepare(
+      `SELECT CAST(strftime('%H', connection_start_time) AS INTEGER) as hour, COUNT(*) as count FROM client_access_logs WHERE tunnel_id = ? AND connection_start_time >= ? GROUP BY hour ORDER BY hour`
     );
-    const hourlyActivity = hourlyActivityResult.map((row) => ({
+    const hourlyResult = hourlyStmt.all(tunnelId, startDate.toISOString()) as {
+      hour: number;
+      count: number;
+    }[];
+    const hourlyActivity = hourlyResult.map((row) => ({
       hour: Number(row.hour),
       count: Number(row.count),
     }));

@@ -35,6 +35,8 @@ export const jaTranslation = {
       loadingBandwidth: '帯域統計を読み込み中...',
       monitorTraffic: 'トンネルのトラフィックと接続状態をリアルタイムで監視',
       noTunnels: '設定されたトンネルがありません',
+      noStatisticsAvailable:
+        '統計がありません。使用状況の追跡を開始するためにトンネルを作成してください。',
       edit: '編集',
       delete: '削除',
       connect: '接続',

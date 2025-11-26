@@ -58,6 +58,7 @@ export const zhTranslation = {
       refreshNow: '立即刷新',
       monitorTraffic: '实时监控您的隧道流量和连接状态',
       noTunnels: '没有配置的隧道',
+      noStatisticsAvailable: '暂无统计数据。创建一些隧道以开始跟踪使用情况。',
       edit: '编辑',
       delete: '删除',
       connect: '连接',

@@ -43,8 +43,6 @@ declare module 'ssh2' {
 
 // Timer declarations are available globally
 
-
-
 export interface SSHServerConfig {
   host?: string;
   port: number;

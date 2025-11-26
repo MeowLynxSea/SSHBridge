@@ -35,6 +35,8 @@ export const deTranslation = {
       loadingBandwidth: 'Bandbreitenstatistiken werden geladen...',
       monitorTraffic: 'Überwachen Sie Ihren Tunnelverkehr und Verbindungsstatus in Echtzeit',
       noTunnels: 'KEINE TUNNEL KONFIGURIERT',
+      noStatisticsAvailable:
+        'KEINE STATISTIKEN VERFÜGBAR. ERSTELLEN SIE TUNNEL, UM DIE NUTZUNGSVERFOLGUNG ZU STARTEN.',
       edit: 'BEARBEITEN',
       delete: 'LÖSCHEN',
       connect: 'VERBINDEN',

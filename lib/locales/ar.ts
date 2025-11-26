@@ -35,6 +35,7 @@ export const arTranslation = {
       loadingBandwidth: 'تحميل إحصائيات النطاق الترددي...',
       monitorTraffic: 'راقب حركة مرور النفق وحالة الاتصال في الوقت الفعلي',
       noTunnels: 'لا توجد أنفاق مهيأة',
+      noStatisticsAvailable: 'لا توجد إحصائيات متاحة. قم بإنشاء بعض الأنفاق لبدء تتبع الاستخدام.',
       edit: 'تحرير',
       delete: 'حذف',
       connect: 'اتصال',

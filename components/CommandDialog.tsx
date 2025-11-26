@@ -68,7 +68,10 @@ export default function CommandDialog({
     }
 
     // Generate command
-    const command = `ssh -R ${tunnel.external_port}:${localIP}:${localPort} ${username}@${baseTunnelHost}`;
+    const command =
+      baseTunnelPort === '22'
+        ? `ssh -R ${tunnel.external_port}:${localIP}:${localPort} ${username}@${baseTunnelHost}`
+        : `ssh -p ${baseTunnelPort} -R ${tunnel.external_port}:${localIP}:${localPort} ${username}@${baseTunnelHost}`;
 
     try {
       await navigator.clipboard.writeText(command);

@@ -193,7 +193,7 @@ export default function TunnelStats() {
                   fontSize: isSmallMobile ? '1rem' : '1.1rem',
                 }}
               >
-                NO STATISTICS AVAILABLE. CREATE SOME TUNNELS TO START TRACKING USAGE.
+                {t('tunnelManager.noStatisticsAvailable')}
               </p>
             </div>
           ) : (

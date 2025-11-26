@@ -28,7 +28,7 @@ SSH server and tunnel management system with user authentication, tunnel managem
 
 - Node.js + TypeScript
 - ssh2 (SSH server)
-- SQLite3 (data storage)
+- better-sqlite3 (data storage)
 - bcrypt (password hashing)
 - JWT (session management)
 

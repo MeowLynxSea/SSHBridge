@@ -64,6 +64,8 @@ export const enTranslation = {
       loadingBandwidth: 'Loading bandwidth statistics...',
       monitorTraffic: 'Monitor your tunnel traffic and connection status in real-time',
       noTunnels: 'NO TUNNELS CONFIGURED',
+      noStatisticsAvailable:
+        'NO STATISTICS AVAILABLE. CREATE SOME TUNNELS TO START TRACKING USAGE.',
       edit: 'EDIT',
       delete: 'DELETE',
       connect: 'CONNECT',

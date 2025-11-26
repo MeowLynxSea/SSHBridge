@@ -34,6 +34,8 @@ export const frTranslation = {
       refreshNow: 'ACTUALISER MAINTENANT',
       monitorTraffic: "Surveillez votre trafic de tunnel et l'état de connexion en temps réel",
       noTunnels: 'AUCUN TUNNEL CONFIGURÉ',
+      noStatisticsAvailable:
+        "AUCUNE STATISTIQUE DISPONIBLE. CRÉEZ DES TUNNELS POUR COMMENCER À SUIVRE L'UTILISATION.",
       edit: 'MODIFIER',
       delete: 'SUPPRIMER',
       connect: 'CONNECTER',
