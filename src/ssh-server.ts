@@ -43,7 +43,7 @@ declare module 'ssh2' {
 
 // Timer declarations are available globally
 
-import './types/ssh2.d.js';
+
 
 export interface SSHServerConfig {
   host?: string;
