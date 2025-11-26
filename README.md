@@ -10,8 +10,15 @@ SSH server and tunnel management system with user authentication, tunnel managem
 - Web UI for tunnel management (create, edit, delete)
 - Multi-language support (English, Chinese, Spanish, French, German, Japanese, Russian, Arabic)
 - RTL language support (Arabic)
+- Two-factor authentication (2FA) with TOTP
+- Bandwidth monitoring and statistics
+- Real-time tunnel analytics
+- GeoIP-based access logging
+- SSH command interface (CUI) with PTY support
+- Theme customization (dark/light mode)
 - Strict TypeScript type checking
 - Next.js SSR mode frontend
+- Neo-brutalism UI design
 
 ## 技术栈
 
@@ -25,111 +32,184 @@ SSH server and tunnel management system with user authentication, tunnel managem
 
 ### 前端
 
-- Next.js 14 (SSR模式)
-- React 18
+- Next.js 16 (SSR模式)
+- React 19
 - TypeScript
-- Tailwind CSS
+- Tailwind CSS 4
+- Radix UI components (shadcn/ui)
+- React Hook Form with Zod validation
+- React i18next for internationalization
 
-## 快速开始
+## Quick Start
 
-### 安装依赖
+### Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 开发模式
+### Development Mode
 
 ```bash
 npm run dev
 ```
 
-这将同时启动：
+This will start both:
 
-- SSH服务器 (端口 2222)
-- Web UI (端口 3000)
+- SSH server (port 2222)
+- Web UI (port 3000)
 
-### 生产模式
+### Production Mode
 
 ```bash
 npm run build
 npm start
 ```
 
-## 使用说明
+## Usage
 
-### 1. 创建用户
+### 1. Create User
 
-访问 http://localhost:3000 并注册一个新账户
+Visit http://localhost:3000 and register a new account
 
-### 2. 配置隧道
+### 2. Configure Tunnel
 
-登录后，在Web UI中创建隧道：
+After logging in, create tunnels in the Web UI:
 
-- 名称：隧道的描述性名称
-- 目标主机：要转发到的目标服务器地址
-- 目标端口：目标服务器的端口
-- 本地端口：SSH服务器上的本地端口
+- Name: Descriptive name for the tunnel
+- Target Host: Target server address to forward to
+- Target Port: Port on the target server
+- Local Port: Local port on the SSH server
 
-### 3. 使用隧道
+### 3. Use Tunnel
 
-使用SSH客户端连接到服务器：
+Connect to the server using an SSH client:
 
 ```bash
-ssh -L [本地端口]:[目标主机]:[目标端口] 用户名@服务器地址 -p 2222
+ssh -L [local_port]:[target_host]:[target_port] username@server_address -p 2222
 ```
 
-## 环境变量
+## Environment Variables
 
-- `WEB_PORT`: Web UI端口 (默认: 3000)
-- `SSH_PORT`: SSH服务器端口 (默认: 2222)
-- `JWT_SECRET`: JWT密钥 (生产环境请设置)
+- `WEB_PORT`: Web UI port (default: 3000)
+- `SSH_PORT`: SSH server port (default: 2222)
+- `JWT_SECRET`: JWT secret (required for production)
 
-## 安全说明
+## Security
 
-1. 生产环境请更改默认的JWT_SECRET
-2. 使用强密码
+1. Change default JWT_SECRET in production
+2. Use strong passwords
+3. Enable 2FA for additional security
 
-## API接口
+## API Endpoints
 
-### 认证
+### Authentication
 
-- `POST /api/auth/register` - 用户注册
-- `POST /api/auth/login` - 用户登录
-- `POST /api/auth/logout` - 用户登出
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+- `POST /api/auth/enable-otp` - Enable 2FA
+- `POST /api/auth/disable-otp` - Disable 2FA
+- `POST /api/auth/verify-otp` - Verify 2FA token
 
-### 隧道管理
+### Tunnel Management
 
-- `GET /api/tunnels` - 获取用户隧道列表
-- `POST /api/tunnels` - 创建新隧道
-- `PUT /api/tunnels/[id]` - 更新隧道
-- `DELETE /api/tunnels/[id]` - 删除隧道
+- `GET /api/tunnels` - Get user tunnel list
+- `POST /api/tunnels` - Create new tunnel
+- `PUT /api/tunnels/[id]` - Update tunnel
+- `DELETE /api/tunnels/[id]` - Delete tunnel
+- `GET /api/tunnels/[id]/bandwidth` - Get tunnel bandwidth usage
+- `GET /api/tunnels/[id]/access-logs` - Get tunnel access logs
+- `GET /api/tunnels/[id]/access-stats` - Get tunnel access statistics
 
-## 项目结构
+## Project Structure
 
 ```
 SSHBridge/
-├── src/                 # 后端源码
-│   ├── database.ts      # 数据库管理
-│   ├── ssh-server.ts    # SSH服务器
-│   └── server.ts        # 主服务器
-├── pages/               # Next.js页面
-│   ├── api/            # API路由
-│   ├── _app.tsx        # Next.js应用配置
-│   └── index.tsx       # 主页面
-├── components/          # React组件
-│   ├── AuthContext.tsx  # 认证上下文
-│   ├── AuthForm.tsx     # 认证表单
-│   └── TunnelManager.tsx # 隧道管理
-└── styles/              # 样式文件
+├── src/                 # Backend source code
+│   ├── database.ts      # Database management and models
+│   ├── ssh-server.ts    # SSH server implementation
+│   ├── server.ts        # Main server entry point
+│   ├── components/      # Shared UI components
+│   ├── lib/             # Utility functions
+│   ├── types/           # TypeScript type definitions
+│   ├── utils/           # Utility functions
+│   └── cui/             # SSH CUI (PTY) interface
+├── pages/               # Next.js pages
+│   ├── api/            # API routes
+│   │   ├── auth/       # Authentication endpoints
+│   │   ├── tunnels/    # Tunnel management endpoints
+│   │   ├── stats/      # Statistics endpoints
+│   │   └── settings/   # Settings endpoints
+│   ├── _app.tsx        # Next.js app configuration
+│   ├── _document.tsx   # Document configuration
+│   ├── index.tsx       # Main page
+│   ├── stats.tsx       # Statistics page
+│   ├── settings.tsx    # Settings page
+│   └── account.tsx     # Account page
+├── components/          # React components
+│   ├── AuthContext.tsx  # Authentication context
+│   ├── AuthForm.tsx     # Login/Register form
+│   ├── TunnelManager.tsx # Tunnel management interface
+│   ├── BandwidthMonitor.tsx # Bandwidth monitoring
+│   ├── TunnelStats.tsx  # Tunnel statistics
+│   ├── Settings.tsx     # Settings modal
+│   ├── LanguageContext.tsx # Language context
+│   └── ThemeContext.tsx # Theme context
+├── styles/              # CSS files
+│   ├── globals.css      # Global styles
+│   └── neo-brutalism.css # Custom UI theme
+├── lib/                 # Frontend library functions
+│   ├── i18n.ts         # i18n configuration
+│   ├── locales/        # Translation files
+│   └── apiErrors.ts    # API error handling
+├── docs/                # Documentation
+│   ├── pty-error-handling.md
+│   └── timezone-handling.md
+└── scripts/             # Utility scripts
 ```
 
-## 开发说明
+## Development
 
-### 类型安全
+### Type Safety
 
-项目使用严格的TypeScript配置，所有代码都需要通过类型检查。
+The project uses strict TypeScript configuration. All code must pass type checking.
 
-### SSH隧道机制
+### Code Style
 
-服务器根据用户配置的隧道信息，自动将传入的SSH连接转发到指定的目标主机和端口。用户无需在连接时指定转发参数。
+- ESLint with TypeScript rules
+- Prettier for formatting
+- Husky pre-commit hooks
+- Conventional Git commits
+
+### SSH Tunnel Mechanism
+
+The server automatically forwards incoming SSH connections to specified target hosts and ports based on user-configured tunnel information. Users don't need to specify forwarding parameters when connecting.
+
+### Testing
+
+```bash
+# Run type checking
+npm run type-check
+
+# Run linting
+npm run lint
+
+# Fix linting issues
+npm run lint:fix
+
+# Format code
+npm run format
+```
+
+## License
+
+AGPL v3
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
