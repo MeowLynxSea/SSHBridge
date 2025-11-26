@@ -258,9 +258,14 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
     }
 
     if (isTablet) {
+      // For tablet, calculate width based on actual container width
+      const containerWidth = Math.max(window.innerWidth * 0.7, 600); // Approximate container width for tablet
+      const barWidth = Math.min(Math.max(containerWidth / 24 - 8, 18), 30); // Adjust between 18-30px
+      const gap = Math.min(Math.max(barWidth * 0.2, 4), 8); // Gap proportional to bar width
+
       return {
-        width: '35px',
-        gap: '5px',
+        width: `${barWidth}px`,
+        gap: `${gap}px`,
       };
     }
 
@@ -594,7 +599,12 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
               {accessStats.hourlyActivity.length > 0 && (
                 <div
                   className="nb-box"
-                  style={{ marginBottom: '30px', padding: isMobile ? '15px' : '20px' }}
+                  style={{
+                    marginBottom: '30px',
+                    padding: isMobile ? '15px' : '20px',
+                    width: '100%',
+                    overflow: 'hidden', // Hide overflow from the container
+                  }}
                 >
                   <h3 style={{ marginBottom: '20px', fontSize: isMobile ? '1.1rem' : '1.3rem' }}>
                     {t('analysis.hourlyActivity')}
@@ -606,8 +616,10 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
                       alignItems: 'flex-end',
                       gap: isMobile ? '3px' : isTablet ? '5px' : '8px',
                       padding: '10px 0',
-                      overflowX: isMobile ? 'auto' : 'visible',
+                      overflowX: isMobile || isTablet ? 'auto' : 'visible',
                       justifyContent: 'center',
+                      width: '100%',
+                      maxWidth: '100%',
                     }}
                   >
                     {accessStats.hourlyActivity.map((hour) => {
