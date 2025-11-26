@@ -1,5 +1,7 @@
 # SSHBridge
 
+[中文](./README.zh.md) | English
+
 SSH server and tunnel management system with user authentication, tunnel management, and Web UI.
 
 ## Features
@@ -20,19 +22,19 @@ SSH server and tunnel management system with user authentication, tunnel managem
 - Next.js SSR mode frontend
 - Neo-brutalism UI design
 
-## 技术栈
+## Technology Stack
 
-### 后端
+### Backend
 
 - Node.js + TypeScript
-- ssh2 (SSH服务器)
-- SQLite3 (数据存储)
-- bcrypt (密码加密)
-- JWT (会话管理)
+- ssh2 (SSH server)
+- SQLite3 (data storage)
+- bcrypt (password hashing)
+- JWT (session management)
 
-### 前端
+### Frontend
 
-- Next.js 16 (SSR模式)
+- Next.js 16 (SSR mode)
 - React 19
 - TypeScript
 - Tailwind CSS 4
