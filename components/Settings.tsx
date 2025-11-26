@@ -88,8 +88,8 @@ export default function Settings({ isOpen = true }: SettingsProps) {
         },
         body: JSON.stringify({
           refreshInterval: settings.refreshInterval,
-          language: currentLanguage,
-          theme: theme,
+          language: settings.language,
+          theme: settings.theme,
         }),
       });
 
@@ -100,9 +100,17 @@ export default function Settings({ isOpen = true }: SettingsProps) {
           // Update local state with the response value
           setSettings({
             refreshInterval: data.refreshInterval,
-            language: data.language || currentLanguage,
-            theme: data.theme || theme,
+            language: data.language || settings.language,
+            theme: data.theme || settings.theme,
           });
+          
+          // Apply the settings immediately
+          if (data.language && data.language !== currentLanguage) {
+            changeLanguage(data.language);
+          }
+          if (data.theme && data.theme !== theme) {
+            setTheme(data.theme);
+          }
         } else {
           setError(data.error || t('settings.failedToSave'));
         }
@@ -189,8 +197,8 @@ export default function Settings({ isOpen = true }: SettingsProps) {
             <select
               className="nb-input"
               id="language"
-              value={currentLanguage}
-              onChange={(e) => changeLanguage(e.target.value)}
+              value={settings.language}
+              onChange={(e) => setSettings({ ...settings, language: e.target.value })}
               style={{ width: '100%', padding: '8px', marginTop: '5px' }}
             >
               {availableLanguages.map((lang) => (
@@ -219,8 +227,8 @@ export default function Settings({ isOpen = true }: SettingsProps) {
             <select
               className="nb-input"
               id="theme"
-              value={theme}
-              onChange={(e) => setTheme(e.target.value as Theme)}
+              value={settings.theme}
+              onChange={(e) => setSettings({ ...settings, theme: e.target.value as Theme })}
               style={{ width: '100%', padding: '8px', marginTop: '5px' }}
             >
               <option value="auto">{t('settings.themeAuto')}</option>

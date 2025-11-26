@@ -158,6 +158,8 @@ class Database {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL UNIQUE,
         refresh_interval INTEGER NOT NULL DEFAULT 2000,
+        language TEXT NOT NULL DEFAULT 'zh',
+        theme TEXT NOT NULL DEFAULT 'light',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -293,6 +295,24 @@ class Database {
     // Clean up old rate history (keep only last hour)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     await run(`DELETE FROM rate_history WHERE timestamp < ?`, [oneHourAgo]);
+
+    // Check if we need to add language and theme columns to user_settings
+    const settingsTableInfo = (await all(
+      'PRAGMA table_info(user_settings)',
+      []
+    )) as unknown as TableColumn[];
+    const hasLanguageColumn = settingsTableInfo.some((col) => col.name === 'language');
+    const hasThemeColumn = settingsTableInfo.some((col) => col.name === 'theme');
+
+    if (!hasLanguageColumn) {
+      console.log('Adding language column to user_settings table');
+      await run('ALTER TABLE user_settings ADD COLUMN language TEXT NOT NULL DEFAULT "zh"', []);
+    }
+
+    if (!hasThemeColumn) {
+      console.log('Adding theme column to user_settings table');
+      await run('ALTER TABLE user_settings ADD COLUMN theme TEXT NOT NULL DEFAULT "light"', []);
+    }
 
     // Check if we need to add the is_online column (for backward compatibility)
     const statsTableInfo = (await all(
@@ -1132,6 +1152,128 @@ class Database {
     } catch (error) {
       console.error('Error setting user refresh interval:', error);
       return false;
+    }
+  }
+
+  async getUserLanguage(userId: number): Promise<string> {
+    const { get } = promisifyDb(this.db);
+    try {
+      const setting = (await get('SELECT language FROM user_settings WHERE user_id = ?', [
+        userId,
+      ])) as { language: string } | undefined;
+
+      return setting ? setting.language : 'zh'; // Default Chinese
+    } catch (error) {
+      console.error('Error getting user language:', error);
+      return 'zh'; // Default on error
+    }
+  }
+
+  async getUserTheme(userId: number): Promise<string> {
+    const { get } = promisifyDb(this.db);
+    try {
+      const setting = (await get('SELECT theme FROM user_settings WHERE user_id = ?', [
+        userId,
+      ])) as { theme: string } | undefined;
+
+      return setting ? setting.theme : 'light'; // Default light theme
+    } catch (error) {
+      console.error('Error getting user theme:', error);
+      return 'light'; // Default on error
+    }
+  }
+
+  async setUserSettings(
+    userId: number, 
+    refreshInterval?: number, 
+    language?: string, 
+    theme?: string
+  ): Promise<boolean> {
+    const { run, get } = promisifyDb(this.db);
+    try {
+      // First check if user settings exist
+      const existing = await get('SELECT user_id FROM user_settings WHERE user_id = ?', [userId]);
+      
+      if (existing) {
+        // Update existing settings
+        const updates = [];
+        const params = [];
+        
+        if (refreshInterval !== undefined) {
+          updates.push('refresh_interval = ?');
+          params.push(refreshInterval);
+        }
+        if (language !== undefined) {
+          updates.push('language = ?');
+          params.push(language);
+        }
+        if (theme !== undefined) {
+          updates.push('theme = ?');
+          params.push(theme);
+        }
+        
+        if (updates.length > 0) {
+          updates.push('updated_at = CURRENT_TIMESTAMP');
+          params.push(userId);
+          
+          await run(
+            `UPDATE user_settings SET ${updates.join(', ')} WHERE user_id = ?`,
+            params
+          );
+        }
+      } else {
+        // Insert new settings
+        await run(
+          `
+          INSERT INTO user_settings (user_id, refresh_interval, language, theme, updated_at)
+          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `,
+          [
+            userId,
+            refreshInterval || 2000,
+            language || 'zh',
+            theme || 'light'
+          ]
+        );
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error setting user preferences:', error);
+      return false;
+    }
+  }
+
+  async getUserSettings(userId: number): Promise<{
+    refresh_interval: number;
+    language: string;
+    theme: string;
+  }> {
+    const { get } = promisifyDb(this.db);
+    try {
+      const setting = (await get(
+        'SELECT refresh_interval, language, theme FROM user_settings WHERE user_id = ?',
+        [userId]
+      )) as { refresh_interval: number; language: string; theme: string } | undefined;
+
+      return setting 
+        ? {
+            refresh_interval: setting.refresh_interval,
+            language: setting.language,
+            theme: setting.theme,
+          }
+        : {
+            refresh_interval: 2000, // Default 2 seconds
+            language: 'zh', // Default Chinese
+            theme: 'light', // Default light theme
+          };
+    } catch (error) {
+      console.error('Error getting user settings:', error);
+      return {
+        refresh_interval: 2000,
+        language: 'zh',
+        theme: 'light',
+      };
     }
   }
 

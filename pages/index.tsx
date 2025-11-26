@@ -1,15 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '../components/AuthContext';
-import { LanguageProvider } from '../components/LanguageContext';
-import { ThemeProvider } from '../components/ThemeContext';
+import { LanguageProvider, useLanguage } from '../components/LanguageContext';
+import { ThemeProvider, useTheme } from '../components/ThemeContext';
 import '../lib/i18n';
 import AuthForm from '../components/AuthForm';
 import TunnelManager from '../components/TunnelManager';
 import ResponsiveLayout from '../components/ResponsiveLayout';
 
+// Custom hook to sync user settings
+function useUserSettingsSync(token: string | null, user: { id: number; username: string; created_at: string } | null) {
+  const { changeLanguage } = useLanguage();
+  const { setTheme } = useTheme();
+  const [settingsSynced, setSettingsSynced] = useState(false);
+
+  useEffect(() => {
+    if (user && token && !settingsSynced) {
+      const syncSettings = async () => {
+        try {
+          const response = await fetch('/api/settings', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              // Apply user's saved language
+              if (data.language) {
+                changeLanguage(data.language);
+              }
+              
+              // Apply user's saved theme
+              if (data.theme) {
+                setTheme(data.theme);
+              }
+              
+              setSettingsSynced(true);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to sync user settings:', error);
+        }
+      };
+
+      syncSettings();
+    } else if (!user) {
+      // Reset synced state when user logs out
+      requestAnimationFrame(() => setSettingsSynced(false));
+    }
+  }, [user, token, settingsSynced, changeLanguage, setTheme]);
+
+  return settingsSynced;
+}
+
 function AppContent() {
-  const { user, isLoading } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  
+  // Sync user settings when user logs in
+  useUserSettingsSync(token, user);
 
   if (isLoading) {
     return (

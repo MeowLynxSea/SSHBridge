@@ -44,15 +44,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     if (req.method === 'GET') {
-      // Get current user's refresh interval
-      const refreshInterval = await db.getUserRefreshInterval(userId);
+      // Get current user's settings
+      const settings = await db.getUserSettings(userId);
 
       return res.status(200).json({
         success: true,
-        refreshInterval,
+        refreshInterval: settings.refresh_interval,
+        language: settings.language,
+        theme: settings.theme as 'dark' | 'light' | 'auto',
       });
     } else if (req.method === 'POST' || req.method === 'PUT') {
-      const { refreshInterval }: SettingsRequest = req.body;
+      const { refreshInterval, language, theme }: SettingsRequest = req.body;
 
       // Validate refresh interval (minimum 1 second)
       if (refreshInterval !== undefined) {
@@ -62,22 +64,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             error: 'Refresh interval must be at least 1000ms (1 second)',
           });
         }
+      }
 
-        // Update user's refresh interval in database
-        const success = await db.setUserRefreshInterval(userId, refreshInterval);
-        if (!success) {
-          return res.status(500).json({
+      // Validate language
+      if (language !== undefined) {
+        if (typeof language !== 'string' || !['zh', 'en', 'ja', 'ko'].includes(language)) {
+          return res.status(400).json({
             success: false,
-            error: 'Failed to save settings to database',
+            error: 'Language must be one of: zh, en, ja, ko',
           });
         }
       }
 
-      // Get the updated value
-      const updatedInterval = await db.getUserRefreshInterval(userId);
+      // Validate theme
+      if (theme !== undefined) {
+        if (!['dark', 'light', 'auto'].includes(theme)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Theme must be one of: dark, light, auto',
+          });
+        }
+      }
+
+      // Update user's settings in database
+      const success = await db.setUserSettings(userId, refreshInterval, language, theme);
+      if (!success) {
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to save settings to database',
+        });
+      }
+
+      // Get the updated settings
+      const updatedSettings = await db.getUserSettings(userId);
       return res.status(200).json({
         success: true,
-        refreshInterval: updatedInterval,
+        refreshInterval: updatedSettings.refresh_interval,
+        language: updatedSettings.language,
+        theme: updatedSettings.theme as 'dark' | 'light' | 'auto',
       });
     } else {
       res.setHeader('Allow', ['GET', 'POST', 'PUT']);
