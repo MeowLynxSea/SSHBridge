@@ -278,6 +278,7 @@ export const esTranslation = {
       viewByConnections: 'Ver por Conexiones',
       viewByUniqueIPs: 'Ver por IPs Únicas',
       viewByDataTransferred: 'Ver por Datos Transferidos',
+      localNetworkConnections: 'Conexiones de Red Local/Privada',
     },
   },
 };

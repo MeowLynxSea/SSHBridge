@@ -264,6 +264,7 @@ export const arTranslation = {
       viewByConnections: 'عرض حسب الاتصالات',
       viewByUniqueIPs: 'عرض حسب عناوين IP الفريدة',
       viewByDataTransferred: 'عرض حسب البيانات المنقولة',
+      localNetworkConnections: 'اتصالات الشبكة المحلية/الخاصة',
       loadingData: 'جاري تحميل بيانات التحليل...',
     },
   },

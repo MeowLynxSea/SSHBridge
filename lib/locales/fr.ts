@@ -269,6 +269,7 @@ export const frTranslation = {
       viewByConnections: 'Voir par Connexions',
       viewByUniqueIPs: 'Voir par IPs Uniques',
       viewByDataTransferred: 'Voir par Données Transférées',
+      localNetworkConnections: 'Connexions Réseau Local/Privé',
       loadingData: "Chargement des données d'analyse...",
     },
     console: {

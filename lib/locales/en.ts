@@ -262,6 +262,7 @@ export const enTranslation = {
       viewByConnections: 'View by Connections',
       viewByUniqueIPs: 'View by Unique IPs',
       viewByDataTransferred: 'View by Data Transferred',
+      localNetworkConnections: 'Local/Private Network Connections',
     },
     console: {
       failedToFetchTunnelStatuses: 'Failed to fetch tunnel statuses',

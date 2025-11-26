@@ -279,6 +279,7 @@ export const deTranslation = {
       viewByConnections: 'Nach Verbindungen anzeigen',
       viewByUniqueIPs: 'Nach eindeutigen IPs anzeigen',
       viewByDataTransferred: 'Nach übertragenen Daten anzeigen',
+      localNetworkConnections: 'Lokale/Private Netzwerkverbindungen',
       loadingData: 'Lade Analysedaten...',
     },
   },

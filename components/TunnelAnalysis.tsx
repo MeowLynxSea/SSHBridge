@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
+import { useTheme } from './ThemeContext';
 import { ClientAccessLog } from '../src/types/stats';
 import Tunnel from '../types/Tunnel';
 import WorldMap from 'react-svg-worldmap';
+
+// Detect device type based on screen width
+const getDeviceType = () => {
+  if (typeof window === 'undefined') return 'desktop';
+  const width = window.innerWidth;
+  if (width <= 768) return 'mobile';
+  if (width <= 1200) return 'tablet';
+  return 'desktop';
+};
+
+const isMobileDevice = () => getDeviceType() === 'mobile';
+const isTabletDevice = () => getDeviceType() === 'tablet';
 
 interface ClientAccessStats {
   totalConnections: number;
@@ -30,6 +43,7 @@ interface AnalysisProps {
 export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
   const { t } = useTranslation();
   const { token } = useAuth();
+  const { effectiveTheme } = useTheme();
   const [selectedTunnel, setSelectedTunnel] = useState<number | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('lastDay');
   const [customStartDate, setCustomStartDate] = useState<string>('');
@@ -41,6 +55,21 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
   const [mapView, setMapView] = useState<'connections' | 'uniqueIPs' | 'dataTransferred'>(
     'connections'
   );
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+
+  // Check device type on mount and resize
+  useEffect(() => {
+    const checkDeviceType = () => {
+      setIsMobile(isMobileDevice());
+      setIsTablet(isTabletDevice());
+    };
+
+    checkDeviceType();
+    window.addEventListener('resize', checkDeviceType);
+
+    return () => window.removeEventListener('resize', checkDeviceType);
+  }, []);
 
   // Set initial selected tunnel when tunnels are available
   useEffect(() => {
@@ -209,7 +238,41 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
 
   const getChartHeight = (): number => {
     const maxCount = Math.max(...(accessStats?.hourlyActivity.map((h) => h.count) || [0]));
-    return Math.min(300, Math.max(200, maxCount * 2)); // Limit height to max 300px
+    // Adjust height based on device type
+    if (isMobile) {
+      return Math.min(200, Math.max(150, maxCount * 1.5));
+    }
+    if (isTablet) {
+      return Math.min(300, Math.max(200, maxCount * 1.8));
+    }
+    return Math.min(350, Math.max(250, maxCount * 2));
+  };
+
+  // Determine bar width and gap based on screen size
+  const getBarStyles = () => {
+    if (isMobile) {
+      return {
+        width: '25px',
+        gap: '3px',
+      };
+    }
+
+    if (isTablet) {
+      return {
+        width: '35px',
+        gap: '5px',
+      };
+    }
+
+    // For desktop, calculate optimal width based on container width
+    const containerWidth = Math.max(window.innerWidth * 0.6, 800); // Approximate container width for desktop
+    const barWidth = Math.min(Math.max(containerWidth / 24 - 12, 20), 40); // Adjust between 20-40px
+    const gap = Math.min(Math.max(barWidth * 0.25, 6), 12); // Gap proportional to bar width
+
+    return {
+      width: `${barWidth}px`,
+      gap: `${gap}px`,
+    };
   };
 
   // Process access logs to get country data for the map
@@ -272,7 +335,7 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
   }
 
   return (
-    <div style={{ marginTop: '40px' }}>
+    <div className={`${isMobile ? 'px-2' : ''}`} style={{ marginTop: '40px' }}>
       <div className="nb-box nb-card" style={{ marginBottom: '30px' }}>
         <div className="nb-card-header">
           <h2 className="nb-card-title">{t('analysis.tunnelAnalysis')}</h2>
@@ -280,9 +343,23 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
         <div className="nb-card-body">
           {/* Tunnel and Time Range Selection */}
           <div style={{ marginBottom: '25px' }}>
-            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: isMobile ? '10px' : '20px',
+                flexWrap: 'wrap',
+                alignItems: 'flex-end',
+                flexDirection: isMobile ? 'column' : 'row',
+              }}
+            >
               {/* Tunnel Selection */}
-              <div style={{ flex: '1', minWidth: '250px' }}>
+              <div
+                style={{
+                  flex: '1',
+                  minWidth: isMobile ? '100%' : '250px',
+                  width: isMobile ? '100%' : 'auto',
+                }}
+              >
                 <label
                   htmlFor="tunnel-select"
                   style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}
@@ -305,7 +382,13 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
               </div>
 
               {/* Time Range Selection */}
-              <div style={{ flex: '1', minWidth: '250px' }}>
+              <div
+                style={{
+                  flex: '1',
+                  minWidth: isMobile ? '100%' : '250px',
+                  width: isMobile ? '100%' : 'auto',
+                }}
+              >
                 <label
                   htmlFor="time-range-select"
                   style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}
@@ -333,7 +416,13 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
             {/* Custom Date Range */}
             {timeRange === 'custom' && (
               <div
-                style={{ display: 'flex', gap: '15px', marginTop: '20px', alignItems: 'center' }}
+                style={{
+                  display: 'flex',
+                  gap: '15px',
+                  marginTop: '20px',
+                  alignItems: 'center',
+                  flexDirection: isMobile ? 'column' : 'row',
+                }}
               >
                 <div style={{ flex: '1' }}>
                   <label
@@ -383,59 +472,105 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
           ) : selectedTunnel && accessStats ? (
             <div>
               {/* Stats Overview */}
-              <div className="nb-box" style={{ marginBottom: '30px', padding: '20px' }}>
-                <h3 style={{ marginBottom: '20px', fontSize: '1.3rem' }}>
+              <div
+                className="nb-box"
+                style={{ marginBottom: '30px', padding: isMobile ? '15px' : '20px' }}
+              >
+                <h3 style={{ marginBottom: '20px', fontSize: isMobile ? '1.1rem' : '1.3rem' }}>
                   {t('analysis.statsOverview')}
                 </h3>
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                    gap: '20px',
+                    gridTemplateColumns: isMobile
+                      ? 'repeat(2, 1fr)'
+                      : 'repeat(auto-fit, minmax(250px, 1fr))',
+                    gap: isMobile ? '15px' : '20px',
                   }}
                 >
-                  <div className="nb-box" style={{ padding: '15px', textAlign: 'center' }}>
+                  <div
+                    className="nb-box"
+                    style={{ padding: isMobile ? '12px' : '15px', textAlign: 'center' }}
+                  >
                     <div
-                      style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--accent-color)' }}
+                      style={{
+                        fontSize: isMobile ? '1.5rem' : '2rem',
+                        fontWeight: 'bold',
+                        color: 'var(--accent-color)',
+                      }}
                     >
                       {accessStats.totalConnections}
                     </div>
-                    <div>{t('analysis.totalConnections')}</div>
+                    <div style={{ fontSize: isMobile ? '0.9rem' : '1rem' }}>
+                      {t('analysis.totalConnections')}
+                    </div>
                   </div>
-                  <div className="nb-box" style={{ padding: '15px', textAlign: 'center' }}>
+                  <div
+                    className="nb-box"
+                    style={{ padding: isMobile ? '12px' : '15px', textAlign: 'center' }}
+                  >
                     <div
-                      style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--accent-color)' }}
+                      style={{
+                        fontSize: isMobile ? '1.5rem' : '2rem',
+                        fontWeight: 'bold',
+                        color: 'var(--accent-color)',
+                      }}
                     >
                       {accessStats.uniqueIPs}
                     </div>
-                    <div>{t('analysis.uniqueIPs')}</div>
+                    <div style={{ fontSize: isMobile ? '0.9rem' : '1rem' }}>
+                      {t('analysis.uniqueIPs')}
+                    </div>
                   </div>
-                  <div className="nb-box" style={{ padding: '15px', textAlign: 'center' }}>
+                  <div
+                    className="nb-box"
+                    style={{ padding: isMobile ? '12px' : '15px', textAlign: 'center' }}
+                  >
                     <div
-                      style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--accent-color)' }}
+                      style={{
+                        fontSize: isMobile ? '1.5rem' : '2rem',
+                        fontWeight: 'bold',
+                        color: 'var(--accent-color)',
+                      }}
                     >
                       {formatBytes(accessStats.totalBytesTransferred)}
                     </div>
-                    <div>{t('analysis.totalBytesTransferred')}</div>
+                    <div style={{ fontSize: isMobile ? '0.9rem' : '1rem' }}>
+                      {t('analysis.totalBytesTransferred')}
+                    </div>
                   </div>
-                  <div className="nb-box" style={{ padding: '15px', textAlign: 'center' }}>
+                  <div
+                    className="nb-box"
+                    style={{ padding: isMobile ? '12px' : '15px', textAlign: 'center' }}
+                  >
                     <div
-                      style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--accent-color)' }}
+                      style={{
+                        fontSize: isMobile ? '1.5rem' : '2rem',
+                        fontWeight: 'bold',
+                        color: 'var(--accent-color)',
+                      }}
                     >
                       {formatDuration(accessStats.averageConnectionDuration)}
                     </div>
-                    <div>{t('analysis.averageConnectionDuration')}</div>
+                    <div style={{ fontSize: isMobile ? '0.9rem' : '1rem' }}>
+                      {t('analysis.averageConnectionDuration')}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Top Countries */}
               {accessStats.topCountries.length > 0 && (
-                <div className="nb-box" style={{ marginBottom: '30px', padding: '20px' }}>
-                  <h3 style={{ marginBottom: '20px', fontSize: '1.3rem' }}>
+                <div
+                  className="nb-box"
+                  style={{ marginBottom: '30px', padding: isMobile ? '15px' : '20px' }}
+                >
+                  <h3 style={{ marginBottom: '20px', fontSize: isMobile ? '1.1rem' : '1.3rem' }}>
                     {t('analysis.topCountries')}
                   </h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
+                  <div
+                    style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? '10px' : '15px' }}
+                  >
                     {accessStats.topCountries.map((country, index) => (
                       <div
                         key={country.country}
@@ -444,8 +579,8 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
                           backgroundColor:
                             index === 0 ? 'var(--accent-color)' : 'var(--gray-light)',
                           color: index === 0 ? 'var(--bg-color)' : 'var(--fg-color)',
-                          padding: '8px 16px',
-                          fontSize: '1rem',
+                          padding: isMobile ? '6px 12px' : '8px 16px',
+                          fontSize: isMobile ? '0.9rem' : '1rem',
                         }}
                       >
                         {country.country}: {country.count} {t('analysis.connections')}
@@ -457,8 +592,11 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
 
               {/* Hourly Activity Chart */}
               {accessStats.hourlyActivity.length > 0 && (
-                <div className="nb-box" style={{ marginBottom: '30px', padding: '20px' }}>
-                  <h3 style={{ marginBottom: '20px', fontSize: '1.3rem' }}>
+                <div
+                  className="nb-box"
+                  style={{ marginBottom: '30px', padding: isMobile ? '15px' : '20px' }}
+                >
+                  <h3 style={{ marginBottom: '20px', fontSize: isMobile ? '1.1rem' : '1.3rem' }}>
                     {t('analysis.hourlyActivity')}
                   </h3>
                   <div
@@ -466,70 +604,103 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
                       display: 'flex',
                       height: `${getChartHeight()}px`,
                       alignItems: 'flex-end',
-                      gap: '5px',
+                      gap: isMobile ? '3px' : isTablet ? '5px' : '8px',
                       padding: '10px 0',
+                      overflowX: isMobile ? 'auto' : 'visible',
+                      justifyContent: 'center',
                     }}
                   >
-                    {accessStats.hourlyActivity.map((hour) => (
-                      <div
-                        key={hour.hour}
-                        style={{
-                          flex: '1',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          height: '100%',
-                        }}
-                      >
+                    {accessStats.hourlyActivity.map((hour) => {
+                      const barStyles = getBarStyles();
+                      return (
                         <div
+                          key={hour.hour}
                           style={{
-                            width: '100%',
-                            backgroundColor: 'var(--accent-color)',
-                            height: `${(hour.count / Math.max(...accessStats.hourlyActivity.map((h) => h.count))) * 100}%`,
-                            borderRadius: '4px 4px 0 0',
-                            minHeight: '2px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            height: '100%',
+                            minWidth: isMobile ? '30px' : `${barStyles.width}`,
+                            maxWidth: isMobile ? 'none' : `${barStyles.width}`,
                           }}
-                        ></div>
-                        <div style={{ fontSize: '0.8rem', marginTop: '5px' }}>{hour.hour}h</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--gray-dark)' }}>
-                          {hour.count}
+                        >
+                          <div
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'var(--accent-color)',
+                              height: `${(hour.count / Math.max(...accessStats.hourlyActivity.map((h) => h.count))) * 100}%`,
+                              borderRadius: '4px 4px 0 0',
+                              minHeight: '2px',
+                            }}
+                          ></div>
+                          <div
+                            style={{ fontSize: isMobile ? '0.7rem' : '0.8rem', marginTop: '5px' }}
+                          >
+                            {hour.hour}h
+                          </div>
+                          <div
+                            style={{
+                              fontSize: isMobile ? '0.6rem' : '0.7rem',
+                              color: 'var(--gray-dark)',
+                            }}
+                          >
+                            {hour.count}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               {/* World Map Visualization */}
-              <div className="nb-box" style={{ marginBottom: '30px', padding: '20px' }}>
+              <div
+                className="nb-box"
+                style={{ marginBottom: '30px', padding: isMobile ? '15px' : '20px', width: '100%' }}
+              >
                 <div
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center',
+                    alignItems: isMobile ? 'flex-start' : 'center',
                     marginBottom: '20px',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: isMobile ? '15px' : '0',
                   }}
                 >
-                  <h3 style={{ fontSize: '1.3rem' }}>{t('analysis.globalDistribution')}</h3>
-                  <div style={{ display: 'flex', gap: '10px' }}>
+                  <h3 style={{ fontSize: isMobile ? '1.1rem' : '1.3rem' }}>
+                    {t('analysis.globalDistribution')}
+                  </h3>
+                  <div
+                    style={{ display: 'flex', gap: isMobile ? '8px' : '10px', flexWrap: 'wrap' }}
+                  >
                     <button
                       className={mapView === 'connections' ? 'nb-btn nb-btn-accent' : 'nb-btn'}
                       onClick={() => setMapView('connections')}
-                      style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                      style={{
+                        padding: isMobile ? '6px 12px' : '8px 16px',
+                        fontSize: isMobile ? '0.8rem' : '0.9rem',
+                      }}
                     >
                       {t('analysis.viewByConnections')}
                     </button>
                     <button
                       className={mapView === 'uniqueIPs' ? 'nb-btn nb-btn-accent' : 'nb-btn'}
                       onClick={() => setMapView('uniqueIPs')}
-                      style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                      style={{
+                        padding: isMobile ? '6px 12px' : '8px 16px',
+                        fontSize: isMobile ? '0.8rem' : '0.9rem',
+                      }}
                     >
                       {t('analysis.viewByUniqueIPs')}
                     </button>
                     <button
                       className={mapView === 'dataTransferred' ? 'nb-btn nb-btn-accent' : 'nb-btn'}
                       onClick={() => setMapView('dataTransferred')}
-                      style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                      style={{
+                        padding: isMobile ? '6px 12px' : '8px 16px',
+                        fontSize: isMobile ? '0.8rem' : '0.9rem',
+                      }}
                     >
                       {t('analysis.viewByDataTransferred')}
                     </button>
@@ -545,65 +716,97 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
                           width: '100%',
                           display: 'flex',
                           justifyContent: 'center',
-                          backgroundColor: 'var(--bg-color)',
+                          backgroundColor: 'transparent',
                           borderRadius: '8px',
-                          padding: '20px',
+                          padding: isMobile ? '5px' : '20px',
                           overflow: 'hidden',
+                          position: 'relative',
+                          alignItems: 'center',
                         }}
                       >
-                        <WorldMap
-                          color="#ff4500"
-                          size="responsive"
-                          data={mapData.filter((data) => data.country !== 'Local')}
-                          richInteraction={true}
-                          styleFunction={(context) => {
-                            const { countryValue, minValue, maxValue } = context;
-
-                            // Handle undefined values (countries with no data)
-                            if (countryValue === undefined || countryValue === null) {
-                              return {
-                                fill: '#ffe8d6', // Light cream instead of white
-                                fillOpacity: 1,
-                                stroke: '#999999', // Darker border
-                                strokeWidth: 0.8,
-                                strokeOpacity: 0.8,
-                                cursor: 'pointer',
-                              };
-                            }
-
-                            // Calculate the ratio for gradient (0 to 1)
-                            const ratio =
-                              maxValue > minValue
-                                ? (Number(countryValue) - minValue) / (maxValue - minValue)
-                                : 0;
-
-                            // Create gradient from vibrant orange (#ff4500) to light orange cream (#ffe8d6)
-                            // Higher values = more orange, Lower values = light cream
-                            const r = Math.floor(255 - (255 - 255) * ratio); // Red stays at 255
-                            const g = Math.floor(232 - (232 - 69) * ratio); // Green: 232 -> 69
-                            const b = Math.floor(214 - (214 - 0) * ratio); // Blue: 214 -> 0
-
-                            return {
-                              fill: `rgb(${r}, ${g}, ${b})`,
-                              fillOpacity: 1,
-                              stroke: '#666666', // Darker border for visibility
-                              strokeWidth: 0.8,
-                              strokeOpacity: 0.8,
-                              cursor: 'pointer',
-                            };
+                        <div
+                          style={{
+                            width: isMobile ? '100%' : 'auto',
+                            maxWidth: isMobile ? '100%' : '1000px',
+                            overflow: isMobile ? 'auto' : 'visible',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            borderRadius: '4px',
                           }}
-                          tooltipTextFunction={(context) => {
-                            const { countryValue } = context;
-                            if (countryValue === undefined || countryValue === null)
-                              return `${context.countryName}: 0`;
+                        >
+                          <WorldMap
+                            color="#ff4500"
+                            backgroundColor="transparent"
+                            size={isMobile ? 'sm' : 'responsive'}
+                            data={mapData.filter((data) => data.country !== 'Local')}
+                            richInteraction={!isMobile}
+                            styleFunction={(context) => {
+                              const { countryValue, minValue, maxValue } = context;
+                              const isDarkMode = effectiveTheme === 'dark';
 
-                            if (mapView === 'dataTransferred') {
-                              return `${context.countryName}: ${formatBytes(Number(countryValue))}`;
-                            } else {
-                              return `${context.countryName}: ${Number(countryValue).toLocaleString()}`;
-                            }
-                          }}
-                        />
+                              // Handle undefined values (countries with no data)
+                              if (countryValue === undefined || countryValue === null) {
+                                return {
+                                  fill: isDarkMode ? '#4a4a4a' : '#ffe8d6', // Even lighter gray for dark mode, light cream for light mode
+                                  fillOpacity: 1,
+                                  stroke: isDarkMode ? '#888888' : '#999999', // Lighter border for dark mode
+                                  strokeWidth: 0.8,
+                                  strokeOpacity: 0.8,
+                                  cursor: 'pointer',
+                                };
+                              }
+
+                              // Calculate the ratio for gradient (0 to 1)
+                              const ratio =
+                                maxValue > minValue
+                                  ? (Number(countryValue) - minValue) / (maxValue - minValue)
+                                  : 0;
+
+                              // Create gradient from vibrant orange (#ff4500) to different base colors based on theme
+                              // Higher values = more orange, Lower values = base theme color
+                              if (isDarkMode) {
+                                // Dark mode gradient: from even lighter gray to orange
+                                const r = Math.floor(74 + (255 - 74) * ratio); // Red: 74 -> 255
+                                const g = Math.floor(74 + (69 - 74) * ratio); // Green: 74 -> 69
+                                const b = Math.floor(74 + (0 - 74) * ratio); // Blue: 74 -> 0
+
+                                return {
+                                  fill: `rgb(${r}, ${g}, ${b})`,
+                                  fillOpacity: 1,
+                                  stroke: '#888888', // Lighter border for dark mode
+                                  strokeWidth: 0.8,
+                                  strokeOpacity: 0.8,
+                                  cursor: 'pointer',
+                                };
+                              } else {
+                                // Light mode gradient: from light cream to orange
+                                const r = Math.floor(255 - (255 - 255) * ratio); // Red stays at 255
+                                const g = Math.floor(232 - (232 - 69) * ratio); // Green: 232 -> 69
+                                const b = Math.floor(214 - (214 - 0) * ratio); // Blue: 214 -> 0
+
+                                return {
+                                  fill: `rgb(${r}, ${g}, ${b})`,
+                                  fillOpacity: 1,
+                                  stroke: '#999999', // Darker border for visibility
+                                  strokeWidth: 0.8,
+                                  strokeOpacity: 0.8,
+                                  cursor: 'pointer',
+                                };
+                              }
+                            }}
+                            tooltipTextFunction={(context) => {
+                              const { countryValue } = context;
+                              if (countryValue === undefined || countryValue === null)
+                                return `${context.countryName}: 0`;
+
+                              if (mapView === 'dataTransferred') {
+                                return `${context.countryName}: ${formatBytes(Number(countryValue))}`;
+                              } else {
+                                return `${context.countryName}: ${Number(countryValue).toLocaleString()}`;
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
                     ) : (
                       <div
@@ -622,7 +825,7 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
                       <div
                         style={{
                           marginTop: '20px',
-                          padding: '15px',
+                          padding: isMobile ? '12px' : '15px',
                           backgroundColor: 'var(--gray-light)',
                           borderRadius: '8px',
                         }}
@@ -639,7 +842,7 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
                                 marginBottom: '8px',
                               }}
                             >
-                              <span>本地/局域网连接</span>
+                              <span>{t('analysis.localNetworkConnections')}</span>
                               <span style={{ fontWeight: 'bold', color: 'var(--accent-color)' }}>
                                 {mapView === 'dataTransferred'
                                   ? formatBytes(data.value)

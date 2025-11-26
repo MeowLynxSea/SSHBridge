@@ -252,6 +252,7 @@ export const zhTranslation = {
       viewByConnections: '按连接数查看',
       viewByUniqueIPs: '按唯一IP查看',
       viewByDataTransferred: '按数据传输量查看',
+      localNetworkConnections: '本地/局域网连接',
     },
     console: {
       failedToFetchTunnelStatuses: '获取隧道状态失败',

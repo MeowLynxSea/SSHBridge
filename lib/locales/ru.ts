@@ -278,6 +278,7 @@ export const ruTranslation = {
       viewByConnections: 'Показать по Подключениям',
       viewByUniqueIPs: 'Показать по Уникальным IP',
       viewByDataTransferred: 'Показать по Переданным Данным',
+      localNetworkConnections: 'Локальные/Частные Сетевые Подключения',
       loadingData: 'Загрузка данных анализа...',
     },
   },

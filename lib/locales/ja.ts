@@ -266,6 +266,7 @@ export const jaTranslation = {
       viewByConnections: '接続数で表示',
       viewByUniqueIPs: 'ユニークIPで表示',
       viewByDataTransferred: 'データ転送量で表示',
+      localNetworkConnections: 'ローカル/プライベートネットワーク接続',
       loadingData: '分析データを読み込み中...',
     },
   },
