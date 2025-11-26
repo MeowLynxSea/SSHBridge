@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from './AuthContext';
-import { useOtp } from './OtpContext';
+import { useAuth } from './AuthContext.js';
+import { useOtp } from './OtpContext.js';
+import Image from 'next/image';
 
 interface OTPManagerProps {
   onClose: () => void;

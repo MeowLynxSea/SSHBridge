@@ -1,5 +1,5 @@
 import React from 'react';
-import { useMobile } from './ResponsiveLayout';
+import { useMobile } from './ResponsiveLayout.js';
 
 export default function Footer() {
   const { isSmallMobile } = useMobile();

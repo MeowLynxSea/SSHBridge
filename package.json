@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "concurrently \"npm run server:dev\" \"npm run web:dev\"",
+    "dev": "tsx watch src/server.ts",
     "server:dev": "tsx watch src/server.ts",
     "web:dev": "next dev",
     "build": "npm run build:server && npm run build:web",
@@ -43,7 +43,7 @@
     "i18next": "^25.6.3",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.554.0",
-    "next": "^16.0.3",
+    "next": "^16.0.4",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

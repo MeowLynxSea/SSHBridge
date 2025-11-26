@@ -135,4 +135,4 @@ export interface ActiveTunnelInfo {
 
 // Import net module types
 import * as net from 'net';
-import { Tunnel } from '../database';
+import { Tunnel } from '../database.js';

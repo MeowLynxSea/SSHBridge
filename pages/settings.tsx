@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../components/AuthContext';
-import { useMobile } from '../components/ResponsiveLayout';
-import { useLanguage } from '../components/LanguageContext';
-import { useTheme } from '../components/ThemeContext';
+import { useAuth } from '../components/AuthContext.js';
+import { useMobile } from '../components/ResponsiveLayout.js';
+import { useLanguage } from '../components/LanguageContext.js';
+import { useTheme } from '../components/ThemeContext.js';
 
 interface UserSettings {
   refreshInterval: number;

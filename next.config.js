@@ -14,10 +14,18 @@ const nextConfig = {
         fs: false,
       };
     }
+    // Add support for .js extensions in imports
+    config.resolve.extensions = [...config.resolve.extensions, '.js', '.jsx', '.ts', '.tsx'];
     return config;
   },
   // Enable standalone output for Docker
   output: 'standalone',
+  // Disable Turbopack to use webpack for now (Turbopack has issues with .js extensions)
+  // experimental: {
+  //   turbo: {
+  //     resolveExtension: ['.js', '.jsx', '.ts', '.tsx'],
+  //   },
+  // },
 };
 
 export default nextConfig;

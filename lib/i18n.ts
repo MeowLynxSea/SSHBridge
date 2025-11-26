@@ -1,14 +1,14 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-import { enTranslation } from './locales/en';
-import { zhTranslation } from './locales/zh';
-import { esTranslation } from './locales/es';
-import { deTranslation } from './locales/de';
-import { jaTranslation } from './locales/ja';
-import { ruTranslation } from './locales/ru';
-import { arTranslation } from './locales/ar';
-import { frTranslation } from './locales/fr';
+import { enTranslation } from './locales/en.js';
+import { zhTranslation } from './locales/zh.js';
+import { esTranslation } from './locales/es.js';
+import { deTranslation } from './locales/de.js';
+import { jaTranslation } from './locales/ja.js';
+import { ruTranslation } from './locales/ru.js';
+import { arTranslation } from './locales/ar.js';
+import { frTranslation } from './locales/fr.js';
 
 const resources = {
   en: enTranslation,

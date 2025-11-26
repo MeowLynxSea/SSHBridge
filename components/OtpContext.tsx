@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import OtpInputModal from './OtpInputModal';
+import OtpInputModal from './OtpInputModal.js';
 
 interface OtpAction {
   id: string;

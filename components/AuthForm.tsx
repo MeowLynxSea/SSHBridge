@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from './AuthContext';
-import { useMobile } from './ResponsiveLayout';
-import { useOtp } from './OtpContext';
+import { useAuth } from './AuthContext.js';
+import { useMobile } from './ResponsiveLayout.js';
+import { useOtp } from './OtpContext.js';
 
 interface AuthFormProps {
   mode: 'login' | 'register';

@@ -1,4 +1,4 @@
-import { SSHBridgeServer } from './ssh-server';
+import { SSHBridgeServer } from './ssh-server.js';
 
 let sshServerInstance: SSHBridgeServer | null = null;
 

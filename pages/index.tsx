@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '../components/AuthContext';
-import { LanguageProvider, useLanguage } from '../components/LanguageContext';
-import { ThemeProvider, useTheme } from '../components/ThemeContext';
-import '../lib/i18n';
-import AuthForm from '../components/AuthForm';
-import TunnelManager from '../components/TunnelManager';
-import ResponsiveLayout from '../components/ResponsiveLayout';
+import { AuthProvider, useAuth } from '../components/AuthContext.js';
+import { LanguageProvider, useLanguage } from '../components/LanguageContext.js';
+import { ThemeProvider, useTheme } from '../components/ThemeContext.js';
+import '../lib/i18n.js';
+import AuthForm from '../components/AuthForm.js';
+import TunnelManager from '../components/TunnelManager.js';
+import ResponsiveLayout from '../components/ResponsiveLayout.js';
 
 // Custom hook to sync user settings
 function useUserSettingsSync(

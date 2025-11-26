@@ -1,7 +1,7 @@
 import { Socket, createConnection } from 'net';
 import * as net from 'net';
-import { SSH2Connection, SSH2Channel, SSH2ForwardData, UserData } from './types/ssh2-types';
-import { IntegratedRateLimiter } from './integratedRateLimiter';
+import { SSH2Connection, SSH2Channel, SSH2ForwardData, UserData } from './types/ssh2-types.js';
+import { IntegratedRateLimiter } from './integratedRateLimiter.js';
 
 // Forward declarations to avoid circular dependency
 interface Tunnel {

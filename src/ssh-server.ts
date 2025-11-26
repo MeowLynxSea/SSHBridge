@@ -10,14 +10,14 @@ import {
   UserData,
   RemoteForwardInfo,
   ActiveTunnelInfo,
-} from './types/ssh2-types';
-import { Database, Tunnel } from './database';
+} from './types/ssh2-types.js';
+import { Database, Tunnel } from './database.js';
 // Time utilities are used in components, not here
-import { TcpServerManager } from './tcpServerManager';
-import { CUIManager } from './cui/CUIManager';
-import { CUII18n } from './cui/CUII18n';
-import { CUIDataProvider } from './cui/types';
-import { getDisplayWidth } from './cui/i18n';
+import { TcpServerManager } from './tcpServerManager.js';
+import { CUIManager } from './cui/CUIManager.js';
+import { CUII18n } from './cui/CUII18n.js';
+import { CUIDataProvider } from './cui/types.js';
+import { getDisplayWidth } from './cui/i18n.js';
 import ssh2 from 'ssh2';
 
 // Extend ssh2 types for our custom properties
@@ -43,7 +43,7 @@ declare module 'ssh2' {
 
 // Timer declarations are available globally
 
-import './types/ssh2.d';
+import './types/ssh2.d.js';
 
 export interface SSHServerConfig {
   host?: string;

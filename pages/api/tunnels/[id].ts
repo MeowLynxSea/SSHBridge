@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import getDatabaseInstance from '../../../src/database';
-import { sendLocalizedError } from '../../../lib/apiErrors';
+import getDatabaseInstance from '../../../src/database.js';
+import { sendLocalizedError } from '../../../lib/apiErrors.js';
 
 const database = getDatabaseInstance();
 

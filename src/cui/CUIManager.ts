@@ -1,8 +1,8 @@
-import { SSH2Channel, SSH2Connection } from '../types/ssh2-types';
-import { Database } from '../database';
-import { getCurrentTime, formatDuration } from '../utils/timeUtils';
-import { CUIDataProvider } from './types';
-import { CUII18n } from './CUII18n';
+import { SSH2Channel, SSH2Connection } from '../types/ssh2-types.js';
+import { Database } from '../database.js';
+import { getCurrentTime, formatDuration } from '../utils/timeUtils.js';
+import { CUIDataProvider } from './types.js';
+import { CUII18n } from './CUII18n.js';
 
 // CUI界面状态
 export enum CUIScreen {

@@ -2,10 +2,10 @@ import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import '../styles/globals.css';
 import '../lib/i18n';
-import { AuthProvider } from '../components/AuthContext';
-import { OtpProvider } from '../components/OtpContext';
-import { LanguageProvider } from '../components/LanguageContext';
-import { ThemeProvider } from '../components/ThemeContext';
+import { AuthProvider } from '../components/AuthContext.js';
+import { OtpProvider } from '../components/OtpContext.js';
+import { LanguageProvider } from '../components/LanguageContext.js';
+import { ThemeProvider } from '../components/ThemeContext.js';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (

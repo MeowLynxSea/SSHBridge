@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from './AuthContext';
-import { useMobile } from './ResponsiveLayout';
-import { useLanguage } from './LanguageContext';
-import { useTheme } from './ThemeContext';
+import { useAuth } from './AuthContext.js';
+import { useMobile } from './ResponsiveLayout.js';
+import { useLanguage } from './LanguageContext.js';
+import { useTheme } from './ThemeContext.js';
 
 interface SettingsProps {
   isOpen?: boolean;

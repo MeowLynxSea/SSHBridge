@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import Modal from './Modal';
+import Modal from './Modal.js';
 
 interface Tunnel {
   id: number;

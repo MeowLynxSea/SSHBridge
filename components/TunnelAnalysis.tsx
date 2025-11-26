@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from './AuthContext';
-import { useTheme } from './ThemeContext';
-import { ClientAccessLog } from '../src/types/stats';
-import Tunnel from '../types/Tunnel';
-import WorldMap from 'react-svg-worldmap';
+import { useAuth } from './AuthContext.js';
+import { useTheme } from './ThemeContext.js';
+import { ClientAccessLog } from '../src/types/stats.js';
+import Tunnel from '../types/Tunnel.js';
+import { WorldMap } from 'react-svg-worldmap';
 
 // Detect device type based on screen width
 const getDeviceType = () => {

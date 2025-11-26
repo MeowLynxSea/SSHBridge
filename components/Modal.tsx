@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { useTheme } from './ThemeContext';
-import { useMobile } from './ResponsiveLayout';
+import { useTheme } from './ThemeContext.js';
+import { useMobile } from './ResponsiveLayout.js';
 
 interface ModalProps {
   isOpen: boolean;

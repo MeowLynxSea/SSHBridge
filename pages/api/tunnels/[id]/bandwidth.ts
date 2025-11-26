@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import getDatabaseInstance from '../../../../src/database';
+import getDatabaseInstance from '../../../../src/database.js';
 
 const database = getDatabaseInstance();
 

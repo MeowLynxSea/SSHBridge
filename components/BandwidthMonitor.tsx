@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from './AuthContext';
-import { formatForDisplay } from '../src/utils/timeUtils';
-import { useMobile } from './ResponsiveLayout';
+import { useAuth } from './AuthContext.js';
+import { formatForDisplay } from '../src/utils/timeUtils.js';
+import { useMobile } from './ResponsiveLayout.js';
 
 interface BandwidthStats {
   tunnel_id: number;

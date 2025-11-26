@@ -8,8 +8,8 @@ import {
   RealtimeStats,
   TunnelStatsWithInfo,
   ClientAccessLog as ClientAccessLogType,
-} from './types/stats';
-import { parseDatabaseDate, createFutureTime } from './utils/timeUtils';
+} from './types/stats.js';
+import { parseDatabaseDate, createFutureTime } from './utils/timeUtils.js';
 import * as geoip from 'geoip-lite';
 
 // SQLite types
@@ -137,7 +137,7 @@ class Database {
 
   private async init() {
     const { run } = promisifyDb(this.db);
-    const { all: dbAll } = promisifyDb(this.db);
+    const { all: dbAll, get, all } = promisifyDb(this.db);
 
     await run(
       `
@@ -202,8 +202,23 @@ class Database {
       []
     );
 
-    // Check if tunnels table exists
-    const { get, all } = promisifyDb(this.db);
+    // Create the tunnels table with the new schema if it doesn't exist
+    await run(
+      `
+      CREATE TABLE IF NOT EXISTS tunnels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        external_port INTEGER NOT NULL,
+        max_bandwidth INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `,
+      []
+    );
+
+    // Check if tunnels table exists for migration purposes
     const tableInfo = await get(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='tunnels'",
       []
@@ -227,6 +242,7 @@ class Database {
             user_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             external_port INTEGER NOT NULL,
+            max_bandwidth INTEGER,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
           )
@@ -248,13 +264,10 @@ class Database {
         await run('ALTER TABLE tunnels_new RENAME TO tunnels', []);
 
         console.log('Database migration completed');
-      } else if (!columns.some((col) => col.name === 'external_port')) {
-        // Table exists but doesn't have external_port column, create it with default schema
-        await run('DROP TABLE tunnels', []);
       }
     }
 
-    // Check if we need to add max_bandwidth column
+    // Check if we need to add max_bandwidth column to existing table
     const tunnelTableInfo = (await all(
       'PRAGMA table_info(tunnels)',
       []
@@ -265,22 +278,6 @@ class Database {
       console.log('Adding max_bandwidth column to tunnels table for bandwidth limiting');
       await run('ALTER TABLE tunnels ADD COLUMN max_bandwidth INTEGER', []);
     }
-
-    // Create the tunnels table with the new schema if it doesn't exist
-    await run(
-      `
-      CREATE TABLE IF NOT EXISTS tunnels (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        external_port INTEGER NOT NULL,
-        max_bandwidth INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-      )
-    `,
-      []
-    );
 
     // Create the tunnel_stats table
     await run(

@@ -1,6 +1,6 @@
-import { SSH2Connection } from '../types/ssh2-types';
-import { SSH2Channel } from '../types/ssh2-types';
-import { Database } from '../database';
+import { SSH2Connection } from '../types/ssh2-types.js';
+import { SSH2Channel } from '../types/ssh2-types.js';
+import { Database } from '../database.js';
 
 export interface CUIDataProvider {
   getActiveRemoteForwards(connection?: SSH2Connection): Promise<

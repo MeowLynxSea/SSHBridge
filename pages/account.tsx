@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../components/AuthContext';
-import { useOtp } from '../components/OtpContext';
-import OTPManager from '../components/OTPManager';
-import { LanguageProvider } from '../components/LanguageContext';
-import { ThemeProvider } from '../components/ThemeContext';
-import { useMobile } from '../components/ResponsiveLayout';
+import { useAuth } from '../components/AuthContext.js';
+import { useOtp } from '../components/OtpContext.js';
+import OTPManager from '../components/OTPManager.js';
+import { LanguageProvider } from '../components/LanguageContext.js';
+import { ThemeProvider } from '../components/ThemeContext.js';
+import { useMobile } from '../components/ResponsiveLayout.js';
 import '../lib/i18n';
 
 function AccountManagerPage() {

@@ -1,8 +1,9 @@
-import getDatabaseInstance from './database';
-import { SSHBridgeServer } from './ssh-server';
-import { setSSHServer, getSSHServer } from './sshInstance';
+import getDatabaseInstance from './database.js';
+import { SSHBridgeServer } from './ssh-server.js';
+import { setSSHServer, getSSHServer } from './sshInstance.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import { spawn } from 'child_process';
 
 const sshPort = parseInt(process.env.SSH_PORT || '2222', 10);
 const webPort = parseInt(process.env.WEB_PORT || '3000', 10);
@@ -61,8 +62,9 @@ async function startServer() {
     console.log(`SSH server started on port ${sshPort}`);
 
     // Start the Next.js server
-    const { spawn } = require('child_process');
-    const nextServer = spawn('next', ['start', '-p', webPort.toString()], {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const nextCommand = isProduction ? 'start' : 'dev';
+    const nextServer = spawn('next', [nextCommand, '-p', webPort.toString()], {
       stdio: 'inherit',
       env: {
         ...process.env,

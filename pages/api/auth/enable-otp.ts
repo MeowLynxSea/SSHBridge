@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import getDatabaseInstance from '../../../src/database';
+import getDatabaseInstance from '../../../src/database.js';
 import speakeasy from 'speakeasy';
-import { sendLocalizedError } from '../../../lib/apiErrors';
+import { sendLocalizedError } from '../../../lib/apiErrors.js';
 
 const database = getDatabaseInstance();
 

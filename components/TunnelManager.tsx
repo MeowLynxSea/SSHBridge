@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from './AuthContext';
-import { useOtp } from './OtpContext';
-import TunnelStats from './TunnelStats';
-import Settings from './Settings';
-import TunnelAnalysis from './TunnelAnalysis';
-import BandwidthMonitor from './BandwidthMonitor';
-import CommandDialog from './CommandDialog';
-import LogoutConfirmDialog from './LogoutConfirmDialog';
-import TunnelFormDialog from './TunnelFormDialog';
-import DeleteConfirmDialog from './DeleteConfirmDialog';
-import Footer from './Footer';
-import { formatForDisplay } from '../src/utils/timeUtils';
-import { useMobile } from './ResponsiveLayout';
-import Tunnel from '../types/Tunnel';
+import { useAuth } from './AuthContext.js';
+import { useOtp } from './OtpContext.js';
+import TunnelStats from './TunnelStats.js';
+import Settings from './Settings.js';
+import TunnelAnalysis from './TunnelAnalysis.js';
+import BandwidthMonitor from './BandwidthMonitor.js';
+import CommandDialog from './CommandDialog.js';
+import LogoutConfirmDialog from './LogoutConfirmDialog.js';
+import TunnelFormDialog from './TunnelFormDialog.js';
+import DeleteConfirmDialog from './DeleteConfirmDialog.js';
+import Footer from './Footer.js';
+import { formatForDisplay } from '../src/utils/timeUtils.js';
+import { useMobile } from './ResponsiveLayout.js';
+import Tunnel from '../types/Tunnel.js';
 
 interface TunnelFormData {
   name: string;

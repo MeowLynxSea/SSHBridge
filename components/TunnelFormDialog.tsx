@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMobile } from './ResponsiveLayout';
-import Modal from './Modal';
-import Tunnel from '../types/Tunnel';
+import { useMobile } from './ResponsiveLayout.js';
+import Modal from './Modal.js';
+import Tunnel from '../types/Tunnel.js';
 
 interface TunnelFormData {
   name: string;

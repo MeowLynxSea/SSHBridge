@@ -1,11 +1,11 @@
-import { Database } from '../database';
+import { Database } from '../database.js';
 import {
   cuiTranslations,
   getFixedWidthText,
   tableColumnWidths,
   TableColumnWidths,
   addStringExtensions,
-} from './i18n';
+} from './i18n.js';
 
 export type Language = 'en' | 'zh' | 'es' | 'de' | 'ja' | 'ru' | 'ar' | 'fr';
 
