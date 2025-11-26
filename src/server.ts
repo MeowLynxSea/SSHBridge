@@ -3,7 +3,7 @@ import { SSHBridgeServer } from './ssh-server.js';
 import { setSSHServer, getSSHServer } from './sshInstance.js';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 
 const sshPort = parseInt(process.env.SSH_PORT || '2222', 10);
 const webPort = parseInt(process.env.WEB_PORT || '3000', 10);
@@ -14,8 +14,7 @@ async function generateHostKey(): Promise<string> {
   if (fs.existsSync(keyPath)) {
     return fs.readFileSync(keyPath, 'utf8');
   }
-
-  const { execSync } = require('child_process');
+  
   execSync(`ssh-keygen -t rsa -b 2048 -f ${keyPath} -N "" -C "SSHBridge Server"`);
   return fs.readFileSync(keyPath, 'utf8');
 }
