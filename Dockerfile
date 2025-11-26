@@ -44,7 +44,7 @@ RUN npm run build:web
 
 # Production stage
 FROM base AS runner
-RUN apk add --no-cache libc6-compat sqlite
+RUN apk add --no-cache libc6-compat sqlite python3 make g++
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -65,8 +65,10 @@ RUN mkdir -p ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/package-lock.json ./package-lock.json
 
-# Install all dependencies then prune dev dependencies
-RUN npm ci --ignore-scripts && npm prune --production
+# Install all dependencies and rebuild native modules
+RUN npm ci --ignore-scripts && \
+    npm rebuild better-sqlite3 && \
+    npm prune --production
 
 # Create directories for data and host keys
 RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
