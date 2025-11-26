@@ -59,11 +59,12 @@ COPY --from=builder /app/.next/static ./.next/static
 # Create empty public directory if it doesn't exist
 RUN mkdir -p ./public
 
-# Copy package.json
+# Copy package.json and package-lock.json
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/package-lock.json ./package-lock.json
 
-# Install production dependencies (already in standalone, but for dist server files)
-RUN npm ci --only=production --ignore-scripts
+# Install all dependencies then prune dev dependencies
+RUN npm ci --ignore-scripts && npm prune --production
 
 # Create directories for data and host keys
 RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
