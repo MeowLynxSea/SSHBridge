@@ -14,7 +14,7 @@ async function generateHostKey(): Promise<string> {
   if (fs.existsSync(keyPath)) {
     return fs.readFileSync(keyPath, 'utf8');
   }
-  
+
   execSync(`ssh-keygen -t rsa -b 2048 -f ${keyPath} -N "" -C "SSHBridge Server"`);
   return fs.readFileSync(keyPath, 'utf8');
 }

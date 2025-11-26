@@ -44,7 +44,7 @@ RUN npm run build:web
 
 # Production stage
 FROM base AS runner
-RUN apk add --no-cache libc6-compat sqlite python3 make g++
+RUN apk add --no-cache libc6-compat sqlite python3 make g++ openssh-client
 WORKDIR /app
 
 ENV NODE_ENV=production
