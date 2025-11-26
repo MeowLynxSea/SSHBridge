@@ -48,6 +48,7 @@ RUN apk add --no-cache libc6-compat sqlite python3 make g++
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV DATABASE_PATH=/app/data/database.sqlite
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
@@ -71,14 +72,10 @@ RUN npm ci --ignore-scripts && \
     npm prune --production
 
 # Create directories for data and host keys
-RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
+RUN mkdir -p /app/data /app/keys && chown -R nodejs:nodejs /app/data /app/keys
 
 # Switch to non-root user
 USER nodejs
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
-
 # Start the application
-CMD ["npm", "start"]
+CMD ["sh", "-c", "mkdir -p /app/data /app/keys && npm start"]
