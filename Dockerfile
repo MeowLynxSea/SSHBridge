@@ -25,6 +25,9 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Verify dist directory was created and contains server.js
+RUN ls -la dist/server.js || (echo "server.js not found in dist directory" && exit 1)
+
 # Production stage
 FROM base AS runner
 WORKDIR /app
@@ -39,11 +42,14 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/package-lock.json ./package-lock.json
 
-# Install production dependencies
+# Create empty public directory if it doesn't exist
+RUN mkdir -p ./public
+
+# Copy package.json
+COPY --from=builder /app/package.json ./package.json
+
+# Install production dependencies (already in standalone, but for dist server files)
 RUN npm ci --only=production --ignore-scripts
 
 # Create directories for data and host keys

@@ -9,7 +9,7 @@
     "server:dev": "tsx watch src/server.ts",
     "web:dev": "next dev",
     "build": "npm run build:server && npm run build:web",
-    "build:server": "tsc",
+    "build:server": "tsc -p tsconfig.server.json",
     "build:web": "next build",
     "start": "node dist/server.js",
     "type-check": "tsc --noEmit",

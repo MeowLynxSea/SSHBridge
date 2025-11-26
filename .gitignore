@@ -9,6 +9,9 @@ dist/
 build/
 .next/
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Environment files
 .env
 .env.local
@@ -24,6 +27,7 @@ build/
 # SSH keys
 *.pem
 *.key
+host.key
 !host.key.pub
 
 # Logs

@@ -1,4 +1,5 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
@@ -12,8 +13,18 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "jsx": "react-jsx"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "pages", "public", ".next"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "pages",
+    "public",
+    ".next",
+    "**/*.tsx",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }
