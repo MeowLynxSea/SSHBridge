@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+RUN npm ci --ignore-scripts
 
 # Build stage
 FROM base AS builder
@@ -17,7 +17,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 # Copy source code
 COPY . .
@@ -41,7 +41,10 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/package-lock.json ./package-lock.json
+
+# Install production dependencies
+RUN npm ci --only=production --ignore-scripts
 
 # Create directories for data and host keys
 RUN mkdir -p /app/data && chown -R nodejs:nodejs /app/data
