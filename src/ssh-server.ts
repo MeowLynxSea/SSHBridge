@@ -15,7 +15,9 @@ import { Database, Tunnel } from './database';
 // Time utilities are used in components, not here
 import { TcpServerManager } from './tcpServerManager';
 import { CUIManager } from './cui/CUIManager';
+import { CUII18n } from './cui/CUII18n';
 import { CUIDataProvider } from './cui/types';
+import { getDisplayWidth } from './cui/i18n';
 import ssh2 from 'ssh2';
 
 // Extend ssh2 types for our custom properties
@@ -98,6 +100,45 @@ export class SSHBridgeServer implements CUIDataProvider {
         }
       });
     });
+  }
+
+  /**
+   * 生成ASCII艺术欢迎界面
+   */
+  private async generateWelcomeScreen(user: UserData): Promise<string> {
+    // 初始化i18n实例
+    const i18n = new CUII18n(user.id, this.database);
+    await i18n.init();
+    
+    const welcome = i18n.t('welcome.welcome');
+    const userLabel = `${i18n.t('welcome.user')}: ${user.username}`;
+    const pressAnyKey = i18n.t('welcome.pressAnyKey');
+    
+    // ASCII标题
+    const bridgeArt = [
+      '\r\n',
+      '███████╗███████╗██╗  ██╗██████╗ ██████╗ ██╗██████╗  ██████╗ ███████╗\r\n',
+      '██╔════╝██╔════╝██║  ██║██╔══██╗██╔══██╗██║██╔══██╗██╔════╝ ██╔════╝\r\n',
+      '███████╗███████╗███████║██████╔╝██████╔╝██║██║  ██║██║  ███╗█████╗  \r\n',
+      '╚════██║╚════██║██╔══██║██╔══██╗██╔══██╗██║██║  ██║██║   ██║██╔══╝  \r\n',
+      '███████║███████║██║  ██║██████╔╝██║  ██║██║██████╔╝╚██████╔╝███████╗\r\n',
+      '╚══════╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝╚═════╝  ╚═════╝ ╚══════╝\r\n',
+      '\r\n',
+    ].join('');
+    
+    // 构建欢迎界面
+    const welcomeScreen = [
+      `\x1b[2J\x1b[H`, // 清屏
+      bridgeArt,
+      ' '.repeat(Math.max(0, Math.floor((70 - getDisplayWidth(welcome)) / 2))) + welcome + '\r\n',
+      '\r\n',
+      ' '.repeat(Math.max(0, Math.floor((70 - getDisplayWidth(userLabel)) / 2))) + userLabel + '\r\n',
+      '\r\n',
+      ' '.repeat(Math.max(0, Math.floor((70 - getDisplayWidth(pressAnyKey)) / 2))) + pressAnyKey + '\r\n',
+      '\r\n',
+    ].join('');
+    
+    return welcomeScreen;
   }
 
   private sendErrorMessageToClient(
@@ -337,7 +378,7 @@ export class SSHBridgeServer implements CUIDataProvider {
       const session: SSH2Session = accept();
 
       // Handle PTY requests
-      session.on('pty', (accept: () => void, reject: () => void, info: SSH2PtyInfo) => {
+      session.on('pty', async (accept: () => void, reject: () => void, info: SSH2PtyInfo) => {
         console.log(`PTY request: ${info.term} ${info.rows}x${info.cols}`);
 
         // Check if there was a forward error
@@ -367,7 +408,7 @@ export class SSHBridgeServer implements CUIDataProvider {
       });
 
       // Handle shell requests
-      session.on('shell', (accept: () => SSH2Channel, _reject: () => void) => {
+      session.on('shell', async (accept: () => SSH2Channel, _reject: () => void) => {
         // Wait for all port forward requests to be processed
         const pending = conn._pendingPortForwards || 0;
         const processed = conn._processedPortForwards || 0;
@@ -426,16 +467,9 @@ export class SSHBridgeServer implements CUIDataProvider {
           return;
         }
 
-        // 显示欢迎信息，等待用户按键进入CUI
-        channel.write(`\x1b[2J\x1b[H`); // 清屏
-        channel.write(`╔══════════════════════════════════════════════════════════════╗\r\n`);
-        channel.write(`║                    SSHBridge 管理系统                        ║\r\n`);
-        channel.write(`║                                                              ║\r\n`);
-        channel.write(`║  欢迎使用 SSHBridge！                                        ║\r\n`);
-        channel.write(`║  用户: ${user.username.padEnd(45)}         ║\r\n`);
-        channel.write(`║                                                              ║\r\n`);
-        channel.write(`║  按任意键进入管理界面...                                     ║\r\n`);
-        channel.write(`╚══════════════════════════════════════════════════════════════╝\r\n`);
+        // 显示ASCII艺术欢迎信息，等待用户按键进入CUI
+        const welcomeScreen = await this.generateWelcomeScreen(user);
+        channel.write(welcomeScreen);
 
         // 等待用户按键
         let cuiStarted = false;

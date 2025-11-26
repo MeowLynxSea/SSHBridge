@@ -1,146 +1,8 @@
 // CUI国际化翻译资源
 // 确保表格中文本的宽度保持一致，避免布局错误
 
-// 获取表格中文本的固定宽度版本，确保布局一致性
-export function getFixedWidthText(
-  text: string,
-  width: number,
-  align: 'left' | 'center' | 'right' = 'left'
-): string {
-  // 获取文本的显示宽度（考虑中文字符占用2个位置）
-  const getDisplayWidth = (str: string): number => {
-    let width = 0;
-    for (let i = 0; i < str.length; i++) {
-      const code = str.charCodeAt(i);
-      // 处理代理对（4字节Unicode字符，如emoji）
-      if (code >= 0xd800 && code <= 0xdbff && i + 1 < str.length) {
-        const code2 = str.charCodeAt(i + 1);
-        if (code2 >= 0xdc00 && code2 <= 0xdfff) {
-          // 代理对（如emoji），多数占用2个字符宽度
-          width += 2;
-          i++; // 跳过下一个代理对字符
-          continue;
-        }
-      }
-      
-      // CJK统一表意文字及扩展（中文、日文、韩文等）
-      // CJK统一表意文字
-      if ((code >= 0x4e00 && code <= 0x9fff) ||
-          // CJK扩展A-F区
-          (code >= 0x3400 && code <= 0x4dbf) ||
-          (code >= 0x20000 && code <= 0x2a6df) ||
-          (code >= 0x2a700 && code <= 0x2b73f) ||
-          (code >= 0x2b740 && code <= 0x2b81f) ||
-          (code >= 0x2b820 && code <= 0x2ceaf) ||
-          // CJK兼容表意文字
-          (code >= 0xf900 && code <= 0xfaff) ||
-          (code >= 0x2f800 && code <= 0x2fa1f) ||
-          // 日文假名（平假名和片假名）
-          (code >= 0x3040 && code <= 0x309f) ||
-          (code >= 0x30a0 && code <= 0x30ff) ||
-          // 韩文音节
-          (code >= 0xac00 && code <= 0xd7af) ||
-          // 韩文兼容字母
-          (code >= 0x3130 && code <= 0x318f) ||
-          (code >= 0xffa0 && code <= 0xffdc) ||
-          // 全角符号和字母
-          (code >= 0xff00 && code <= 0xffef) ||
-          // 中文标点符号
-          (code >= 0x3000 && code <= 0x303f) ||
-          // 其他亚洲语言符号
-          (code >= 0x3200 && code <= 0x32ff) ||
-          (code >= 0x3300 && code <= 0x33ff) ||
-          // 数学符号（部分为全角）
-          (code >= 0x2200 && code <= 0x22ff) ||
-          // 盒子绘制字符
-          (code >= 0x2500 && code <= 0x257f) ||
-          (code >= 0x2580 && code <= 0x259f) ||
-          // 几何图形
-          (code >= 0x25a0 && code <= 0x25ff) ||
-          // 装饰符号
-          (code >= 0x2600 && code <= 0x26ff) ||
-          // 杂项符号
-          (code >= 0x2700 && code <= 0x27bf) ||
-          // 箭头符号
-          (code >= 0x2190 && code <= 0x21ff) ||
-          // 其他技术符号
-          (code >= 0x2300 && code <= 0x23ff) ||
-          // 光学字符识别
-          (code >= 0x2440 && code <= 0x245f)) {
-        width += 2;
-      } else {
-        width += 1;
-      }
-    }
-    return width;
-  };
-
-  const displayWidth = getDisplayWidth(text);
-
-  if (displayWidth >= width) {
-    return text;
-  }
-
-  const padding = width - displayWidth;
-
-  switch (align) {
-    case 'center': {
-      const leftPad = Math.floor(padding / 2);
-      const rightPad = padding - leftPad;
-      return ' '.repeat(leftPad) + text + ' '.repeat(rightPad);
-    }
-    case 'right':
-      return ' '.repeat(padding) + text;
-    case 'left':
-    default:
-      return text + ' '.repeat(padding);
-  }
-}
-
-// 扩展String原型，添加便捷的对齐方法（可选）
-export interface StringExtensions {
-  padStart(width: number, fillString?: string): string;
-  padEnd(width: number, fillString?: string): string;
-  padCenter(width: number, fillString?: string): string;
-}
-
-// 为String添加居中对齐方法（声明合并）
-declare global {
-  interface String {
-    padCenter(width: number, fillString?: string): string;
-  }
-}
-
-// 为String添加居中对齐方法
-export function addStringExtensions(): void {
-  if (!String.prototype.padCenter) {
-    String.prototype.padCenter = function (
-      this: string,
-      width: number,
-      fillString: string = ' '
-    ): string {
-      const displayWidth = getDisplayWidth(this.toString());
-      if (displayWidth >= width) {
-        return this.toString();
-      }
-
-      const padding = width - displayWidth;
-      const leftPad = Math.floor(padding / 2);
-      const rightPad = padding - leftPad;
-
-      const fillLength = fillString.length;
-      const leftFillString = fillString.repeat(Math.ceil(leftPad / fillLength)).slice(0, leftPad);
-      const rightFillString = fillString
-        .repeat(Math.ceil(rightPad / fillLength))
-        .slice(0, rightPad);
-
-      return leftFillString + this.toString() + rightFillString;
-    };
-  }
-}
-
-// 获取文本的显示宽度（重复定义用于居中对齐函数）
-function getDisplayWidth(str: string): number {
+// 导出获取文本显示宽度的函数，用于正确计算文本居中
+export function getDisplayWidth(str: string): number {
   let width = 0;
   for (let i = 0; i < str.length; i++) {
     const code = str.charCodeAt(i);
@@ -205,6 +67,77 @@ function getDisplayWidth(str: string): number {
     }
   }
   return width;
+}
+
+// 获取表格中文本的固定宽度版本，确保布局一致性
+export function getFixedWidthText(
+  text: string,
+  width: number,
+  align: 'left' | 'center' | 'right' = 'left'
+): string {
+  // 使用已导出的getDisplayWidth函数计算显示宽度
+  const displayWidth = getDisplayWidth(text);
+
+  if (displayWidth >= width) {
+    return text;
+  }
+
+  const padding = width - displayWidth;
+
+  switch (align) {
+    case 'center': {
+      const leftPad = Math.floor(padding / 2);
+      const rightPad = padding - leftPad;
+      return ' '.repeat(leftPad) + text + ' '.repeat(rightPad);
+    }
+    case 'right':
+      return ' '.repeat(padding) + text;
+    case 'left':
+    default:
+      return text + ' '.repeat(padding);
+  }
+}
+
+// 扩展String原型，添加便捷的对齐方法（可选）
+export interface StringExtensions {
+  padStart(width: number, fillString?: string): string;
+  padEnd(width: number, fillString?: string): string;
+  padCenter(width: number, fillString?: string): string;
+}
+
+// 为String添加居中对齐方法（声明合并）
+declare global {
+  interface String {
+    padCenter(width: number, fillString?: string): string;
+  }
+}
+
+// 为String添加居中对齐方法
+export function addStringExtensions(): void {
+  if (!String.prototype.padCenter) {
+    String.prototype.padCenter = function (
+      this: string,
+      width: number,
+      fillString: string = ' '
+    ): string {
+      const displayWidth = getDisplayWidth(this.toString());
+      if (displayWidth >= width) {
+        return this.toString();
+      }
+
+      const padding = width - displayWidth;
+      const leftPad = Math.floor(padding / 2);
+      const rightPad = padding - leftPad;
+
+      const fillLength = fillString.length;
+      const leftFillString = fillString.repeat(Math.ceil(leftPad / fillLength)).slice(0, leftPad);
+      const rightFillString = fillString
+        .repeat(Math.ceil(rightPad / fillLength))
+        .slice(0, rightPad);
+
+      return leftFillString + this.toString() + rightFillString;
+    };
+  }
 }
 
 // 便捷的文本对齐函数
@@ -314,6 +247,12 @@ export const tableColumnWidths: Record<string, TableColumnWidths> = {
 // CUI国际化翻译数据
 export const cuiTranslations = {
   en: {
+    welcome: {
+      title: 'SSHBridge Management System',
+      welcome: 'Welcome to SSHBridge!',
+      user: 'User',
+      pressAnyKey: 'Press any key to continue...',
+    },
     main: {
       title: 'SSHBridge Management System',
       user: 'User',
@@ -381,6 +320,12 @@ export const cuiTranslations = {
     },
   },
   zh: {
+    welcome: {
+      title: 'SSHBridge 管理系统',
+      welcome: '欢迎使用 SSHBridge！',
+      user: '用户',
+      pressAnyKey: '按任意键进入管理界面...',
+    },
     main: {
       title: 'SSHBridge 管理系统',
       user: '用户',
@@ -448,6 +393,12 @@ export const cuiTranslations = {
     },
   },
   es: {
+    welcome: {
+      title: 'Sistema de Gestión SSHBridge',
+      welcome: '¡Bienvenido a SSHBridge!',
+      user: 'Usuario',
+      pressAnyKey: 'Presione cualquier tecla para continuar...',
+    },
     main: {
       title: 'Sistema de Gestión SSHBridge',
       user: 'Usuario',
@@ -516,6 +467,12 @@ export const cuiTranslations = {
     },
   },
   de: {
+    welcome: {
+      title: 'SSHBridge Management-System',
+      welcome: 'Willkommen bei SSHBridge!',
+      user: 'Benutzer',
+      pressAnyKey: 'Drücken Sie eine beliebige Taste zum Fortfahren...',
+    },
     main: {
       title: 'SSHBridge Management-System',
       user: 'Benutzer',
@@ -582,6 +539,12 @@ export const cuiTranslations = {
     },
   },
   ja: {
+    welcome: {
+      title: 'SSHBridge管理システム',
+      welcome: 'SSHBridgeへようこそ！',
+      user: 'ユーザー',
+      pressAnyKey: '何かキーを押して続行...',
+    },
     main: {
       title: 'SSHBridge管理システム',
       user: 'ユーザー',
@@ -649,6 +612,12 @@ export const cuiTranslations = {
     },
   },
   ru: {
+    welcome: {
+      title: 'Система Управления SSHBridge',
+      welcome: 'Добро пожаловать в SSHBridge!',
+      user: 'Пользователь',
+      pressAnyKey: 'Нажмите любую клавишу для продолжения...',
+    },
     main: {
       title: 'Система Управления SSHBridge',
       user: 'Пользователь',
@@ -717,6 +686,12 @@ export const cuiTranslations = {
     },
   },
   ar: {
+    welcome: {
+      title: 'نظام إدارة SSHBridge',
+      welcome: 'مرحباً بك في SSHBridge!',
+      user: 'المستخدم',
+      pressAnyKey: 'اضغط على أي مفتاح للمتابعة...',
+    },
     main: {
       title: 'نظام إدارة SSHBridge',
       user: 'المستخدم',
@@ -784,6 +759,12 @@ export const cuiTranslations = {
     },
   },
   fr: {
+    welcome: {
+      title: 'Système de Gestion SSHBridge',
+      welcome: 'Bienvenue dans SSHBridge!',
+      user: 'Utilisateur',
+      pressAnyKey: 'Appuyez sur une touche pour continuer...',
+    },
     main: {
       title: 'Système de Gestion SSHBridge',
       user: 'Utilisateur',
