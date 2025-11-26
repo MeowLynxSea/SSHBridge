@@ -22,6 +22,7 @@ export interface CUIDataProvider {
       id: number;
       name: string;
       port: number;
+      external_port: number;
       activeConnections: number;
       sessionBytes: number;
     }>

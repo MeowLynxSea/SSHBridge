@@ -68,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       // Validate language
       if (language !== undefined) {
-        if (typeof language !== 'string' || !['zh', 'en', 'ja', 'ko'].includes(language)) {
+        if (typeof language !== 'string' || !['zh', 'en', 'ja', 'ar', 'de', 'es', 'fr', 'ru'].includes(language)) {
           return res.status(400).json({
             success: false,
             error: 'Language must be one of: zh, en, ja, ko',

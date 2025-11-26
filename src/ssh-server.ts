@@ -683,6 +683,7 @@ export class SSHBridgeServer implements CUIDataProvider {
       id: number;
       name: string;
       port: number;
+      external_port: number;
       activeConnections: number;
       sessionBytes: number;
     }>
@@ -691,6 +692,7 @@ export class SSHBridgeServer implements CUIDataProvider {
       id: number;
       name: string;
       port: number;
+      external_port: number;
       activeConnections: number;
       sessionBytes: number;
     }> = [];
@@ -708,6 +710,7 @@ export class SSHBridgeServer implements CUIDataProvider {
         id: tunnelId,
         name: activeTunnel.tunnel.name,
         port: activeTunnel.port,
+        external_port: activeTunnel.tunnel.external_port,
         activeConnections: stats?.active_connections || 0,
         sessionBytes: (stats?.current_bytes_received || 0) + (stats?.current_bytes_sent || 0),
       });
