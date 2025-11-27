@@ -198,12 +198,18 @@ export class SSHBridgeServer implements CUIDataProvider {
             const matchingTunnel = userTunnels.find((tunnel) => tunnel.external_port === bindPort);
 
             if (!matchingTunnel) {
-              const errorMsg = `远程端口转发 ${bindAddr}:${bindPort} 未被授权`;
+              // Initialize i18n instance for error messages
+              const i18n = new CUII18n(user.id, this.database);
+              await i18n.init();
+
+              const errorMsg = i18n.t('connection.remotePortUnauthorized', { bindAddr, bindPort });
               console.error(`${errorMsg} - User: ${user.username}`);
 
               // Get user's configured tunnels for error message
               const availablePorts = userTunnels.map((t: Tunnel) => t.external_port).join(', ');
-              const detailMsg = `该端口不匹配您配置的任何隧道。您已配置的端口: ${availablePorts || '无'}`;
+              const detailMsg = i18n.t('connection.remotePortUnauthorizedDetails', {
+                availablePorts: availablePorts || 'None',
+              });
 
               // Store error info to display when a PTY request is made
               conn._sshbForwardError = {
@@ -231,7 +237,11 @@ export class SSHBridgeServer implements CUIDataProvider {
               this.activeTunnels.has(matchingTunnel.id);
 
             if (isTunnelOnline || isPortInUse) {
-              const errorMsg = `远程端口 ${bindAddr}:${bindPort} 启用失败`;
+              // Initialize i18n instance for error messages
+              const i18n = new CUII18n(user.id, this.database);
+              await i18n.init();
+
+              const errorMsg = i18n.t('connection.remotePortFailed', { bindAddr, bindPort });
               console.log(
                 `Tunnel port ${bindPort} is already online for user ${user.username}, rejecting new connection...`
               );
@@ -239,7 +249,7 @@ export class SSHBridgeServer implements CUIDataProvider {
               // Store error message to display when a PTY request is made
               conn._sshbForwardError = {
                 message: errorMsg,
-                details: `隧道端口 ${bindPort} 已在线。此隧道端口已在此连接或另一个连接中在线。请勿重复连接同一端口。`,
+                details: i18n.t('connection.remotePortFailedDetails', { bindPort }),
               };
 
               // Reject the port forwarding request
@@ -311,13 +321,17 @@ export class SSHBridgeServer implements CUIDataProvider {
             } catch (error) {
               console.error(`Error setting up TCP server for ${bindAddr}:${bindPort}:`, error);
 
+              // Initialize i18n instance for error messages
+              const i18n = new CUII18n(user.id, this.database);
+              await i18n.init();
+
               // When server fails to listen, reject the port forward request
-              const errorMsg = `远程端口 ${bindAddr}:${bindPort} 启用失败`;
+              const errorMsg = i18n.t('connection.remotePortServerError', { bindAddr, bindPort });
 
               // Store error message to display when a PTY request is made
               conn._sshbForwardError = {
                 message: errorMsg,
-                details: `隧道端口 ${bindPort} 已在线。此隧道端口已在此连接或另一个连接中在线。请勿重复连接同一端口。`,
+                details: i18n.t('connection.remotePortServerErrorDetails', { bindPort }),
               };
 
               reject();
@@ -431,9 +445,13 @@ export class SSHBridgeServer implements CUIDataProvider {
         const forwardError =
           conn._sshbForwardError || (session._showForwardError ? conn._sshbForwardError : null);
         if (forwardError) {
+          // Initialize i18n instance for error messages
+          const i18n = new CUII18n(user.id, this.database);
+          await i18n.init();
+
           channel.write(`ERROR: ${forwardError.message}\r\n`);
           channel.write(`${forwardError.details}\r\n`);
-          channel.write(`连接将被断开。\r\n`);
+          channel.write(`${i18n.t('connection.disconnected')}\r\n`);
 
           // Clear the error after displaying
           delete conn._sshbForwardError;
@@ -452,9 +470,13 @@ export class SSHBridgeServer implements CUIDataProvider {
           conn._sshbTunnelReplaced ||
           (session._showTunnelReplaced ? conn._sshbTunnelReplaced : null);
         if (tunnelReplaced) {
+          // Initialize i18n instance for messages
+          const i18n = new CUII18n(user.id, this.database);
+          await i18n.init();
+
           channel.write(`WARNING: ${tunnelReplaced.message}\r\n`);
           channel.write(`${tunnelReplaced.details}\r\n`);
-          channel.write(`连接将在3秒后关闭...\r\n`);
+          channel.write(`${i18n.t('connection.closingIn')}\r\n`);
 
           // Clear the message after displaying
           delete conn._sshbTunnelReplaced;
@@ -462,7 +484,7 @@ export class SSHBridgeServer implements CUIDataProvider {
 
           // Disconnect after a delay
           setTimeout(() => {
-            channel.write(`Goodbye!\r\n`);
+            channel.write(`${i18n.t('general.goodbye')}\r\n`);
             channel.end();
             conn.end();
           }, 3000);
@@ -566,10 +588,14 @@ export class SSHBridgeServer implements CUIDataProvider {
     if (activeTunnel && activeTunnel.connection !== currentConn) {
       console.log(`Disconnecting tunnel ${tunnelId} from previous connection`);
 
+      // Initialize i18n instance for messages
+      const i18n = new CUII18n(activeTunnel.user.id, this.database);
+      await i18n.init();
+
       // Set up a flag on the old connection to show a message
       activeTunnel.connection._sshbTunnelReplaced = {
-        message: `隧道 ${tunnelId} 已被新连接替换`,
-        details: '您的隧道已从另一个位置连接。此连接将被关闭。',
+        message: i18n.t('connection.tunnelReplaced', { tunnelId }),
+        details: i18n.t('connection.tunnelReplacedDetails'),
       };
 
       // Close the old connection

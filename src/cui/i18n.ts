@@ -320,6 +320,22 @@ export const cuiTranslations = {
       occupied: 'OCCUPIED',
       inactive: 'INACTIVE',
     },
+    connection: {
+      disconnected: 'Connection will be disconnected.',
+      closingIn: 'Connection will close in 3 seconds...',
+      tunnelReplaced: 'Tunnel {{tunnelId}} has been replaced by a new connection',
+      tunnelReplacedDetails:
+        'Your tunnel has been connected from another location. This connection will be closed.',
+      remotePortUnauthorized: 'Remote port forwarding {{bindAddr}}:{{bindPort}} is not authorized',
+      remotePortUnauthorizedDetails:
+        'This port does not match any of your configured tunnels. Configured ports: {{availablePorts}}',
+      remotePortFailed: 'Remote port {{bindAddr}}:{{bindPort}} failed to activate',
+      remotePortFailedDetails:
+        'Tunnel port {{bindPort}} is already online. This tunnel port is already online in this or another connection. Please do not connect the same port repeatedly.',
+      remotePortServerError: 'Remote port {{bindAddr}}:{{bindPort}} failed to activate',
+      remotePortServerErrorDetails:
+        'Tunnel port {{bindPort}} is already online. This tunnel port is already online in this or another connection. Please do not connect the same port repeatedly.',
+    },
   },
   zh: {
     welcome: {
@@ -392,6 +408,21 @@ export const cuiTranslations = {
       active: 'ACTIVE',
       occupied: 'OCCUPIED',
       inactive: 'INACTIVE',
+    },
+    connection: {
+      disconnected: '连接将被断开。',
+      closingIn: '连接将在3秒后关闭...',
+      tunnelReplaced: '隧道 {{tunnelId}} 已被新连接替换',
+      tunnelReplacedDetails: '您的隧道已从另一个位置连接。此连接将被关闭。',
+      remotePortUnauthorized: '远程端口转发 {{bindAddr}}:{{bindPort}} 未被授权',
+      remotePortUnauthorizedDetails:
+        '该端口不匹配您配置的任何隧道。您已配置的端口: {{availablePorts}}',
+      remotePortFailed: '远程端口 {{bindAddr}}:{{bindPort}} 启用失败',
+      remotePortFailedDetails:
+        '隧道端口 {{bindPort}} 已在线。此隧道端口已在此连接或另一个连接中在线。请勿重复连接同一端口。',
+      remotePortServerError: '远程端口 {{bindAddr}}:{{bindPort}} 启用失败',
+      remotePortServerErrorDetails:
+        '隧道端口 {{bindPort}} 已在线。此隧道端口已在此连接或另一个连接中在线。请勿重复连接同一端口。',
     },
   },
   es: {
@@ -467,6 +498,23 @@ export const cuiTranslations = {
       occupied: 'OCCUPIED',
       inactive: 'INACTIVE',
     },
+    connection: {
+      disconnected: 'La conexión será desconectada.',
+      closingIn: 'La conexión se cerrará en 3 segundos...',
+      tunnelReplaced: 'El túnel {{tunnelId}} ha sido reemplazado por una nueva conexión',
+      tunnelReplacedDetails:
+        'Su túnel ha sido conectado desde otra ubicación. Esta conexión será cerrada.',
+      remotePortUnauthorized:
+        'El reenvío de puerto remoto {{bindAddr}}:{{bindPort}} no está autorizado',
+      remotePortUnauthorizedDetails:
+        'Este puerto no coincide con ninguno de sus túneles configurados. Puertos configurados: {{availablePorts}}',
+      remotePortFailed: 'El puerto remoto {{bindAddr}}:{{bindPort}} falló al activarse',
+      remotePortFailedDetails:
+        'El puerto del túnel {{bindPort}} ya está en línea. Este puerto del túnel ya está en línea en esta conexión u otra conexión. Por favor, no conecte el mismo puerto repetidamente.',
+      remotePortServerError: 'El puerto remoto {{bindAddr}}:{{bindPort}} falló al activarse',
+      remotePortServerErrorDetails:
+        'El puerto del túnel {{bindPort}} ya está en línea. Este puerto del túnel ya está en línea en esta conexión u otra conexión. Por favor, no conecte el mismo puerto repetidamente.',
+    },
   },
   de: {
     welcome: {
@@ -538,6 +586,23 @@ export const cuiTranslations = {
       active: 'ACTIVE',
       occupied: 'OCCUPIED',
       inactive: 'INACTIVE',
+    },
+    connection: {
+      disconnected: 'Verbindung wird getrennt.',
+      closingIn: 'Verbindung wird in 3 Sekunden geschlossen...',
+      tunnelReplaced: 'Tunnel {{tunnelId}} wurde durch eine neue Verbindung ersetzt',
+      tunnelReplacedDetails:
+        'Ihr Tunnel wurde von einem anderen Ort aus verbunden. Diese Verbindung wird geschlossen.',
+      remotePortUnauthorized:
+        'Remote-Port-Forwarding {{bindAddr}}:{{bindPort}} ist nicht autorisiert',
+      remotePortUnauthorizedDetails:
+        'Dieser Port stimmt mit keinem Ihrer konfigurierten Tunnel überein. Konfigurierte Ports: {{availablePorts}}',
+      remotePortFailed: 'Remote-Port {{bindAddr}}:{{bindPort}} konnte nicht aktiviert werden',
+      remotePortFailedDetails:
+        'Tunnel-Port {{bindPort}} ist bereits online. Dieser Tunnel-Port ist bereits in dieser oder einer anderen Verbindung online. Bitte verbinden Sie nicht mehrfach denselben Port.',
+      remotePortServerError: 'Remote-Port {{bindAddr}}:{{bindPort}} konnte nicht aktiviert werden',
+      remotePortServerErrorDetails:
+        'Tunnel-Port {{bindPort}} ist bereits online. Dieser Tunnel-Port ist bereits in dieser oder einer anderen Verbindung online. Bitte verbinden Sie nicht mehrfach denselben Port.',
     },
   },
   ja: {
@@ -611,6 +676,22 @@ export const cuiTranslations = {
       active: 'ACTIVE',
       occupied: 'OCCUPIED',
       inactive: 'INACTIVE',
+    },
+    connection: {
+      disconnected: '接続が切断されます。',
+      closingIn: '3秒後に接続が閉じられます...',
+      tunnelReplaced: 'トンネル {{tunnelId}} が新しい接続に置き換えられました',
+      tunnelReplacedDetails:
+        'あなたのトンネルが別の場所から接続されました。この接続は閉じられます。',
+      remotePortUnauthorized: 'リモートポート転送 {{bindAddr}}:{{bindPort}} は認可されていません',
+      remotePortUnauthorizedDetails:
+        'このポートは設定されたトンネルのいずれとも一致しません。設定されたポート: {{availablePorts}}',
+      remotePortFailed: 'リモートポート {{bindAddr}}:{{bindPort}} の有効化に失敗しました',
+      remotePortFailedDetails:
+        'トンネルポート {{bindPort}} は既にオンラインです。このトンネルポートは既にこの接続または別の接続でオンラインです。同じポートを繰り返し接続しないでください。',
+      remotePortServerError: 'リモートポート {{bindAddr}}:{{bindPort}} の有効化に失敗しました',
+      remotePortServerErrorDetails:
+        'トンネルポート {{bindPort}} は既にオンラインです。このトンネルポートは既にこの接続または別の接続でオンラインです。同じポートを繰り返し接続しないでください。',
     },
   },
   ru: {
@@ -686,6 +767,23 @@ export const cuiTranslations = {
       occupied: 'OCCUPIED',
       inactive: 'INACTIVE',
     },
+    connection: {
+      disconnected: 'Соединение будет разорвано.',
+      closingIn: 'Соединение будет закрыто через 3 секунды...',
+      tunnelReplaced: 'Туннель {{tunnelId}} был заменен новым соединением',
+      tunnelReplacedDetails:
+        'Ваш туннель был подключен из другого места. Это соединение будет закрыто.',
+      remotePortUnauthorized:
+        'Удаленное перенаправление порта {{bindAddr}}:{{bindPort}} не авторизовано',
+      remotePortUnauthorizedDetails:
+        'Этот порт не соответствует ни одному из ваших настроенных туннелей. Настроенные порты: {{availablePorts}}',
+      remotePortFailed: 'Удаленный порт {{bindAddr}}:{{bindPort}} не удалось активировать',
+      remotePortFailedDetails:
+        'Порт туннеля {{bindPort}} уже онлайн. Этот порт туннеля уже онлайн в этом или другом соединении. Пожалуйста, не подключайте один и тот же порт многократно.',
+      remotePortServerError: 'Удаленный порт {{bindAddr}}:{{bindPort}} не удалось активировать',
+      remotePortServerErrorDetails:
+        'Порт туннеля {{bindPort}} уже онлайн. Этот порт туннеля уже онлайн в этом или другом соединении. Пожалуйста, не подключайте один и тот же порт многократно.',
+    },
   },
   ar: {
     welcome: {
@@ -758,6 +856,21 @@ export const cuiTranslations = {
       active: 'ACTIVE',
       occupied: 'OCCUPIED',
       inactive: 'INACTIVE',
+    },
+    connection: {
+      disconnected: 'سيتم قطع الاتصال.',
+      closingIn: 'سيتم إغلاق الاتصال خلال 3 ثوانٍ...',
+      tunnelReplaced: 'تم استبدال النفق {{tunnelId}} باتصال جديد',
+      tunnelReplacedDetails: 'تم توصيل نفقك من موقع آخر. سيتم إغلاق هذا الاتصال.',
+      remotePortUnauthorized: 'إعادة توجيه المنفذ البعيد {{bindAddr}}:{{bindPort}} غير مصرح بها',
+      remotePortUnauthorizedDetails:
+        'هذا المنفذ لا يطابق أي من الأنفاق المكونة الخاصة بك. المنافذ المكونة: {{availablePorts}}',
+      remotePortFailed: 'فشل تنشيط المنفذ البعيد {{bindAddr}}:{{bindPort}}',
+      remotePortFailedDetails:
+        'منفذ النفق {{bindPort}} متصل بالفعل. منفذ النفق هذا متصل بالفعل في هذا الاتصال أو اتصال آخر. يرجى عدم توصيل نفس المنفذ بشكل متكرر.',
+      remotePortServerError: 'فشل تنشيط المنفذ البعيد {{bindAddr}}:{{bindPort}}',
+      remotePortServerErrorDetails:
+        'منفذ النفق {{bindPort}} متصل بالفعل. منفذ النفق هذا متصل بالفعل في هذا الاتصال أو اتصال آخر. يرجى عدم توصيل نفس المنفذ بشكل متكرر.',
     },
   },
   fr: {
@@ -836,6 +949,23 @@ export const cuiTranslations = {
       active: 'ACTIVE',
       occupied: 'OCCUPIED',
       inactive: 'INACTIVE',
+    },
+    connection: {
+      disconnected: 'La connexion sera déconnectée.',
+      closingIn: 'La connexion se fermera dans 3 secondes...',
+      tunnelReplaced: 'Le tunnel {{tunnelId}} a été remplacé par une nouvelle connexion',
+      tunnelReplacedDetails:
+        'Votre tunnel a été connecté à partir d un autre emplacement. Cette connexion sera fermée.',
+      remotePortUnauthorized:
+        'Le transfert de port distant {{bindAddr}}:{{bindPort}} n est pas autorisé',
+      remotePortUnauthorizedDetails:
+        'Ce port ne correspond à aucun de vos tunnels configurés. Ports configurés: {{availablePorts}}',
+      remotePortFailed: 'Le port distant {{bindAddr}}:{{bindPort}} a échoué à s activer',
+      remotePortFailedDetails:
+        'Le port du tunnel {{bindPort}} est déjà en ligne. Ce port du tunnel est déjà en ligne dans cette connexion ou une autre connexion. Veuillez ne pas connecter plusieurs fois le même port.',
+      remotePortServerError: 'Le port distant {{bindAddr}}:{{bindPort}} a échoué à s activer',
+      remotePortServerErrorDetails:
+        'Le port du tunnel {{bindPort}} est déjà en ligne. Ce port du tunnel est déjà en ligne dans cette connexion ou une autre connexion. Veuillez ne pas connecter plusieurs fois le même port.',
     },
   },
 };
