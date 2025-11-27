@@ -40,11 +40,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log(`[DISCONNECT API] Found tunnel:`, tunnel);
 
-        // Check if tunnel is online
+        // Check if tunnel is online in database
         const isOnline = await database.isTunnelWithPortOnline(tunnel.external_port);
-        console.log(`[DISCONNECT API] Tunnel online status: ${isOnline}`);
+        console.log(`[DISCONNECT API] Tunnel online status in database: ${isOnline}`);
+
+        // Even if not online in database, we should still proceed with disconnection
+        // to handle cases where SSH connection is gone but TCP server is still running
         if (!isOnline) {
-          return res.status(400).json({ error: 'Tunnel is not online' });
+          console.log(
+            `[DISCONNECT API] Tunnel not online in database, but will still attempt to close TCP server`
+          );
         }
 
         console.log(`[DISCONNECT API] Marking tunnel as needing closure in database`);

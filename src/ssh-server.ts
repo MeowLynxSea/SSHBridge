@@ -929,26 +929,23 @@ export class SSHBridgeServer implements CUIDataProvider {
         }
       }
 
+      // Always try to close TCP server, even if SSH connection is gone
+      try {
+        await this.tcpServerManager.closeTcpServer(username, tunnel.external_port);
+        console.log(`TCP server for tunnel ${tunnel.id} closed`);
+      } catch (error) {
+        console.error(`Error closing TCP server for tunnel ${tunnel.id}:`, error);
+      }
+
+      // Mark tunnel as offline
+      await this.database.updateTunnelOnlineStatus(tunnel.id, false);
+
       if (forwardInfo && forwardInfo.connection) {
         // Store message on connection for any new PTY requests
         forwardInfo.connection._sshbTunnelReplaced = {
           message: i18n.t('connection.tunnelClosedByAdmin'),
           details: i18n.t('connection.tunnelClosedByAdminDetails', { tunnelName: tunnel.name }),
         };
-
-        // Close TCP server
-        try {
-          await this.tcpServerManager.closeTcpServer(username, tunnel.external_port);
-        } catch (error) {
-          console.error(`Error closing TCP server for tunnel ${tunnel.id}:`, error);
-        }
-
-        // Mark tunnel as offline
-        await this.database.updateTunnelOnlineStatus(tunnel.id, false);
-
-        // Remove from active tunnels and remote forwards
-        this.activeTunnels.delete(tunnel.id);
-        this.remoteForwards.delete(key);
 
         // Force connection termination to ensure user sees message
         setTimeout(() => {
@@ -960,6 +957,10 @@ export class SSHBridgeServer implements CUIDataProvider {
           }
         }, 3000); // Give enough time for message to be seen if there's an active PTY
       }
+
+      // Remove from active tunnels and remote forwards
+      this.activeTunnels.delete(tunnel.id);
+      this.remoteForwards.delete(key);
 
       // Clear flag regardless of whether we found an active connection
       await this.database.clearTunnelCloseFlag(tunnel.id);
