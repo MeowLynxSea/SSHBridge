@@ -9,7 +9,7 @@ import {
   ClientAccessLog as ClientAccessLogType,
 } from './types/stats.js';
 import { parseDatabaseDate, createFutureTime } from './utils/timeUtils.js';
-import * as geoip from 'geoip-lite';
+import geoip from 'geoip-lite';
 
 // SQLite types
 interface Row {
