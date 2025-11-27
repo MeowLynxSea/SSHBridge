@@ -131,8 +131,8 @@ export class TcpServerManager {
    */
   async startTcpServer(server: net.Server, bindAddr: string, bindPort: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      server.listen(bindPort, bindAddr, () => {
-        console.log(`TCP server listening on ${bindAddr}:${bindPort}`);
+      server.listen(bindPort, '0.0.0.0', () => {
+        console.log(`TCP server listening on 0.0.0.0:${bindPort} (bindAddr: ${bindAddr})`);
         resolve();
       });
 
