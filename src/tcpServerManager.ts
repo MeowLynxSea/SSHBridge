@@ -39,11 +39,6 @@ interface Database {
     finalBytesSent: number,
     finalBytesReceived: number
   ): Promise<void>;
-  updateClientConnectionData(
-    connectionId: string,
-    bytesSent: number,
-    bytesReceived: number
-  ): Promise<void>;
 }
 
 export interface TcpConnectionInfo {
@@ -286,9 +281,6 @@ export class TcpServerManager {
             const currentConnections = this.connectionCounters.get(tunnelConnectionKey) || 0;
             this.database.updateSessionStats(tunnelId, data.length, 0, currentConnections);
 
-            // Update client connection data
-            await this.database.updateClientConnectionData(tcpConnectionId, 0, data.length);
-
             // Apply bandwidth limit BEFORE sending data
             if (tunnel?.max_bandwidth) {
               const bucketKey = `${tunnelId}:${connectionId}`;
@@ -316,9 +308,6 @@ export class TcpServerManager {
             // Update session stats in real-time for rate calculation
             const currentConnections = this.connectionCounters.get(tunnelConnectionKey) || 0;
             this.database.updateSessionStats(tunnelId, 0, data.length, currentConnections);
-
-            // Update client connection data
-            await this.database.updateClientConnectionData(tcpConnectionId, data.length, 0);
 
             // Apply bandwidth limit BEFORE sending data
             if (tunnel?.max_bandwidth) {

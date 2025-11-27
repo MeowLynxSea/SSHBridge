@@ -11,7 +11,7 @@ import {
   RemoteForwardInfo,
   ActiveTunnelInfo,
 } from './types/ssh2-types.js';
-import { Database, Tunnel } from './database.js';
+import { Database, Tunnel, User } from './database.js';
 // Time utilities are used in components, not here
 import { TcpServerManager } from './tcpServerManager.js';
 import { CUIManager } from './cui/CUIManager.js';
@@ -59,6 +59,12 @@ export class SSHBridgeServer implements CUIDataProvider {
   // 移除全局 currentChannel，改为每个 CUI 自己跟踪连接
   private activeTunnels: Map<number, ActiveTunnelInfo> = new Map();
   private tcpServerManager: TcpServerManager;
+  private tunnelCheckInterval: ReturnType<typeof setInterval> | null = null;
+  // Track active sessions and channels for message delivery
+  private activeSessions: Map<
+    string,
+    { session: SSH2Session; channel: SSH2Channel; connection: SSH2Connection; user: User }
+  > = new Map();
 
   constructor(config: SSHServerConfig, database: Database) {
     this.config = config;
@@ -70,6 +76,14 @@ export class SSHBridgeServer implements CUIDataProvider {
     });
 
     this.setupEventHandlers();
+    this.startTunnelStatusCheck();
+  }
+
+  /**
+   * Get the TCP server manager instance
+   */
+  public getTcpServerManager(): TcpServerManager {
+    return this.tcpServerManager;
   }
 
   private setupEventHandlers() {
@@ -441,6 +455,10 @@ export class SSHBridgeServer implements CUIDataProvider {
         // Store channel reference on itself for later use
         channel._conn = conn;
 
+        // Add to active sessions map for message delivery
+        const sessionKey = `${user.username}_${conn._connectionStartTime || Date.now()}`;
+        this.activeSessions.set(sessionKey, { session, channel, connection: conn, user });
+
         // Check if there was a forward error (from either connection or session)
         const forwardError =
           conn._sshbForwardError || (session._showForwardError ? conn._sshbForwardError : null);
@@ -509,6 +527,13 @@ export class SSHBridgeServer implements CUIDataProvider {
 
         channel.on('close', () => {
           console.log(`Shell session closed for user ${user.username}`);
+          // Remove from active sessions map
+          for (const [key, value] of this.activeSessions.entries()) {
+            if (value.channel === channel) {
+              this.activeSessions.delete(key);
+              break;
+            }
+          }
         });
 
         channel.on('error', (err?: Error) => {
@@ -847,6 +872,107 @@ export class SSHBridgeServer implements CUIDataProvider {
     return result;
   }
 
+  /**
+   * Start periodic checking for tunnels that need to be closed
+   */
+  private startTunnelStatusCheck() {
+    // Check every 5 seconds for tunnels that need closure
+    this.tunnelCheckInterval = setInterval(async () => {
+      try {
+        const tunnelsNeedingClosure = await this.database.getTunnelsNeedingClosure();
+
+        if (tunnelsNeedingClosure.length > 0) {
+          console.log(`Found ${tunnelsNeedingClosure.length} tunnel(s) that need closure`);
+
+          for (const tunnel of tunnelsNeedingClosure) {
+            await this.closeTunnelWithMessage(tunnel);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking tunnel closure status:', error);
+      }
+    }, 5000);
+  }
+
+  /**
+   * Close a tunnel and send notification message to user
+   */
+  private async closeTunnelWithMessage(tunnel: Tunnel) {
+    try {
+      // Find connection associated with this tunnel
+      const username = (await this.database.getUserById(tunnel.user_id))?.username;
+
+      if (!username) {
+        console.error(`Could not find username for tunnel ID ${tunnel.id}`);
+        await this.database.clearTunnelCloseFlag(tunnel.id);
+        return;
+      }
+
+      const key = `${username}_${tunnel.external_port}`;
+      const forwardInfo = this.remoteForwards.get(key);
+
+      // Initialize i18n for error messages
+      const i18n = new CUII18n(tunnel.user_id, this.database);
+      await i18n.init();
+
+      const message = `WARNING: ${i18n.t('connection.tunnelClosedByAdmin')}\r\n${i18n.t('connection.tunnelClosedByAdminDetails', { tunnelName: tunnel.name })}\r\n${i18n.t('connection.closingIn')}\r\n`;
+
+      // Send message to all active sessions for this user
+      for (const [sessionKey, sessionInfo] of this.activeSessions.entries()) {
+        if (sessionInfo.user.id === tunnel.user_id && sessionInfo.channel) {
+          try {
+            sessionInfo.channel.write(message);
+            console.log(`Sent tunnel closure message to session ${sessionKey}`);
+          } catch (error) {
+            console.error(`Error sending message to session ${sessionKey}:`, error);
+          }
+        }
+      }
+
+      if (forwardInfo && forwardInfo.connection) {
+        // Store message on connection for any new PTY requests
+        forwardInfo.connection._sshbTunnelReplaced = {
+          message: i18n.t('connection.tunnelClosedByAdmin'),
+          details: i18n.t('connection.tunnelClosedByAdminDetails', { tunnelName: tunnel.name }),
+        };
+
+        // Close TCP server
+        try {
+          await this.tcpServerManager.closeTcpServer(username, tunnel.external_port);
+        } catch (error) {
+          console.error(`Error closing TCP server for tunnel ${tunnel.id}:`, error);
+        }
+
+        // Mark tunnel as offline
+        await this.database.updateTunnelOnlineStatus(tunnel.id, false);
+
+        // Remove from active tunnels and remote forwards
+        this.activeTunnels.delete(tunnel.id);
+        this.remoteForwards.delete(key);
+
+        // Force connection termination to ensure user sees message
+        setTimeout(() => {
+          if (forwardInfo.connection) {
+            console.log(
+              `Forcefully closing SSH connection for tunnel ${tunnel.id} to ensure message is seen`
+            );
+            forwardInfo.connection.end();
+          }
+        }, 3000); // Give enough time for message to be seen if there's an active PTY
+      }
+
+      // Clear flag regardless of whether we found an active connection
+      await this.database.clearTunnelCloseFlag(tunnel.id);
+      console.log(
+        `Tunnel ${tunnel.name} (ID: ${tunnel.id}) has been closed and notification sent to user`
+      );
+    } catch (error) {
+      console.error(`Error closing tunnel ${tunnel.id}:`, error);
+      // Try to clear the flag anyway to avoid infinite loops
+      await this.database.clearTunnelCloseFlag(tunnel.id);
+    }
+  }
+
   start(callback?: () => void) {
     // Clear all tunnels session state on server startup
     this.database
@@ -877,6 +1003,12 @@ export class SSHBridgeServer implements CUIDataProvider {
 
   async stop(callback?: () => void): Promise<void> {
     console.log('Shutting down all TCP servers and SSH server...');
+
+    // Clear the tunnel check interval
+    if (this.tunnelCheckInterval) {
+      clearInterval(this.tunnelCheckInterval);
+      this.tunnelCheckInterval = null;
+    }
 
     // Close all TCP servers using TcpServerManager
     try {

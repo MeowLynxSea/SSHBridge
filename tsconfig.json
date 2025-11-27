@@ -16,6 +16,7 @@
     "incremental": true,
     "allowImportingTsExtensions": true,
     "customConditions": ["node", "default"],
+    "allowSyntheticDefaultImports": true,
     "plugins": [
       {
         "name": "next"

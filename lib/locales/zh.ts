@@ -85,6 +85,8 @@ export const zhTranslation = {
       save: '保存',
       cancel: '取消',
       deleteConfirm: '确定要删除这个隧道吗？',
+      takeOfflineConfirm: '确定要将此隧道下线吗？',
+      tunnelTakenOffline: '隧道已成功下线',
       realTimeStats: '实时统计',
       currentTransferRate: '当前传输速率',
       dataTransferred: '数据传输量',

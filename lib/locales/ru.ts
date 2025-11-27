@@ -61,6 +61,8 @@ export const ruTranslation = {
       save: 'СОХРАНИТЬ',
       cancel: 'ОТМЕНА',
       deleteConfirm: 'Вы уверены, что хотите удалить этот туннель?',
+      takeOfflineConfirm: 'Вы уверены, что хотите отключить этот туннель?',
+      tunnelTakenOffline: 'Туннель успешно отключен',
       bandwidthMonitor: 'МОНИТОР ПРОПУСКНОЙ СПОСОБНОСТИ',
       realTimeStats: 'СТАТИСТИКА В РЕАЛЬНОМ ВРЕМЕНИ',
       currentTransferRate: 'Текущая скорость передачи',

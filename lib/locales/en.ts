@@ -90,6 +90,8 @@ export const enTranslation = {
       save: 'SAVE',
       cancel: 'CANCEL',
       deleteConfirm: 'Are you sure you want to delete this tunnel?',
+      takeOfflineConfirm: 'Are you sure you want to take this tunnel offline?',
+      tunnelTakenOffline: 'Tunnel successfully taken offline',
       bandwidthMonitor: 'BANDWIDTH MONITOR',
       realTimeStats: 'REAL-TIME STATS',
       currentTransferRate: 'Current Transfer Rate',

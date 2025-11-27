@@ -62,6 +62,8 @@ export const esTranslation = {
       save: 'GUARDAR',
       cancel: 'CANCELAR',
       deleteConfirm: '¿Está seguro de que desea eliminar este túnel?',
+      takeOfflineConfirm: '¿Está seguro de que desea desconectar este túnel?',
+      tunnelTakenOffline: 'Túnel desconectado exitosamente',
       realTimeStats: 'ESTADÍSTICAS EN TIEMPO REAL',
       currentTransferRate: 'Tasa de Transferencia Actual',
       dataTransferred: 'Datos Transferidos',

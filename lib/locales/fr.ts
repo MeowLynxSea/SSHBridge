@@ -62,6 +62,8 @@ export const frTranslation = {
       save: 'ENREGISTRER',
       cancel: 'ANNULER',
       deleteConfirm: 'Êtes-vous sûr de vouloir supprimer ce tunnel ?',
+      takeOfflineConfirm: 'Êtes-vous sûr de vouloir mettre ce tunnel hors ligne ?',
+      tunnelTakenOffline: 'Tunnel mis hors ligne avec succès',
       realTimeStats: 'STATISTIQUES EN TEMPS RÉEL',
       currentTransferRate: 'Taux de Transfert Actuel',
       dataTransferred: 'Données Transférées',

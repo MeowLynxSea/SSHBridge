@@ -61,6 +61,8 @@ export const jaTranslation = {
       save: '保存',
       cancel: 'キャンセル',
       deleteConfirm: 'このトンネルを削除してもよろしいですか？',
+      takeOfflineConfirm: 'このトンネルをオフラインにしてもよろしいですか？',
+      tunnelTakenOffline: 'トンネルは正常にオフラインになりました',
       bandwidthMonitor: '帯域モニター',
       realTimeStats: 'リアルタイム統計',
       currentTransferRate: '現在の転送レート',

@@ -11,6 +11,7 @@ import CommandDialog from './CommandDialog.js';
 import LogoutConfirmDialog from './LogoutConfirmDialog.js';
 import TunnelFormDialog from './TunnelFormDialog.js';
 import DeleteConfirmDialog from './DeleteConfirmDialog.js';
+import OfflineConfirmDialog from './OfflineConfirmDialog.js';
 import Footer from './Footer.js';
 import { formatForDisplay } from '../src/utils/timeUtils.js';
 import { useMobile } from './ResponsiveLayout.js';
@@ -42,6 +43,8 @@ export default function TunnelManager() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [tunnelToDelete, setTunnelToDelete] = useState<Tunnel | null>(null);
+  const [showOfflineConfirm, setShowOfflineConfirm] = useState(false);
+  const [tunnelToOffline, setTunnelToOffline] = useState<Tunnel | null>(null);
   const [baseTunnelHost, setBaseTunnelHost] = useState<string>('localhost');
   const [baseTunnelPort, setBaseTunnelPort] = useState<string>('22');
   const { isMobile, isSmallMobile } = useMobile();
@@ -204,6 +207,45 @@ export default function TunnelManager() {
         setTunnelToDelete(null);
       },
     });
+  };
+
+  const handleTakeOffline = (tunnel: Tunnel) => {
+    setTunnelToOffline(tunnel);
+    setShowOfflineConfirm(true);
+  };
+
+  const confirmTakeOffline = async () => {
+    if (!tunnelToOffline) return;
+
+    try {
+      const response = await fetch(`/api/tunnels/${tunnelToOffline.id}/disconnect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Refresh tunnel data
+        fetchTunnels();
+        fetchTunnelStatuses();
+        setShowOfflineConfirm(false);
+        setTunnelToOffline(null);
+        // Show success message
+        setError('');
+      } else {
+        const data = await response.json();
+        setError(data.error || t('settings.networkError'));
+      }
+    } catch (err) {
+      console.error('Failed to take tunnel offline:', err);
+      setError(t('settings.networkError'));
+    }
+  };
+
+  const handleOfflineConfirm = () => {
+    confirmTakeOffline();
   };
 
   const fetchBaseTunnelHost = async () => {
@@ -567,28 +609,33 @@ export default function TunnelManager() {
                                 gap: '10px',
                               }}
                             >
-                              <button
-                                className="nb-btn"
+                              <div
                                 style={{
-                                  width: '100%',
-                                  fontSize: '0.9rem',
+                                  display: 'flex',
+                                  gap: '10px',
                                 }}
-                                onClick={() => setSelectedTunnelForCommand(tunnel)}
                               >
-                                {t('tunnelManager.command')}
-                              </button>
-                              {tunnel.is_online && (
                                 <button
                                   className="nb-btn"
                                   style={{
                                     width: '100%',
                                     fontSize: '0.9rem',
                                   }}
-                                  onClick={() => setSelectedTunnelForBandwidth(tunnel)}
+                                  onClick={() => setSelectedTunnelForCommand(tunnel)}
                                 >
-                                  {t('tunnelManager.bandwidthMonitor')}
+                                  {t('tunnelManager.command')}
                                 </button>
-                              )}
+                                <button
+                                  className="nb-btn nb-btn-danger"
+                                  style={{
+                                    width: '100%',
+                                    fontSize: '0.9rem',
+                                  }}
+                                  onClick={() => handleTakeOffline(tunnel)}
+                                >
+                                  {t('tunnelManager.offline')}
+                                </button>
+                              </div>
                               <div
                                 style={{
                                   display: 'flex',
@@ -683,18 +730,16 @@ export default function TunnelManager() {
                                 >
                                   {t('tunnelManager.command')}
                                 </button>
-                                {tunnel.is_online && (
-                                  <button
-                                    className="nb-btn"
-                                    style={{
-                                      padding: '8px 12px',
-                                      fontSize: '0.8rem',
-                                    }}
-                                    onClick={() => setSelectedTunnelForBandwidth(tunnel)}
-                                  >
-                                    {t('tunnelManager.viewBandwidth')}
-                                  </button>
-                                )}
+                                <button
+                                  className="nb-btn nb-btn-danger"
+                                  style={{
+                                    padding: '8px 12px',
+                                    fontSize: '0.8rem',
+                                  }}
+                                  onClick={() => handleTakeOffline(tunnel)}
+                                >
+                                  {t('tunnelManager.offline')}
+                                </button>
                                 <button
                                   className="nb-btn"
                                   style={{
@@ -877,6 +922,17 @@ export default function TunnelManager() {
           setTunnelToDelete(null);
         }}
         onConfirm={handleDeleteConfirm}
+      />
+
+      {/* Offline Confirmation Dialog */}
+      <OfflineConfirmDialog
+        isOpen={showOfflineConfirm}
+        tunnel={tunnelToOffline}
+        onClose={() => {
+          setShowOfflineConfirm(false);
+          setTunnelToOffline(null);
+        }}
+        onConfirm={handleOfflineConfirm}
       />
     </div>
   );

@@ -30,7 +30,8 @@ export interface SSH2AuthContext {
 export interface UserData {
   id: number;
   username: string;
-  password?: string;
+  password: string;
+  otp_enabled: boolean;
   created_at: string;
 }
 

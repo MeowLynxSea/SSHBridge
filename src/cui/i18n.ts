@@ -326,6 +326,8 @@ export const cuiTranslations = {
       tunnelReplaced: 'Tunnel {{tunnelId}} has been replaced by a new connection',
       tunnelReplacedDetails:
         'Your tunnel has been connected from another location. This connection will be closed.',
+      tunnelClosedByAdmin: 'Tunnel has been closed from the panel',
+      tunnelClosedByAdminDetails: 'The tunnel "{{tunnelName}}" has been closed from the panel.',
       remotePortUnauthorized: 'Remote port forwarding {{bindAddr}}:{{bindPort}} is not authorized',
       remotePortUnauthorizedDetails:
         'This port does not match any of your configured tunnels. Configured ports: {{availablePorts}}',
@@ -415,6 +417,8 @@ export const cuiTranslations = {
       tunnelReplaced: '隧道 {{tunnelId}} 已被新连接替换',
       tunnelReplacedDetails: '您的隧道已从另一个位置连接。此连接将被关闭。',
       remotePortUnauthorized: '远程端口转发 {{bindAddr}}:{{bindPort}} 未被授权',
+      tunnelClosedByAdmin: '隧道已从面板关闭',
+      tunnelClosedByAdminDetails: '隧道 "{{tunnelName}}" 已从面板关闭。',
       remotePortUnauthorizedDetails:
         '该端口不匹配您配置的任何隧道。您已配置的端口: {{availablePorts}}',
       remotePortFailed: '远程端口 {{bindAddr}}:{{bindPort}} 启用失败',
@@ -506,6 +510,8 @@ export const cuiTranslations = {
         'Su túnel ha sido conectado desde otra ubicación. Esta conexión será cerrada.',
       remotePortUnauthorized:
         'El reenvío de puerto remoto {{bindAddr}}:{{bindPort}} no está autorizado',
+      tunnelClosedByAdmin: 'El túnel ha sido cerrado desde el panel',
+      tunnelClosedByAdminDetails: 'El túnel "{{tunnelName}}" ha sido cerrado desde el panel.',
       remotePortUnauthorizedDetails:
         'Este puerto no coincide con ninguno de sus túneles configurados. Puertos configurados: {{availablePorts}}',
       remotePortFailed: 'El puerto remoto {{bindAddr}}:{{bindPort}} falló al activarse',
@@ -595,6 +601,8 @@ export const cuiTranslations = {
         'Ihr Tunnel wurde von einem anderen Ort aus verbunden. Diese Verbindung wird geschlossen.',
       remotePortUnauthorized:
         'Remote-Port-Forwarding {{bindAddr}}:{{bindPort}} ist nicht autorisiert',
+      tunnelClosedByAdmin: 'Tunnel wurde aus dem Panel geschlossen',
+      tunnelClosedByAdminDetails: 'Der Tunnel "{{tunnelName}}" wurde aus dem Panel geschlossen.',
       remotePortUnauthorizedDetails:
         'Dieser Port stimmt mit keinem Ihrer konfigurierten Tunnel überein. Konfigurierte Ports: {{availablePorts}}',
       remotePortFailed: 'Remote-Port {{bindAddr}}:{{bindPort}} konnte nicht aktiviert werden',
@@ -684,6 +692,8 @@ export const cuiTranslations = {
       tunnelReplacedDetails:
         'あなたのトンネルが別の場所から接続されました。この接続は閉じられます。',
       remotePortUnauthorized: 'リモートポート転送 {{bindAddr}}:{{bindPort}} は認可されていません',
+      tunnelClosedByAdmin: 'トンネルがパネルから閉じられました',
+      tunnelClosedByAdminDetails: 'トンネル "{{tunnelName}}" がパネルから閉じられました。',
       remotePortUnauthorizedDetails:
         'このポートは設定されたトンネルのいずれとも一致しません。設定されたポート: {{availablePorts}}',
       remotePortFailed: 'リモートポート {{bindAddr}}:{{bindPort}} の有効化に失敗しました',
@@ -775,6 +785,8 @@ export const cuiTranslations = {
         'Ваш туннель был подключен из другого места. Это соединение будет закрыто.',
       remotePortUnauthorized:
         'Удаленное перенаправление порта {{bindAddr}}:{{bindPort}} не авторизовано',
+      tunnelClosedByAdmin: 'Туннель был закрыт из панели',
+      tunnelClosedByAdminDetails: 'Туннель "{{tunnelName}}" был закрыт из панели.',
       remotePortUnauthorizedDetails:
         'Этот порт не соответствует ни одному из ваших настроенных туннелей. Настроенные порты: {{availablePorts}}',
       remotePortFailed: 'Удаленный порт {{bindAddr}}:{{bindPort}} не удалось активировать',
@@ -863,6 +875,8 @@ export const cuiTranslations = {
       tunnelReplaced: 'تم استبدال النفق {{tunnelId}} باتصال جديد',
       tunnelReplacedDetails: 'تم توصيل نفقك من موقع آخر. سيتم إغلاق هذا الاتصال.',
       remotePortUnauthorized: 'إعادة توجيه المنفذ البعيد {{bindAddr}}:{{bindPort}} غير مصرح بها',
+      tunnelClosedByAdmin: 'تم إغلاق النفق من اللوحة',
+      tunnelClosedByAdminDetails: 'تم إغلاق النفق "{{tunnelName}}" من اللوحة.',
       remotePortUnauthorizedDetails:
         'هذا المنفذ لا يطابق أي من الأنفاق المكونة الخاصة بك. المنافذ المكونة: {{availablePorts}}',
       remotePortFailed: 'فشل تنشيط المنفذ البعيد {{bindAddr}}:{{bindPort}}',
@@ -958,6 +972,8 @@ export const cuiTranslations = {
         'Votre tunnel a été connecté à partir d un autre emplacement. Cette connexion sera fermée.',
       remotePortUnauthorized:
         'Le transfert de port distant {{bindAddr}}:{{bindPort}} n est pas autorisé',
+      tunnelClosedByAdmin: 'Le tunnel a été fermé depuis le panneau',
+      tunnelClosedByAdminDetails: 'Le tunnel "{{tunnelName}}" a été fermé depuis le panneau.',
       remotePortUnauthorizedDetails:
         'Ce port ne correspond à aucun de vos tunnels configurés. Ports configurés: {{availablePorts}}',
       remotePortFailed: 'Le port distant {{bindAddr}}:{{bindPort}} a échoué à s activer',

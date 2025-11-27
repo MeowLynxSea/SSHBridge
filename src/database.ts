@@ -57,6 +57,7 @@ export interface Tunnel {
   name: string;
   external_port: number;
   max_bandwidth?: number; // in bytes per second
+  need_close?: boolean; // flag to indicate tunnel should be closed
   created_at: string;
 }
 
@@ -232,6 +233,14 @@ class Database {
     if (!hasBandwidthColumn) {
       console.log('Adding max_bandwidth column to tunnels table for bandwidth limiting');
       this.db.exec('ALTER TABLE tunnels ADD COLUMN max_bandwidth INTEGER');
+    }
+
+    // Check if we need to add the need_close column
+    const hasNeedCloseColumn = tunnelTableInfo.some((col) => col.name === 'need_close');
+
+    if (!hasNeedCloseColumn) {
+      console.log('Adding need_close column to tunnels table for remote closure');
+      this.db.exec('ALTER TABLE tunnels ADD COLUMN need_close INTEGER DEFAULT 0');
     }
 
     // Create the tunnel_stats table
@@ -473,6 +482,27 @@ class Database {
     return this.getTunnelById(id);
   }
 
+  // Method to mark a tunnel as needing closure
+  async markTunnelForClosure(id: number): Promise<boolean> {
+    const stmt = this.db.prepare('UPDATE tunnels SET need_close = 1 WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  // Method to clear the need_close flag
+  async clearTunnelCloseFlag(id: number): Promise<boolean> {
+    const stmt = this.db.prepare('UPDATE tunnels SET need_close = 0 WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  // Method to get tunnels that need to be closed
+  async getTunnelsNeedingClosure(): Promise<Tunnel[]> {
+    const stmt = this.db.prepare('SELECT * FROM tunnels WHERE need_close = 1');
+    const rows = stmt.all() as Row[];
+    return rows.map((row) => this.mapRowToTunnel(row));
+  }
+
   async deleteTunnel(id: number): Promise<boolean> {
     const stmt = this.db.prepare('DELETE FROM tunnels WHERE id = ?');
     const result = stmt.run(id);
@@ -505,6 +535,11 @@ class Database {
     // 只在有值时设置可选属性
     if (row.max_bandwidth !== null && row.max_bandwidth !== undefined) {
       tunnel.max_bandwidth = Number(row.max_bandwidth);
+    }
+
+    // Set need_close flag if present
+    if (row.need_close !== null && row.need_close !== undefined) {
+      tunnel.need_close = Number(row.need_close) === 1;
     }
 
     return tunnel;
@@ -1381,20 +1416,6 @@ class Database {
       locationInfo.city,
       new Date().toISOString(),
       userAgent || null
-    );
-  }
-
-  async updateClientConnectionData(
-    connectionId: string,
-    bytesSent: number,
-    bytesReceived: number
-  ): Promise<void> {
-    // This method will be called frequently during data transfer
-    // For performance, we'll log this data in batches during cleanup
-    // Or we could update the record periodically
-    // For now, we'll skip this and rely on final data during disconnection
-    console.log(
-      `Updating connection data for ${connectionId}: sent=${bytesSent}, received=${bytesReceived}`
     );
   }
 

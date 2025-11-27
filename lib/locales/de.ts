@@ -62,6 +62,8 @@ export const deTranslation = {
       save: 'SPEICHERN',
       cancel: 'ABBRECHEN',
       deleteConfirm: 'Möchten Sie diesen Tunnel wirklich löschen?',
+      takeOfflineConfirm: 'Möchten Sie diesen Tunnel wirklich offline nehmen?',
+      tunnelTakenOffline: 'Tunnel erfolgreich offline genommen',
       bandwidthMonitor: 'BANDBREITEN-MONITOR',
       realTimeStats: 'ECHTZEIT-STATISTIKEN',
       currentTransferRate: 'Aktuelle Übertragungsrate',
