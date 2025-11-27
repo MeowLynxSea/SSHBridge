@@ -600,15 +600,7 @@ export class SSHBridgeServer implements CUIDataProvider {
     const tunnelIdsForThisConnection: number[] = [];
     const serversToClose: Array<{ username: string; port: number }> = [];
 
-    // Check regular tunnels
-    this.tunnels.forEach((value, _key) => {
-      if (value.connection === conn) {
-        tunnelIdsForThisConnection.push(value.tunnel.id);
-        console.log(`Marking tunnel for cleanup: ${value.tunnel.name}`);
-      }
-    });
-
-    // Check remote port forwards
+    // Check remote port forwards (this is the main mechanism for TCP servers)
     this.remoteForwards.forEach((value, _key) => {
       if (value.connection === conn) {
         // Find the corresponding tunnel ID
@@ -624,9 +616,16 @@ export class SSHBridgeServer implements CUIDataProvider {
               username: value.user.username,
               port: value.bindPort,
             });
-            return;
           }
         });
+      }
+    });
+
+    // Also check regular tunnels (though they don't typically create TCP servers)
+    this.tunnels.forEach((value, _key) => {
+      if (value.connection === conn) {
+        tunnelIdsForThisConnection.push(value.tunnel.id);
+        console.log(`Marking tunnel for cleanup: ${value.tunnel.name}`);
       }
     });
 
