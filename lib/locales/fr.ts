@@ -28,6 +28,7 @@ export const frTranslation = {
       accountManagement: 'GESTION DE COMPTE',
       tunnels: 'TUNNELS',
       statistics: 'STATISTIQUES',
+      analysis: 'ANALYSE',
       loadingStatistics: 'CHARGEMENT DES STATISTIQUES...',
       tunnelStatistics: 'STATISTIQUES DE TUNNEL',
       autoRefresh: 'ACTUALISATION AUTOMATIQUE ({{seconds}}s)',

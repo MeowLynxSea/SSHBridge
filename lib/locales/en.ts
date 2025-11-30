@@ -57,6 +57,7 @@ export const enTranslation = {
       accountManagement: 'ACCOUNT MANAGEMENT',
       tunnels: 'TUNNELS',
       statistics: 'STATISTICS',
+      analysis: 'ANALYSIS',
       loadingStatistics: 'LOADING STATISTICS...',
       tunnelStatistics: 'TUNNEL STATISTICS',
       autoRefresh: 'AUTO-REFRESH ({{seconds}}s)',

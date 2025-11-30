@@ -28,6 +28,7 @@ export const ruTranslation = {
       accountManagement: 'УПРАВЛЕНИЕ АККАУНТОМ',
       tunnels: 'ТУННЕЛИ',
       statistics: 'СТАТИСТИКА',
+      analysis: 'АНАЛИЗ',
       loadingStatistics: 'ЗАГРУЗКА СТАТИСТИКИ...',
       tunnelStatistics: 'СТАТИСТИКА ТУННЕЛЯ',
       autoRefresh: 'АВТООБНОВЛЕНИЕ ({{seconds}}с)',

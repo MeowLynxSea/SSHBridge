@@ -28,6 +28,7 @@ export const arTranslation = {
       accountManagement: 'إدارة الحساب',
       tunnels: 'الأنفاق',
       statistics: 'الإحصائيات',
+      analysis: 'التحليل',
       loadingStatistics: 'تحميل الإحصائيات...',
       tunnelStatistics: 'إحصائيات النفق',
       autoRefresh: 'تحديث تلقائي ({{seconds}}ث)',

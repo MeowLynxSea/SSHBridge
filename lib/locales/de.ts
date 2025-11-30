@@ -28,6 +28,7 @@ export const deTranslation = {
       accountManagement: 'KONTOVERWALTUNG',
       tunnels: 'TUNNEL',
       statistics: 'STATISTIK',
+      analysis: 'ANALYSE',
       loadingStatistics: 'STATISTIKEN WERDEN GELADEN...',
       tunnelStatistics: 'TUNNEL-STATISTIKEN',
       autoRefresh: 'AUTOMATISCH AKTUALISIEREN ({{seconds}}s)',

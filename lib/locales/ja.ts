@@ -28,6 +28,7 @@ export const jaTranslation = {
       accountManagement: 'アカウント管理',
       tunnels: 'トンネル',
       statistics: '統計',
+      analysis: '分析',
       loadingStatistics: '統計を読み込み中...',
       tunnelStatistics: 'トンネル統計',
       autoRefresh: '自動更新（{{seconds}}秒）',

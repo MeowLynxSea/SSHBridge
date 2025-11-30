@@ -52,6 +52,7 @@ export const zhTranslation = {
       accountManagement: '账户管理',
       tunnels: '隧道',
       statistics: '统计',
+      analysis: '分析',
       loadingStatistics: '加载统计中...',
       tunnelStatistics: '隧道统计',
       autoRefresh: '自动刷新 ({{seconds}}秒)',

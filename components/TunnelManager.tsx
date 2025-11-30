@@ -380,7 +380,7 @@ export default function TunnelManager() {
                   onClick={() => setActiveTab('analysis')}
                   style={{ fontSize: isSmallMobile ? '0.85rem' : '1rem' }}
                 >
-                  分析
+                  {t('tunnelManager.analysis')}
                 </button>
                 <button
                   className={`nb-tab ${activeTab === 'settings' ? 'nb-tab-active' : ''}`}
@@ -431,7 +431,7 @@ export default function TunnelManager() {
                   className={`nb-tab ${activeTab === 'analysis' ? 'nb-tab-active' : ''}`}
                   onClick={() => setActiveTab('analysis')}
                 >
-                  分析
+                  {t('tunnelManager.analysis')}
                 </button>
                 <button
                   className={`nb-tab ${activeTab === 'settings' ? 'nb-tab-active' : ''}`}
