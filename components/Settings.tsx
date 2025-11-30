@@ -20,7 +20,7 @@ type Theme = 'dark' | 'light' | 'auto';
 
 export default function Settings({ isOpen = true }: SettingsProps) {
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { token, apiFetch } = useAuth();
   const { availableLanguages, changeLanguage, currentLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useState<UserSettings>({
@@ -37,11 +37,7 @@ export default function Settings({ isOpen = true }: SettingsProps) {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch('/api/settings', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch('/api/settings');
 
       if (response.ok) {
         const data = await response.json();
@@ -64,7 +60,7 @@ export default function Settings({ isOpen = true }: SettingsProps) {
     } finally {
       setLoading(false);
     }
-  }, [token, currentLanguage, t]);
+  }, [currentLanguage, t, apiFetch]);
 
   // Fetch current settings when component mounts
   useEffect(() => {
@@ -80,12 +76,8 @@ export default function Settings({ isOpen = true }: SettingsProps) {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/settings', {
+      const response = await apiFetch('/api/settings', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           refreshInterval: settings.refreshInterval,
           language: settings.language,

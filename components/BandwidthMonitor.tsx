@@ -34,7 +34,7 @@ interface BandwidthMonitorProps {
 
 export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthMonitorProps) {
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { token, apiFetch } = useAuth();
   const [stats, setStats] = useState<BandwidthStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -57,11 +57,7 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
     setError('');
 
     try {
-      const response = await fetch(`/api/tunnels/${tunnel.id}/bandwidth`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch(`/api/tunnels/${tunnel.id}/bandwidth`);
 
       if (response.ok) {
         const data = await response.json();

@@ -10,7 +10,7 @@ interface OTPManagerProps {
 
 export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
   const { t } = useTranslation();
-  const { token, updateUser } = useAuth();
+  const { token, updateUser, apiFetch } = useAuth();
   const { showOtpModal } = useOtp();
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,11 +27,7 @@ export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
 
     const checkOtpStatus = async () => {
       try {
-        const response = await fetch('/api/auth/otp-status', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiFetch('/api/auth/otp-status');
 
         if (response.ok) {
           const data = await response.json();
@@ -45,7 +41,7 @@ export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
     };
 
     checkOtpStatus();
-  }, [token]);
+  }, [token, apiFetch]);
 
   const generateOTP = async () => {
     if (!token) return;
@@ -54,11 +50,8 @@ export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/generate-otp', {
+      const response = await apiFetch('/api/auth/generate-otp', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!response.ok) {
@@ -85,12 +78,8 @@ export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/enable-otp', {
+      const response = await apiFetch('/api/auth/enable-otp', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           secret,
           token: otpToken || '',
@@ -137,12 +126,8 @@ export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
         setError('');
 
         try {
-          const response = await fetch('/api/auth/disable-otp', {
+          const response = await apiFetch('/api/auth/disable-otp', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify({
               token: otpToken,
             }),

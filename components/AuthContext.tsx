@@ -1,5 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/router';
+
+// Define RequestInit interface since it's not available in this context
+type RequestInit = globalThis.RequestInit;
 
 interface User {
   id: number;
@@ -11,6 +15,8 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  setToken: React.Dispatch<React.SetStateAction<string | null>>;
   login: (
     username: string,
     password: string,
@@ -20,12 +26,18 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (userUpdates: Partial<User>) => void;
   isLoading: boolean;
+  validateToken: () => Promise<boolean>;
+  apiFetch: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
+  const router = useRouter() as unknown as {
+    push: (url: string) => Promise<boolean>;
+    pathname: string;
+  };
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,6 +59,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     }
   }, []);
+
+  const handleUnauthorized = useCallback(() => {
+    // Clear auth state
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
+    // Redirect to login page if not already there
+    if (router.pathname !== '/') {
+      router.push('/');
+    }
+  }, [router]);
 
   const login = async (username: string, password: string, otpToken?: string) => {
     const response = await fetch('/api/auth/login', {
@@ -126,8 +151,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  const validateToken = useCallback(async (): Promise<boolean> => {
+    if (!token) return false;
+
+    try {
+      const response = await fetch('/api/auth/validate', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        // Clear auth state manually
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
+        // Redirect to login page if not already there
+        if (router.pathname !== '/') {
+          router.push('/');
+        }
+        return false;
+      }
+
+      return response.ok;
+    } catch (error) {
+      console.error('Token validation error:', error);
+      // Clear auth state manually
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      return false;
+    }
+  }, [token, router]); // Include router but not handleUnauthorized
+
+  const apiFetch = useCallback(
+    async (url: string, options: RequestInit = {}): Promise<Response> => {
+      const defaultOptions: RequestInit = {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+          ...options.headers,
+        },
+        ...options,
+      };
+
+      const response = await fetch(url, defaultOptions);
+
+      // Handle 401 Unauthorized globally for non-validation requests
+      if (response.status === 401 && !url.includes('/api/auth/validate')) {
+        handleUnauthorized();
+        throw new Error('Authentication failed - please login again');
+      }
+
+      return response;
+    },
+    [token, handleUnauthorized]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, updateUser, isLoading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        setUser,
+        setToken,
+        login,
+        register,
+        logout,
+        updateUser,
+        isLoading,
+        validateToken,
+        apiFetch,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

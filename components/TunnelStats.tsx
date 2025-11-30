@@ -35,7 +35,7 @@ interface TunnelStatsResponse {
 
 export default function TunnelStats() {
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { token, apiFetch } = useAuth();
   const [stats, setStats] = useState<TunnelStatsResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,11 +45,7 @@ export default function TunnelStats() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const response = await fetch('/api/stats', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch('/api/stats');
 
       if (response.ok) {
         const data = await response.json();
@@ -64,17 +60,13 @@ export default function TunnelStats() {
     } finally {
       setIsLoading(false);
     }
-  }, [token, t]);
+  }, [t, apiFetch]);
 
   useEffect(() => {
     // Also fetch the refresh interval
     const fetchRefreshInterval = async () => {
       try {
-        const response = await fetch('/api/settings', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiFetch('/api/settings');
 
         if (response.ok) {
           const data = await response.json();
@@ -89,7 +81,7 @@ export default function TunnelStats() {
 
     fetchStats();
     fetchRefreshInterval();
-  }, [fetchStats, token]);
+  }, [fetchStats, token, apiFetch]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;

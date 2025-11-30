@@ -42,7 +42,7 @@ interface AnalysisProps {
 
 export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { token, apiFetch } = useAuth();
   const { effectiveTheme } = useTheme();
   const [selectedTunnel, setSelectedTunnel] = useState<number | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('lastDay');
@@ -145,13 +145,8 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
       let queryParam = days > 0 ? `days=${days}` : `startDate=${startDate}&endDate=${endDate}`;
 
       // Fetch access logs
-      const logsResponse = await fetch(
-        `/api/tunnels/${selectedTunnel}/access-logs?limit=200&${queryParam}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const logsResponse = await apiFetch(
+        `/api/tunnels/${selectedTunnel}/access-logs?limit=200&${queryParam}`
       );
 
       if (logsResponse.ok) {
@@ -178,13 +173,8 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
       }
 
       // Fetch access stats
-      const statsResponse = await fetch(
-        `/api/tunnels/${selectedTunnel}/access-stats?days=${days}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const statsResponse = await apiFetch(
+        `/api/tunnels/${selectedTunnel}/access-stats?days=${days}`
       );
 
       if (statsResponse.ok) {

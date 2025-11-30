@@ -26,7 +26,7 @@ interface TunnelFormData {
 export default function TunnelManager() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { token, logout, user } = useAuth();
+  const { token, logout, user, apiFetch } = useAuth();
   const { showOtpModal } = useOtp();
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,11 +56,7 @@ export default function TunnelManager() {
 
   const fetchTunnelStatuses = useCallback(async () => {
     try {
-      const response = await fetch('/api/stats', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch('/api/stats');
 
       if (response.ok) {
         const data = await response.json();
@@ -73,15 +69,11 @@ export default function TunnelManager() {
     } catch (err) {
       console.error(t('console.failedToFetchTunnelStatuses'), err);
     }
-  }, [token, t]);
+  }, [t, apiFetch]);
 
   const fetchTunnels = useCallback(async () => {
     try {
-      const response = await fetch('/api/tunnels', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch('/api/tunnels');
 
       if (response.ok) {
         const data = await response.json();
@@ -100,7 +92,20 @@ export default function TunnelManager() {
     } finally {
       setIsLoading(false);
     }
-  }, [token, tunnelStatuses, t]);
+  }, [tunnelStatuses, t, apiFetch]);
+
+  const fetchBaseTunnelHost = useCallback(async () => {
+    try {
+      const response = await apiFetch('/api/config/base-tunnel-host');
+      if (response.ok) {
+        const data = await response.json();
+        setBaseTunnelHost(data.baseTunnelHost);
+        setBaseTunnelPort(data.baseTunnelPort);
+      }
+    } catch (err) {
+      console.error('Failed to fetch base tunnel host and port:', err);
+    }
+  }, [apiFetch]);
 
   useEffect(() => {
     fetchTunnels();
@@ -108,7 +113,7 @@ export default function TunnelManager() {
     // Set up interval to fetch tunnel statuses
     const interval = setInterval(fetchTunnelStatuses, 5000);
     return () => clearInterval(interval);
-  }, [token, fetchTunnelStatuses, fetchTunnels]);
+  }, [token, fetchTunnelStatuses, fetchTunnels, fetchBaseTunnelHost]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,12 +124,8 @@ export default function TunnelManager() {
 
       const method = editingTunnel ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           name: formData.name,
           external_port: parseInt(formData.external_port),
@@ -166,12 +167,8 @@ export default function TunnelManager() {
     if (!tunnelToDelete) return;
 
     try {
-      const response = await fetch(`/api/tunnels/${tunnelToDelete.id}`, {
+      const response = await apiFetch(`/api/tunnels/${tunnelToDelete.id}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           otpToken,
         }),
@@ -218,12 +215,8 @@ export default function TunnelManager() {
     if (!tunnelToOffline) return;
 
     try {
-      const response = await fetch(`/api/tunnels/${tunnelToOffline.id}/disconnect`, {
+      const response = await apiFetch(`/api/tunnels/${tunnelToOffline.id}/disconnect`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (response.ok) {
@@ -246,19 +239,6 @@ export default function TunnelManager() {
 
   const handleOfflineConfirm = () => {
     confirmTakeOffline();
-  };
-
-  const fetchBaseTunnelHost = async () => {
-    try {
-      const response = await fetch('/api/config/base-tunnel-host');
-      if (response.ok) {
-        const data = await response.json();
-        setBaseTunnelHost(data.baseTunnelHost);
-        setBaseTunnelPort(data.baseTunnelPort);
-      }
-    } catch (err) {
-      console.error('Failed to fetch base tunnel host and port:', err);
-    }
   };
 
   if (isLoading) {
