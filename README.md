@@ -4,6 +4,43 @@
 
 SSH server and tunnel management system with user authentication, tunnel management, and Web UI.
 
+## Table of Contents
+
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+- [Environment Variables](#environment-variables)
+- [Security](#security)
+- [API Endpoints](#api-endpoints)
+- [Project Structure](#project-structure)
+- [Docker Deployment](#docker-deployment)
+  - [Quick Deployment](#quick-deployment)
+    - [Basic Deployment](#basic-deployment)
+    - [Full Configuration Deployment](#full-configuration-deployment)
+  - [Environment Variables](#environment-variables-1)
+    - [Required Variables](#required-variables)
+    - [Optional Variables](#optional-variables)
+  - [Docker Compose Deployment](#docker-compose-deployment)
+  - [Data Persistence](#data-persistence)
+    - [Data Persistence Deployment](#data-persistence-deployment)
+    - [Data Persistence Explanation](#data-persistence-explanation)
+    - [Data Persistence Best Practices](#data-persistence-best-practices)
+      - [Using Data Volumes (Recommended)](#using-data-volumes-recommended)
+      - [Using Bind Mounts](#using-bind-mounts)
+      - [Backup Strategy](#backup-strategy)
+  - [Verify Deployment](#verify-deployment)
+  - [Production Environment Notes](#production-environment-notes)
+  - [Troubleshooting](#troubleshooting)
+    - [Container Won't Start](#container-wont-start)
+    - [Cannot Access Web Interface](#cannot-access-web-interface)
+    - [SSH Connection Fails](#ssh-connection-fails)
+    - [Data Persistence Issues](#data-persistence-issues)
+  - [Update Deployment](#update-deployment)
+- [Development](#development)
+- [License](#license)
+- [Contributing](#contributing)
+
 ## Features
 
 - SSH server with password authentication
@@ -169,6 +206,277 @@ SSHBridge/
 │   ├── pty-error-handling.md
 │   └── timezone-handling.md
 └── scripts/             # Utility scripts
+```
+
+## Docker Deployment
+
+### Prerequisites
+
+- Docker installed and running
+- Server access (able to bind ports 2222 and 3000)
+
+### Quick Deployment
+
+#### Basic Deployment
+
+```bash
+docker run -d \
+  --name sshbridge \
+  --network host \
+  -e BASE_TUNNEL_HOST=your-server-ip \
+  -e SSH_PORT=2222 \
+  ghcr.io/meowlynxsea/sshbridge:main
+```
+
+#### Full Configuration Deployment
+
+```bash
+docker run -d \
+  --name sshbridge \
+  --network host \
+  -e BASE_TUNNEL_HOST=your-server-ip \
+  -e SSH_PORT=2222 \
+  -e JWT_SECRET=your-jwt-secret-key \
+  -e WEB_PORT=3000 \
+  -e DATABASE_PATH=/app/data/database.sqlite \
+  -e HOST_KEY_PATH=/app/data/host.key \
+  -e NEXT_PUBLIC_FOOTER_TEXT="Your Custom Footer" \
+  -v /path/to/data:/app/data \
+  ghcr.io/meowlynxsea/sshbridge:main
+```
+
+### Environment Variables
+
+#### Required Variables
+
+- `BASE_TUNNEL_HOST`: Base tunnel host address (usually your server IP)
+- `SSH_PORT`: SSH server port (default: 2222)
+
+#### Optional Variables
+
+- `JWT_SECRET`: JWT signing key (must be set for production)
+- `WEB_PORT`: Web interface port (default: 3000)
+- `DATABASE_PATH`: Database file path (default: ./database.sqlite)
+- `HOST_KEY_PATH`: SSH host key path (default: ./host.key)
+- `NEXT_PUBLIC_FOOTER_TEXT`: Custom footer text
+
+### Docker Compose Deployment
+
+Create a `docker-compose.yml` file:
+
+```yaml
+version: '3.8'
+
+services:
+  sshbridge:
+    image: ghcr.io/meowlynxsea/sshbridge:main
+    container_name: sshbridge
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      - BASE_TUNNEL_HOST=your-server-ip
+      - SSH_PORT=2222
+      - JWT_SECRET=your-jwt-secret-key
+      - WEB_PORT=3000
+      - DATABASE_PATH=/app/data/database.sqlite
+      - HOST_KEY_PATH=/app/data/host.key
+      - NEXT_PUBLIC_FOOTER_TEXT=Your Custom Footer
+    volumes:
+      - ./sshbridge-data:/app/data
+```
+
+Start the service:
+
+```bash
+docker-compose up -d
+```
+
+### Data Persistence
+
+**Important: You must persist data files to avoid data loss**
+
+#### Data Persistence Deployment
+
+```bash
+# Create data directory
+mkdir -p ./sshbridge-data
+
+# Start container with data volume mounted
+docker run -d \
+  --name sshbridge \
+  --network host \
+  -e BASE_TUNNEL_HOST=your-server-ip \
+  -e SSH_PORT=2222 \
+  -e DATABASE_PATH=/app/data/database.sqlite \
+  -e HOST_KEY_PATH=/app/data/host.key \
+  -v $(pwd)/sshbridge-data:/app/data \
+  ghcr.io/meowlynxsea/sshbridge:main
+```
+
+#### Data Persistence Explanation
+
+By default, data inside Docker containers is lost when the container is removed. SSHBridge requires persistence for the following critical files:
+
+1. **Database file** (`database.sqlite`): Contains user accounts, tunnel configurations, and statistics
+2. **SSH host key** (`host.key`): SSH server authentication key
+
+If these files are not persisted, each container restart will:
+
+- Lose all user data
+- Reset tunnel configurations
+- Generate new SSH host keys (causing client connection warnings)
+
+#### Data Persistence Best Practices
+
+**1. Using Data Volumes (Recommended)**
+
+```bash
+# Create a Docker named volume
+docker volume create sshbridge-data
+
+docker run -d \
+  --name sshbridge \
+  --network host \
+  -e BASE_TUNNEL_HOST=your-server-ip \
+  -e SSH_PORT=2222 \
+  -e DATABASE_PATH=/app/data/database.sqlite \
+  -e HOST_KEY_PATH=/app/data/host.key \
+  -v sshbridge-data:/app/data \
+  ghcr.io/meowlynxsea/sshbridge:main
+```
+
+**2. Using Bind Mounts**
+
+```bash
+# Create data directory on the host
+mkdir -p /opt/sshbridge-data
+chmod 755 /opt/sshbridge-data
+
+docker run -d \
+  --name sshbridge \
+  --network host \
+  -e BASE_TUNNEL_HOST=your-server-ip \
+  -e SSH_PORT=2222 \
+  -e DATABASE_PATH=/app/data/database.sqlite \
+  -e HOST_KEY_PATH=/app/data/host.key \
+  -v /opt/sshbridge-data:/app/data \
+  ghcr.io/meowlynxsea/sshbridge:main
+```
+
+**3. Backup Strategy**
+
+```bash
+# Backup data directory
+tar -czf sshbridge-backup-$(date +%Y%m%d).tar.gz ./sshbridge-data
+
+# Restore data directory
+tar -xzf sshbridge-backup-YYYYMMDD.tar.gz
+```
+
+### Verify Deployment
+
+1. **Check container status**:
+
+   ```bash
+   docker ps | grep sshbridge
+   ```
+
+2. **View logs**:
+
+   ```bash
+   docker logs sshbridge
+   ```
+
+3. **Access Web Interface**:
+   Open your browser and navigate to `http://your-server-ip:3000`
+
+4. **Test SSH Connection**:
+
+   ```bash
+   ssh -p 2222 username@your-server-ip
+   ```
+
+5. **Verify Data Persistence**:
+   ```bash
+   # Check if data files exist
+   ls -la ./sshbridge-data/
+   # You should see database.sqlite and host.key files
+   ```
+
+### Production Environment Notes
+
+1. Must set the `JWT_SECRET` environment variable with a strong random string:
+
+   ```bash
+   JWT_SECRET=$(openssl rand -base64 32)
+   ```
+
+2. Ensure data directory permissions are correct:
+
+   ```bash
+   chown -R 1000:1000 ./sshbridge-data
+   ```
+
+3. Consider using firewall to restrict port access:
+
+   ```bash
+   # Ubuntu/Debian
+   ufw allow 2222/tcp
+   ufw allow 3000/tcp
+
+   # CentOS/RHEL
+   firewall-cmd --permanent --add-port=2222/tcp
+   firewall-cmd --permanent --add-port=3000/tcp
+   firewall-cmd --reload
+   ```
+
+### Troubleshooting
+
+#### Container Won't Start
+
+```bash
+# Check container logs
+docker logs sshbridge
+
+# Check if ports are already in use
+netstat -tulpn | grep -E ":(2222|3000)"
+```
+
+#### Cannot Access Web Interface
+
+- Verify firewall settings
+- Check `WEB_PORT` environment variable configuration
+- Confirm container is running
+
+#### SSH Connection Fails
+
+- Confirm `SSH_PORT` environment variable configuration
+- Check network connectivity
+- Verify user credentials
+
+#### Data Persistence Issues
+
+```bash
+# Check data directory
+docker exec sshbridge ls -la /app/data/
+
+# Check mount points
+docker inspect sshbridge | grep -A 5 -B 5 Mounts
+```
+
+### Update Deployment
+
+```bash
+# Backup data (important!)
+tar -czf sshbridge-backup-$(date +%Y%m%d).tar.gz ./sshbridge-data
+
+# Stop and remove existing container
+docker stop sshbridge && docker rm sshbridge
+
+# Pull latest image
+docker pull ghcr.io/meowlynxsea/sshbridge:main
+
+# Restart with the same command
 ```
 
 ## Development
