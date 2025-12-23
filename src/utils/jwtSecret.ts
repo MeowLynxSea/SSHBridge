@@ -15,4 +15,3 @@ export function getJwtSecret(): string {
   );
   return generated;
 }
-

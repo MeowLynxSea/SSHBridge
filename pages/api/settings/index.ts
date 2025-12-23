@@ -1,7 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database.js';
-import jwt from 'jsonwebtoken';
-import { getJwtSecret } from '../../../src/utils/jwtSecret.js';
 
 interface SettingsRequest {
   refreshInterval?: number;
@@ -29,20 +27,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const db = getDatabaseInstance();
-    let userId: number;
-
-    try {
-      const decoded = jwt.verify(
-        token,
-        getJwtSecret()
-      ) as jwt.JwtPayload & { userId: number };
-      userId = decoded.userId;
-    } catch {
+    const user = await db.validateSession(token);
+    if (!user) {
       return res.status(401).json({
         success: false,
         error: 'Invalid authentication token',
       });
     }
+
+    const userId = user.id;
 
     if (req.method === 'GET') {
       // Get current user's settings

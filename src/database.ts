@@ -110,6 +110,26 @@ class Database {
     this.currentBytesSent.set(tunnelId, sent);
   }
 
+  private parsePossiblyIsoOrSqliteDate(dateString: string): Date | null {
+    const input = dateString?.trim();
+    if (!input) return null;
+
+    // ISO (or ISO-like) strings parse directly.
+    if (input.includes('T')) {
+      const date = new Date(input);
+      if (!isNaN(date.getTime())) return date;
+    }
+
+    // SQLite CURRENT_TIMESTAMP is typically "YYYY-MM-DD HH:MM:SS" (UTC).
+    const normalized = input.replace(' ', 'T');
+    const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(normalized);
+    const date = new Date(hasTimezone ? normalized : `${normalized}Z`);
+    if (!isNaN(date.getTime())) return date;
+
+    const legacy = parseDatabaseDate(input);
+    return isNaN(legacy.getTime()) ? null : legacy;
+  }
+
   private async init() {
     // better-sqlite3 is synchronous, but we need to maintain the async interface
     // for compatibility with the rest of the code
@@ -561,8 +581,13 @@ class Database {
   async validateSession(token: string): Promise<User | null> {
     try {
       const decoded = jwt.verify(token, this.jwtSecret) as { userId: number };
-      const user = await this.getUserById(decoded.userId);
-      return user;
+
+      const session = await this.getSession(token);
+      if (!session || session.user_id !== decoded.userId) {
+        return null;
+      }
+
+      return await this.getUserById(decoded.userId);
     } catch {
       return null;
     }
@@ -1288,11 +1313,24 @@ class Database {
   }
 
   async getSession(token: string): Promise<Session | null> {
-    const stmt = this.db.prepare(
-      "SELECT * FROM sessions WHERE token = ? AND expires_at > datetime('now')"
-    );
+    const stmt = this.db.prepare('SELECT * FROM sessions WHERE token = ?');
     const row = stmt.get(token) as Row;
-    return row ? this.mapRowToSession(row) : null;
+    if (!row) return null;
+
+    const session = this.mapRowToSession(row);
+    const expiresAt = this.parsePossiblyIsoOrSqliteDate(session.expires_at);
+
+    if (!expiresAt || expiresAt.getTime() <= Date.now()) {
+      // Best-effort cleanup of expired sessions
+      try {
+        this.db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+      } catch {
+        // ignore
+      }
+      return null;
+    }
+
+    return session;
   }
 
   async updateUserPassword(userId: number, hashedPassword: string): Promise<boolean> {
