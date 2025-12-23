@@ -3,6 +3,7 @@ import getDatabaseInstance from '../../../src/database.js';
 import speakeasy from 'speakeasy';
 import { sendLocalizedError } from '../../../lib/apiErrors.js';
 import { getAuthToken } from '../../../lib/auth.js';
+import { getClientIp, rateLimit } from '../../../lib/rateLimit.js';
 
 const database = getDatabaseInstance();
 
@@ -21,6 +22,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const user = await database.validateSession(token);
     if (!user) {
       return sendLocalizedError(req, res, 401, 'invalidToken');
+    }
+
+    const ip = getClientIp(req);
+    const { allowed, retryAfterSeconds } = rateLimit(`auth:enable-otp:${user.id}:${ip}`, {
+      windowMs: 60_000,
+      max: 10,
+    });
+    if (!allowed) {
+      res.setHeader('Retry-After', retryAfterSeconds.toString());
+      return res.status(429).json({ error: 'Too many OTP attempts. Please try again later.' });
     }
 
     const { secret, token: otpToken } = req.body;

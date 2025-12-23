@@ -3,6 +3,7 @@ import getDatabaseInstance from '../../../src/database.js';
 import bcrypt from 'bcrypt';
 import { sendLocalizedError } from '../../../lib/apiErrors.js';
 import { getAuthToken } from '../../../lib/auth.js';
+import { getClientIp, rateLimit } from '../../../lib/rateLimit.js';
 
 const database = getDatabaseInstance();
 
@@ -36,6 +37,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const user = await database.getUserById(session.user_id);
     if (!user) {
       return sendLocalizedError(req, res, 401, 'userNotFound');
+    }
+
+    const ip = getClientIp(req);
+    const { allowed, retryAfterSeconds } = rateLimit(`auth:change-password:${user.id}:${ip}`, {
+      windowMs: 60_000,
+      max: 5,
+    });
+    if (!allowed) {
+      res.setHeader('Retry-After', retryAfterSeconds.toString());
+      return res.status(429).json({ error: 'Too many password change attempts. Please try again later.' });
     }
 
     // If OTP is enabled, require OTP token
