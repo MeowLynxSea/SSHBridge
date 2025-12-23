@@ -4,6 +4,7 @@ out
 build
 dist
 public
+next-env.d.ts
 *.log
 database.sqlite
 host.key
