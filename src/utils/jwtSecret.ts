@@ -1,8 +1,17 @@
 import { randomBytes } from 'crypto';
+import { loadEnv } from './loadEnv.js';
 
 export function getJwtSecret(): string {
+  loadEnv();
   const configured = process.env.JWT_SECRET?.trim();
-  if (configured) return configured;
+  if (configured) {
+    if (configured === 'your-jwt-secret-key-here') {
+      console.warn(
+        '[SECURITY] JWT_SECRET is set to the example value. Set a strong random secret to keep sessions secure and stable.'
+      );
+    }
+    return configured;
+  }
 
   if (process.env.NODE_ENV === 'production') {
     throw new Error('JWT_SECRET is required when NODE_ENV=production');

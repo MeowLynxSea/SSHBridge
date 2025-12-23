@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    setAuthCookie(res, token);
+    setAuthCookie(res, token, req);
     return res.status(200).json({
       valid: true,
       user: {

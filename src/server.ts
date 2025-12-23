@@ -2,12 +2,10 @@ import getDatabaseInstance from './database.js';
 import { SSHBridgeServer } from './ssh-server.js';
 import { setSSHServer, getSSHServer } from './sshInstance.js';
 import { ipcEventManager, IpcRequest } from './ipcManager.js';
+import { loadEnv } from './utils/loadEnv.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fork, execFileSync } from 'child_process';
-
-const sshPort = parseInt(process.env.SSH_PORT || '2222', 10);
-const webPort = parseInt(process.env.WEB_PORT || '3000', 10);
 
 async function generateHostKey(): Promise<string> {
   const keyPath = process.env.HOST_KEY_PATH || path.join(process.cwd(), 'keys', 'host.key');
@@ -48,10 +46,15 @@ async function startServer() {
   try {
     console.log('Starting SSHBridge server...');
 
+    loadEnv();
+
     // Ensure the database knows this process is the SSH server (stats writer).
     if (!process.env.SSHBRIDGE_ROLE) {
       process.env.SSHBRIDGE_ROLE = 'ssh';
     }
+
+    const sshPort = parseInt(process.env.SSH_PORT || '2222', 10);
+    const webPort = parseInt(process.env.WEB_PORT || '3000', 10);
 
     const database = getDatabaseInstance(process.env.DATABASE_PATH);
     await new Promise((resolve) => setTimeout(resolve, 100)); // Give database time to initialize

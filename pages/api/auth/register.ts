@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const user = await database.createUser(username, password);
     const token = await database.createSession(user.id);
-    setAuthCookie(res, token);
+    setAuthCookie(res, token, req);
 
     res.status(201).json({
       user: {
