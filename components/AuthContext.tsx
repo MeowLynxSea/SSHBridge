@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const legacyToken = localStorage.getItem('token');
         const response = await fetch('/api/auth/validate', {
           method: 'GET',
+          credentials: 'same-origin',
           headers: legacyToken ? { Authorization: `Bearer ${legacyToken}` } : undefined,
         });
 
@@ -96,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string, otpToken?: string) => {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -125,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (username: string, password: string) => {
     const response = await fetch('/api/auth/register', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -145,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -167,6 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch('/api/auth/validate', {
         method: 'GET',
+        credentials: 'same-origin',
       });
 
       if (response.status === 401) {
