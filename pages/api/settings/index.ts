@@ -68,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ) {
           return res.status(400).json({
             success: false,
-            error: 'Language must be one of: zh, en, ja, ko',
+            error: 'Language must be one of: zh, en, ja, ar, de, es, fr, ru',
           });
         }
       }

@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const database = getDatabaseInstance();
-    const { token } = req.cookies;
+    const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies.token;
 
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
