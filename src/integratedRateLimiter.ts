@@ -70,8 +70,16 @@ export class IntegratedRateLimiter {
     shouldSend: boolean;
     delay: number;
   } {
-    const key = this.getBucketKey(tunnelId, direction);
-    const bucket = this.buckets.get(key);
+    // Backwards-compatible lookup: buckets are keyed by "tunnelId:connectionId:direction",
+    // but some callers may only have a tunnelId.
+    const legacyKey = this.getBucketKey(tunnelId, direction);
+    let bucket: TokenBucket | undefined = this.buckets.get(legacyKey);
+    for (const candidate of this.buckets.values()) {
+      if (candidate.tunnelId === tunnelId && candidate.direction === direction) {
+        bucket = candidate;
+        break;
+      }
+    }
 
     if (!bucket) {
       // No bandwidth limit - send immediately
