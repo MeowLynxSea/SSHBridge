@@ -4,7 +4,7 @@ import { setSSHServer, getSSHServer } from './sshInstance.js';
 import { ipcEventManager, IpcRequest } from './ipcManager.js';
 import * as fs from 'fs';
 import * as path from 'path';
-import { fork, execSync } from 'child_process';
+import { fork, execFileSync } from 'child_process';
 
 const sshPort = parseInt(process.env.SSH_PORT || '2222', 10);
 const webPort = parseInt(process.env.WEB_PORT || '3000', 10);
@@ -16,7 +16,12 @@ async function generateHostKey(): Promise<string> {
     return fs.readFileSync(keyPath, 'utf8');
   }
 
-  execSync(`ssh-keygen -t rsa -b 2048 -f ${keyPath} -N "" -C "SSHBridge Server"`);
+  fs.mkdirSync(path.dirname(keyPath), { recursive: true });
+  execFileSync(
+    'ssh-keygen',
+    ['-t', 'rsa', '-b', '2048', '-f', keyPath, '-N', '', '-C', 'SSHBridge Server'],
+    { stdio: 'inherit' }
+  );
   return fs.readFileSync(keyPath, 'utf8');
 }
 
