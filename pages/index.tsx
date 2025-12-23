@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '../components/AuthContext.js';
-import { LanguageProvider, useLanguage } from '../components/LanguageContext.js';
-import { ThemeProvider, useTheme } from '../components/ThemeContext.js';
-import '../lib/i18n.js';
+import { useAuth } from '../components/AuthContext.js';
+import { useLanguage } from '../components/LanguageContext.js';
+import { useTheme } from '../components/ThemeContext.js';
 import AuthForm from '../components/AuthForm.js';
 import TunnelManager from '../components/TunnelManager.js';
 import ResponsiveLayout from '../components/ResponsiveLayout.js';
@@ -96,14 +95,8 @@ function AppContent() {
 
 export default function Home() {
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <ResponsiveLayout>
-            <AppContent />
-          </ResponsiveLayout>
-        </AuthProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <ResponsiveLayout>
+      <AppContent />
+    </ResponsiveLayout>
   );
 }
