@@ -12,6 +12,26 @@ import { parseDatabaseDate, createFutureTime } from './utils/timeUtils.js';
 import { getJwtSecret } from './utils/jwtSecret.js';
 import geoip from 'geoip-lite';
 
+type ProcessRole = 'ssh' | 'web' | 'unknown';
+
+function detectProcessRole(): ProcessRole {
+  const explicit = process.env.SSHBRIDGE_ROLE;
+  if (explicit === 'ssh' || explicit === 'web') return explicit;
+
+  // Browser/runtime safety (shouldn't happen for this file, but keep it robust).
+  if (typeof window !== 'undefined') return 'web';
+
+  const argv = Array.isArray(process.argv) ? process.argv.join(' ') : '';
+
+  // Next.js CLI processes typically include "next" in argv (e.g. ".bin/next", "next/dist/bin/next").
+  if (argv.includes('next')) return 'web';
+
+  // Our SSH server entrypoints include "server" in argv (e.g. "src/server.ts", "dist/server.js").
+  if (argv.includes('src/server') || argv.includes('dist/server')) return 'ssh';
+
+  return 'unknown';
+}
+
 // SQLite types
 interface Row {
   [key: string]: string | number | boolean | null;
@@ -80,6 +100,7 @@ class Database {
   private rateHistory: Map<number, Array<RealtimeStats>> = new Map();
   private activeConnections: Map<string, { tunnelId: number; startTime: Date; clientIP: string }> =
     new Map();
+  private processRole: ProcessRole = detectProcessRole();
 
   private constructor(dbPath?: string) {
     const databasePath =
@@ -754,10 +775,9 @@ class Database {
 
   private async loadCurrentSessionData(): Promise<void> {
     try {
-      // Check if this is a web process
-      const isWebProcess = typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'nodejs';
-
-      if (isWebProcess) {
+      // Only the SSH server should own in-memory session counters.
+      // Other processes should treat stats as read-only and avoid resetting them.
+      if (this.processRole !== 'ssh') {
         // Web server: Load current session data from database (read-only)
         const stats = this.db
           .prepare('SELECT tunnel_id, current_bytes_received, current_bytes_sent FROM tunnel_stats')
@@ -934,18 +954,15 @@ class Database {
   }
 
   private startStatsTracking(): void {
-    // Only SSH server should calculate rates and sync data
-    // Web server should only read data
-    const isWebProcess = typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'nodejs';
-
-    if (!isWebProcess) {
+    // Only the SSH server should calculate rates and sync session stats to the database.
+    if (this.processRole === 'ssh') {
       console.log('Starting stats tracking for SSH server');
       // Update rates every 5 seconds
       this.statsUpdateInterval = setInterval(async () => {
         await this.calculateAndStoreRates();
       }, 5000);
     } else {
-      console.log('Web server detected - not starting stats tracking');
+      console.log(`Stats tracking disabled for role: ${this.processRole}`);
     }
   }
 
@@ -1120,10 +1137,7 @@ class Database {
   }
 
   async getRealtimeStats(tunnelId: number): Promise<RealtimeStats | null> {
-    // Check if this is a web process
-    const isWebProcess = typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'nodejs';
-
-    if (isWebProcess) {
+    if (this.processRole !== 'ssh') {
       try {
         const stmt = this.db.prepare(`
           SELECT * FROM rate_history 

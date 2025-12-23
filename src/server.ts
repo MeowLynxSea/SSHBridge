@@ -48,6 +48,11 @@ async function startServer() {
   try {
     console.log('Starting SSHBridge server...');
 
+    // Ensure the database knows this process is the SSH server (stats writer).
+    if (!process.env.SSHBRIDGE_ROLE) {
+      process.env.SSHBRIDGE_ROLE = 'ssh';
+    }
+
     const database = getDatabaseInstance(process.env.DATABASE_PATH);
     await new Promise((resolve) => setTimeout(resolve, 100)); // Give database time to initialize
 
@@ -75,6 +80,7 @@ async function startServer() {
       silent: false,
       env: {
         ...process.env,
+        SSHBRIDGE_ROLE: 'web',
         PORT: webPort.toString(),
       },
     });

@@ -183,19 +183,6 @@ export class SSHBridgeServer implements CUIDataProvider {
     conn._pendingPortForwards = 0;
     conn._processedPortForwards = 0;
 
-    // Reset current session stats when SSH session starts
-    this.database
-      .getTunnelsByUserId(user.id)
-      .then((tunnels: Tunnel[]) => {
-        tunnels.forEach((tunnel: Tunnel) => {
-          // Only reset current session, not total traffic
-          this.database.updateTunnelStats(tunnel.id, 0, 0, 0);
-        });
-      })
-      .catch((err: Error) => {
-        console.error('Error resetting stats on SSH session start:', err);
-      });
-
     // Handle remote port forwarding requests
     conn.on(
       'request',
@@ -305,6 +292,10 @@ export class SSHBridgeServer implements CUIDataProvider {
               await this.tcpServerManager.startTcpServer(server, bindAddr, bindPort);
 
               console.log(`Remote forward listening on ${bindAddr}:${bindPort}`);
+
+              // Start a fresh "current session" counter for this tunnel.
+              // Do this per-tunnel (not per-SSH login) to avoid affecting other tunnels/sessions.
+              await this.database.resetCurrentSessionStats(matchingTunnel.id);
 
               // Mark the tunnel as online
               this.database.updateTunnelOnlineStatus(matchingTunnel.id, true);
