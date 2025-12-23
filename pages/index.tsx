@@ -8,9 +8,7 @@ import TunnelManager from '../components/TunnelManager.js';
 import ResponsiveLayout from '../components/ResponsiveLayout.js';
 
 // Custom hook to sync user settings
-function useUserSettingsSync(
-  user: { id: number; username: string; created_at: string } | null
-) {
+function useUserSettingsSync(user: { id: number; username: string; created_at: string } | null) {
   const { changeLanguage } = useLanguage();
   const { setTheme } = useTheme();
   const { apiFetch, setUser, setToken } = useAuth();
