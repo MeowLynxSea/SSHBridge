@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database.js';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../../../src/utils/jwtSecret.js';
 
 interface SettingsRequest {
   refreshInterval?: number;
@@ -33,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     try {
       const decoded = jwt.verify(
         token,
-        process.env.JWT_SECRET || 'default-secret-key-change-in-production'
+        getJwtSecret()
       ) as jwt.JwtPayload & { userId: number };
       userId = decoded.userId;
     } catch {

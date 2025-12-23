@@ -9,6 +9,7 @@ import {
   ClientAccessLog as ClientAccessLogType,
 } from './types/stats.js';
 import { parseDatabaseDate, createFutureTime } from './utils/timeUtils.js';
+import { getJwtSecret } from './utils/jwtSecret.js';
 import geoip from 'geoip-lite';
 
 // SQLite types
@@ -84,7 +85,7 @@ class Database {
     const databasePath =
       dbPath || process.env.DATABASE_PATH || path.join(process.cwd(), 'database.sqlite');
     this.db = new SQLiteDatabase(databasePath);
-    this.jwtSecret = process.env.JWT_SECRET || 'default-secret-key-change-in-production';
+    this.jwtSecret = getJwtSecret();
     this.init();
   }
 
