@@ -94,7 +94,7 @@ export interface SSH2PtyInfo {
 }
 
 export interface SSH2Channel {
-  write(data: string | Buffer): void;
+  write(data: string | Buffer): boolean;
   on(event: 'data', callback: (data: Buffer) => void): void;
   on(event: 'close' | 'error' | 'end', callback: () => void): void;
   on(event: 'error', callback: (err: Error) => void): void;

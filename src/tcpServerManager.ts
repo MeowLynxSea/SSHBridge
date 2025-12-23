@@ -68,6 +68,7 @@ export interface TcpServerInfo {
 export class TcpServerManager {
   private servers: Map<string, TcpServerInfo> = new Map();
   private connections: Map<string, Set<string>> = new Map(); // Key: "tunnelId:connectionId"
+  private activeSockets: Map<string, Set<Socket>> = new Map(); // Key: "tunnelId:connectionId"
   private database: Database;
   private readonly maxConnections: number = 1000; // Maximum connections per tunnel
   private readonly connectionTimeout: number = 30000; // 30 seconds default timeout
@@ -126,8 +127,11 @@ export class TcpServerManager {
    */
   async startTcpServer(server: net.Server, bindAddr: string, bindPort: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      server.listen(bindPort, '0.0.0.0', () => {
-        console.log(`TCP server listening on 0.0.0.0:${bindPort} (bindAddr: ${bindAddr})`);
+      const listenHost = process.env.SSH_HOST || '0.0.0.0';
+      server.listen(bindPort, listenHost, () => {
+        console.log(
+          `TCP server listening on ${listenHost}:${bindPort} (requested bindAddr: ${bindAddr})`
+        );
         resolve();
       });
 
@@ -202,6 +206,19 @@ export class TcpServerManager {
     }
     this.connections.get(tunnelConnectionKey)!.add(tcpConnectionId);
 
+    if (!this.activeSockets.has(tunnelConnectionKey)) {
+      this.activeSockets.set(tunnelConnectionKey, new Set());
+    }
+    this.activeSockets.get(tunnelConnectionKey)!.add(socket);
+    socket.once('close', () => {
+      const sockets = this.activeSockets.get(tunnelConnectionKey);
+      if (!sockets) return;
+      sockets.delete(socket);
+      if (sockets.size === 0) {
+        this.activeSockets.delete(tunnelConnectionKey);
+      }
+    });
+
     // Use atomic operation to increment connection counter for this specific tunnel-connection combination
     this.atomicIncrementConnection(tunnelId, connectionId);
 
@@ -274,6 +291,7 @@ export class TcpServerManager {
           uploadProcessing = true;
 
           while (uploadQueue.length > 0) {
+            if (!isChannelWritable) break;
             const data = uploadQueue.shift()!;
             connectionInfo.bytesReceived += data.length;
 
@@ -289,7 +307,10 @@ export class TcpServerManager {
 
             // Only write if channel is still writable and track write status
             if (isChannelWritable) {
-              channel.write(data);
+              isChannelWritable = channel.write(data);
+              if (!isChannelWritable) {
+                break;
+              }
             }
           }
 
@@ -302,6 +323,7 @@ export class TcpServerManager {
           downloadProcessing = true;
 
           while (downloadQueue.length > 0) {
+            if (!isSocketWritable) break;
             const data = downloadQueue.shift()!;
             connectionInfo.bytesSent += data.length;
 
@@ -318,6 +340,9 @@ export class TcpServerManager {
             // Only write if socket is still writable
             if (isSocketWritable) {
               isSocketWritable = socket.write(data);
+              if (!isSocketWritable) {
+                break;
+              }
             }
           }
 
@@ -327,10 +352,12 @@ export class TcpServerManager {
         // Track write status to prevent writing to closed connections
         socket.on('drain', () => {
           isSocketWritable = true;
+          setImmediate(processDownloadQueue);
         });
 
         channel.on('drain', () => {
           isChannelWritable = true;
+          setImmediate(processUploadQueue);
         });
 
         // Forward data between socket and channel with bandwidth limiting
@@ -751,6 +778,22 @@ export class TcpServerManager {
 
     // Force close all existing connections for this server and connection
     const tunnelConnectionKey = `${serverInfo.tunnelId}:${serverInfo.connectionId}`;
+    const sockets = this.activeSockets.get(tunnelConnectionKey);
+    if (sockets && sockets.size > 0) {
+      console.log(
+        `Force closing ${sockets.size} active sockets for tunnel ${serverInfo.tunnelId} (connection: ${serverInfo.connectionId})`
+      );
+      sockets.forEach((socket) => {
+        try {
+          socket.destroy();
+        } catch {
+          // ignore
+        }
+      });
+      sockets.clear();
+      this.activeSockets.delete(tunnelConnectionKey);
+    }
+
     const connections = this.connections.get(tunnelConnectionKey);
     if (connections) {
       console.log(
@@ -759,8 +802,7 @@ export class TcpServerManager {
       connections.forEach((_connectionId) => {
         // Note: Individual connection cleanup is handled by socket close handlers
         // but we force close here to ensure clean shutdown
-        // Note: We don't have direct access to the socket here, so we rely
-        // on the socket close handlers to clean up properly
+        // Note: sockets are tracked separately in activeSockets and destroyed above.
       });
 
       // Clear all connections for this tunnel-connection combination
