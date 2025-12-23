@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database.js';
 import { sendLocalizedError } from '../../../lib/apiErrors.js';
+import { getClientIp, rateLimit } from '../../../lib/rateLimit.js';
 
 const database = getDatabaseInstance();
 
@@ -10,6 +11,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    const ip = getClientIp(req);
+    const { allowed, retryAfterSeconds } = rateLimit(`auth:register:${ip}`, {
+      windowMs: 60_000,
+      max: 10,
+    });
+    if (!allowed) {
+      res.setHeader('Retry-After', retryAfterSeconds.toString());
+      return res.status(429).json({ error: 'Too many registration attempts. Please try again later.' });
+    }
+
     const { username, password } = req.body;
 
     if (!username || !password) {
