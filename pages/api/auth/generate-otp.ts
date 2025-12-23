@@ -32,7 +32,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     if (!allowed) {
       res.setHeader('Retry-After', retryAfterSeconds.toString());
-      return res.status(429).json({ error: 'Too many OTP setup attempts. Please try again later.' });
+      return res
+        .status(429)
+        .json({ error: 'Too many OTP setup attempts. Please try again later.' });
     }
 
     // Check if OTP is already enabled

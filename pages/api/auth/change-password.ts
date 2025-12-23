@@ -46,7 +46,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     if (!allowed) {
       res.setHeader('Retry-After', retryAfterSeconds.toString());
-      return res.status(429).json({ error: 'Too many password change attempts. Please try again later.' });
+      return res
+        .status(429)
+        .json({ error: 'Too many password change attempts. Please try again later.' });
     }
 
     // If OTP is enabled, require OTP token

@@ -117,7 +117,14 @@ function getLocale(req: NextApiRequest): Locale {
   if (acceptLanguage) {
     const lang = acceptLanguage.split(',')[0].split('-')[0];
     if (lang === 'zh') return 'zh';
-    if (lang === 'es' || lang === 'fr' || lang === 'de' || lang === 'ja' || lang === 'ru' || lang === 'ar') {
+    if (
+      lang === 'es' ||
+      lang === 'fr' ||
+      lang === 'de' ||
+      lang === 'ja' ||
+      lang === 'ru' ||
+      lang === 'ar'
+    ) {
       return lang;
     }
   }
