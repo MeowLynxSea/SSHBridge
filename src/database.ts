@@ -1260,7 +1260,7 @@ class Database {
           const updateStmt = this.db.prepare(
             `UPDATE user_settings SET ${updates.join(', ')} WHERE user_id = ?`
           );
-          updateStmt.run(params);
+          updateStmt.run(...params);
         }
       } else {
         // Insert new settings
