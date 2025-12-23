@@ -10,7 +10,11 @@ const buckets = new Map<string, { count: number; resetAt: number }>();
 export function getClientIp(req: RateLimitedRequest): string {
   const forwarded = req.headers['x-forwarded-for'];
   const firstForwarded =
-    typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : Array.isArray(forwarded) ? forwarded[0] : '';
+    typeof forwarded === 'string'
+      ? forwarded.split(',')[0].trim()
+      : Array.isArray(forwarded)
+        ? forwarded[0]
+        : '';
   return firstForwarded || req.socket?.remoteAddress || 'unknown';
 }
 
@@ -45,4 +49,3 @@ export function rateLimit(
   existing.count += 1;
   return { allowed: true, retryAfterSeconds: 0 };
 }
-
