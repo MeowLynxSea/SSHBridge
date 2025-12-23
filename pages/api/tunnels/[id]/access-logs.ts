@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../../src/database.js';
+import { getAuthToken } from '../../../../lib/auth.js';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -7,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const token = getAuthToken(req);
     if (!token) {
       return res.status(401).json({ error: 'Unauthorized' });
     }

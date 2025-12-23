@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database.js';
 import { sendLocalizedError } from '../../../lib/apiErrors.js';
+import { getAuthToken } from '../../../lib/auth.js';
 
 const database = getDatabaseInstance();
 
@@ -11,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Verify authentication
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const token = getAuthToken(req);
     if (!token) {
       return sendLocalizedError(req, res, 401, 'authRequired');
     }

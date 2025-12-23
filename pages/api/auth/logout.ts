@@ -1,12 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database.js';
+import { clearAuthCookie, getAuthToken } from '../../../lib/auth.js';
 
 const database = getDatabaseInstance();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
-      await database.deleteSession(req.headers.authorization?.replace('Bearer ', '') || '');
+      const token = getAuthToken(req);
+      if (token) {
+        await database.deleteSession(token);
+      }
+      clearAuthCookie(res);
       res.status(200).json({ message: 'Logged out successfully' });
     } catch (error) {
       console.error('Logout error:', error);

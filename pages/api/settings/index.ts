@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database.js';
+import { getAuthToken } from '../../../lib/auth.js';
 
 interface SettingsRequest {
   refreshInterval?: number;
@@ -18,7 +19,7 @@ interface SettingsResponse {
 export default async function handler(req: NextApiRequest, res: NextApiResponse<SettingsResponse>) {
   try {
     // 验证JWT token并获取用户ID
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const token = getAuthToken(req);
     if (!token) {
       return res.status(401).json({
         success: false,

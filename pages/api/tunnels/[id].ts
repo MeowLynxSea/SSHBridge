@@ -1,11 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database.js';
 import { sendLocalizedError } from '../../../lib/apiErrors.js';
+import { getAuthToken } from '../../../lib/auth.js';
 
 const database = getDatabaseInstance();
 
 async function authenticate(req: NextApiRequest): Promise<{ id: number; username: string } | null> {
-  const token = req.headers.authorization?.replace('Bearer ', '');
+  const token = getAuthToken(req);
   if (!token) return null;
 
   const user = await database.validateSession(token);

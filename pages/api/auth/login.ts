@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import getDatabaseInstance from '../../../src/database.js';
 import { sendLocalizedError } from '../../../lib/apiErrors.js';
 import { getClientIp, rateLimit } from '../../../lib/rateLimit.js';
+import { setAuthCookie } from '../../../lib/auth.js';
 
 const database = getDatabaseInstance();
 
@@ -35,6 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const token = await database.createSession(user.id);
+      setAuthCookie(res, token);
 
       res.status(200).json({
         user: {
