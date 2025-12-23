@@ -36,6 +36,8 @@ interface ErrorMessages {
   portInUse: string;
 }
 
+type Locale = 'en' | 'zh' | 'es' | 'fr' | 'de' | 'ja' | 'ru' | 'ar';
+
 // 英文错误消息
 const enErrors: ErrorMessages = {
   methodNotAllowed: 'Method not allowed',
@@ -109,17 +111,31 @@ const zhErrors: ErrorMessages = {
 };
 
 // 获取请求的语言偏好，默认为英文
-function getLocale(req: NextApiRequest): 'en' | 'zh' {
+function getLocale(req: NextApiRequest): Locale {
   // 从Accept-Language头获取
   const acceptLanguage = req.headers['accept-language'];
   if (acceptLanguage) {
     const lang = acceptLanguage.split(',')[0].split('-')[0];
     if (lang === 'zh') return 'zh';
+    if (lang === 'es' || lang === 'fr' || lang === 'de' || lang === 'ja' || lang === 'ru' || lang === 'ar') {
+      return lang;
+    }
   }
 
   // 从自定义头获取
   const langHeader = req.headers['x-language'];
-  if (langHeader === 'zh') return 'zh';
+  if (
+    langHeader === 'zh' ||
+    langHeader === 'en' ||
+    langHeader === 'es' ||
+    langHeader === 'fr' ||
+    langHeader === 'de' ||
+    langHeader === 'ja' ||
+    langHeader === 'ru' ||
+    langHeader === 'ar'
+  ) {
+    return langHeader;
+  }
 
   // 默认返回英文
   return 'en';
@@ -128,7 +144,17 @@ function getLocale(req: NextApiRequest): 'en' | 'zh' {
 // 获取错误消息
 export function getErrorMessage(req: NextApiRequest, key: keyof ErrorMessages): string {
   const locale = getLocale(req);
-  const errors = locale === 'zh' ? zhErrors : enErrors;
+  const errorsByLocale: Record<Locale, ErrorMessages> = {
+    en: enErrors,
+    zh: zhErrors,
+    es: enErrors,
+    fr: enErrors,
+    de: enErrors,
+    ja: enErrors,
+    ru: enErrors,
+    ar: enErrors,
+  };
+  const errors = errorsByLocale[locale] || enErrors;
   return errors[key];
 }
 
