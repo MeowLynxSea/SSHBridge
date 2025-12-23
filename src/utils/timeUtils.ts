@@ -15,8 +15,19 @@ export function parseDatabaseDate(dateString: string): Date {
     return new Date();
   }
 
-  // SQLite的CURRENT_TIMESTAMP是UTC时间，添加'Z'后缀明确表示UTC
-  const date = new Date(dateString + 'Z');
+  const trimmed = dateString.trim();
+
+  // ISO (or ISO-like) strings parse directly.
+  if (trimmed.includes('T')) {
+    const iso = new Date(trimmed);
+    if (!isNaN(iso.getTime())) {
+      return iso;
+    }
+  }
+
+  // SQLite的CURRENT_TIMESTAMP通常是 "YYYY-MM-DD HH:MM:SS"（UTC）
+  const normalized = trimmed.replace(' ', 'T');
+  const date = new Date(normalized.endsWith('Z') ? normalized : normalized + 'Z');
 
   // 检查日期是否有效
   if (isNaN(date.getTime())) {
