@@ -26,7 +26,7 @@ interface TunnelFormData {
 export default function TunnelManager() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { token, logout, user, apiFetch } = useAuth();
+  const { logout, user, apiFetch } = useAuth();
   const { showOtpModal } = useOtp();
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -113,7 +113,7 @@ export default function TunnelManager() {
     // Set up interval to fetch tunnel statuses
     const interval = setInterval(fetchTunnelStatuses, 5000);
     return () => clearInterval(interval);
-  }, [token, fetchTunnelStatuses, fetchTunnels, fetchBaseTunnelHost]);
+  }, [fetchTunnelStatuses, fetchTunnels, fetchBaseTunnelHost]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

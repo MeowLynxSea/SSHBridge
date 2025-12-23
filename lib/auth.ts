@@ -59,4 +59,3 @@ export function clearAuthCookie(res: NextApiResponse) {
 
   appendSetCookie(res, cookie);
 }
-

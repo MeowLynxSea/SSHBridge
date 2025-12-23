@@ -42,7 +42,7 @@ interface AnalysisProps {
 
 export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
   const { t } = useTranslation();
-  const { token, apiFetch } = useAuth();
+  const { apiFetch } = useAuth();
   const { effectiveTheme } = useTheme();
   const [selectedTunnel, setSelectedTunnel] = useState<number | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('lastDay');
@@ -133,7 +133,7 @@ export default function TunnelAnalysis({ tunnels }: AnalysisProps) {
   };
 
   const fetchData = async () => {
-    if (!selectedTunnel || !token) return;
+    if (!selectedTunnel) return;
 
     setIsLoading(true);
     setError('');

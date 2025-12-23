@@ -20,7 +20,7 @@ type Theme = 'dark' | 'light' | 'auto';
 
 export default function Settings({ isOpen = true }: SettingsProps) {
   const { t } = useTranslation();
-  const { token, apiFetch } = useAuth();
+  const { apiFetch } = useAuth();
   const { availableLanguages, changeLanguage, currentLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useState<UserSettings>({
@@ -64,10 +64,10 @@ export default function Settings({ isOpen = true }: SettingsProps) {
 
   // Fetch current settings when component mounts
   useEffect(() => {
-    if (token) {
+    if (isOpen) {
       fetchSettings();
     }
-  }, [token, fetchSettings]);
+  }, [isOpen, fetchSettings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -43,21 +43,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
+    let cancelled = false;
 
-    if (savedToken && savedUser) {
-      // Use requestAnimationFrame to avoid setState synchronously in effect
-      requestAnimationFrame(() => {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
-        setIsLoading(false);
-      });
-    } else {
-      requestAnimationFrame(() => {
-        setIsLoading(false);
-      });
-    }
+    const restoreSession = async () => {
+      try {
+        const legacyToken = localStorage.getItem('token');
+        const response = await fetch('/api/auth/validate', {
+          method: 'GET',
+          headers: legacyToken ? { Authorization: `Bearer ${legacyToken}` } : undefined,
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as { user?: User };
+        if (!cancelled && data.user) {
+          setUser(data.user);
+          setToken(null);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      } catch (error) {
+        console.error('Session restore error:', error);
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleUnauthorized = useCallback(() => {
@@ -95,9 +115,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setUser(data.user);
-    setToken(data.token);
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    setToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
 
     return { requiresOtp: false };
   };
@@ -118,23 +138,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const data = await response.json();
     setUser(data.user);
-    setToken(data.token);
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    setToken(null);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   };
 
   const logout = async () => {
-    if (token) {
-      try {
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      } catch (error) {
-        console.error('Logout error:', error);
-      }
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Logout error:', error);
     }
 
     setUser(null);
@@ -148,18 +161,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const updatedUser = { ...user, ...userUpdates };
     setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
   const validateToken = useCallback(async (): Promise<boolean> => {
-    if (!token) return false;
-
     try {
       const response = await fetch('/api/auth/validate', {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (response.status === 401) {
@@ -176,7 +183,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      return response.ok;
+      if (response.ok) {
+        const data = (await response.json()) as { user?: User };
+        if (data.user) {
+          setUser(data.user);
+        }
+        setToken(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return true;
+      }
+
+      return false;
     } catch (error) {
       console.error('Token validation error:', error);
       // Clear auth state manually
@@ -186,11 +204,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('user');
       return false;
     }
-  }, [token, router]); // Include router but not handleUnauthorized
+  }, [router]); // Include router but not handleUnauthorized
 
   const apiFetch = useCallback(
     async (url: string, options: RequestInit = {}): Promise<Response> => {
       const defaultOptions: RequestInit = {
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           ...(token && { Authorization: `Bearer ${token}` }),

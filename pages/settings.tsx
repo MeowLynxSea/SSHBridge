@@ -17,7 +17,7 @@ type Theme = 'dark' | 'light' | 'auto';
 export default function SettingsPage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { user, apiFetch, isLoading: authLoading } = useAuth();
   const { availableLanguages, changeLanguage, currentLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
   const [settings, setSettings] = useState<UserSettings>({
@@ -35,11 +35,7 @@ export default function SettingsPage() {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch('/api/settings', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch('/api/settings');
 
       if (response.ok) {
         const data = await response.json();
@@ -63,13 +59,13 @@ export default function SettingsPage() {
       setLoading(false);
       setIsLoading(false);
     }
-  }, [token, currentLanguage, t]);
+  }, [apiFetch, currentLanguage, t]);
 
   useEffect(() => {
-    if (token) {
+    if (!authLoading && user) {
       fetchSettings();
     }
-  }, [token, fetchSettings]);
+  }, [authLoading, user, fetchSettings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,11 +74,10 @@ export default function SettingsPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/settings', {
+      const response = await apiFetch('/api/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           refreshInterval: settings.refreshInterval,

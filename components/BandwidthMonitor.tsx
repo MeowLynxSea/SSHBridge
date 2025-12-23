@@ -34,7 +34,7 @@ interface BandwidthMonitorProps {
 
 export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthMonitorProps) {
   const { t } = useTranslation();
-  const { token, apiFetch } = useAuth();
+  const { apiFetch } = useAuth();
   const [stats, setStats] = useState<BandwidthStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,8 +51,6 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
 
   // Function to fetch bandwidth stats
   const fetchStats = async () => {
-    if (!token) return;
-
     setLoading(true);
     setError('');
 
@@ -84,7 +82,7 @@ export default function BandwidthMonitor({ tunnel, isOpen, onClose }: BandwidthM
 
       return () => clearInterval(interval);
     }
-  }, [isOpen, tunnel.id, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, tunnel.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Function to calculate utilization percentage
   const getUtilizationPercentage = (): number => {

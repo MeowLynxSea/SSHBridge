@@ -10,7 +10,7 @@ interface OTPManagerProps {
 
 export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
   const { t } = useTranslation();
-  const { token, updateUser, apiFetch } = useAuth();
+  const { user, updateUser, apiFetch } = useAuth();
   const { showOtpModal } = useOtp();
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,7 +23,10 @@ export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
 
   useEffect(() => {
     // Check if user is authenticated
-    if (!token) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
     const checkOtpStatus = async () => {
       try {
@@ -41,11 +44,9 @@ export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
     };
 
     checkOtpStatus();
-  }, [token, apiFetch]);
+  }, [user, apiFetch]);
 
   const generateOTP = async () => {
-    if (!token) return;
-
     setIsGenerating(true);
     setError('');
 
@@ -72,7 +73,7 @@ export default function OTPManager({ onClose: _onClose }: OTPManagerProps) {
   };
 
   const enableOTP = async (otpToken?: string) => {
-    if (!token || !secret) return;
+    if (!secret) return;
 
     setIsEnabling(true);
     setError('');

@@ -11,7 +11,7 @@ import '../lib/i18n';
 
 function AccountManagerPage() {
   const { t } = useTranslation();
-  const { user, token } = useAuth();
+  const { user, apiFetch, isLoading: authLoading } = useAuth();
   const { showOtpModal } = useOtp();
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -27,7 +27,7 @@ function AccountManagerPage() {
 
   useEffect(() => {
     // Check if user is authenticated
-    if (!token) {
+    if (!authLoading && !user) {
       router.push('/');
       return;
     }
@@ -38,19 +38,15 @@ function AccountManagerPage() {
     } else {
       setRequiresOtp(false);
     }
-  }, [token, user, router]);
+  }, [authLoading, user, router]);
 
   // Separate effect to check OTP status when needed
   useEffect(() => {
-    if (!token) return;
+    if (!user) return;
 
     const checkOtpStatus = async () => {
       try {
-        const response = await fetch('/api/auth/otp-status', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiFetch('/api/auth/otp-status');
 
         if (response.ok) {
           const data = await response.json();
@@ -62,7 +58,7 @@ function AccountManagerPage() {
     };
 
     checkOtpStatus();
-  }, [token]);
+  }, [user, apiFetch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,11 +97,10 @@ function AccountManagerPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/change-password', {
+      const response = await apiFetch('/api/auth/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           currentPassword,
@@ -121,11 +116,7 @@ function AccountManagerPage() {
         setConfirmPassword('');
 
         // Re-check OTP status after password change
-        const userResponse = await fetch('/api/auth/otp-status', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const userResponse = await apiFetch('/api/auth/otp-status');
 
         if (userResponse.ok) {
           const userData = await userResponse.json();

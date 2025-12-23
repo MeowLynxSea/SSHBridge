@@ -35,7 +35,7 @@ interface TunnelStatsResponse {
 
 export default function TunnelStats() {
   const { t } = useTranslation();
-  const { token, apiFetch } = useAuth();
+  const { apiFetch } = useAuth();
   const [stats, setStats] = useState<TunnelStatsResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -81,7 +81,7 @@ export default function TunnelStats() {
 
     fetchStats();
     fetchRefreshInterval();
-  }, [fetchStats, token, apiFetch]);
+  }, [fetchStats, apiFetch]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -92,7 +92,7 @@ export default function TunnelStats() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [token, autoRefresh, fetchStats, refreshInterval]);
+  }, [autoRefresh, fetchStats, refreshInterval]);
 
   const formatDate = (dateString: string) => {
     return formatForDisplay(dateString);

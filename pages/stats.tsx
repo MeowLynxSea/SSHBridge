@@ -18,7 +18,7 @@ interface Tunnel {
 export default function StatsPage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { token } = useAuth();
+  const { user, apiFetch, isLoading: authLoading } = useAuth();
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tunnelStatuses, setTunnelStatuses] = useState<Map<number, boolean>>(new Map());
@@ -27,11 +27,7 @@ export default function StatsPage() {
 
   const fetchTunnelStatuses = useCallback(async () => {
     try {
-      const response = await fetch('/api/stats', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch('/api/stats');
 
       if (response.ok) {
         const data = await response.json();
@@ -44,15 +40,11 @@ export default function StatsPage() {
     } catch (err) {
       console.error(t('console.failedToFetchTunnelStatuses'), err);
     }
-  }, [token, t]);
+  }, [apiFetch, t]);
 
   const fetchTunnels = useCallback(async () => {
     try {
-      const response = await fetch('/api/tunnels', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch('/api/tunnels');
 
       if (response.ok) {
         const data = await response.json();
@@ -70,14 +62,16 @@ export default function StatsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [token, tunnelStatuses, t]);
+  }, [apiFetch, tunnelStatuses, t]);
 
   useEffect(() => {
+    if (authLoading || !user) return;
+
     fetchTunnels();
     // Set up interval to fetch tunnel statuses
     const interval = setInterval(fetchTunnelStatuses, 5000);
     return () => clearInterval(interval);
-  }, [token, fetchTunnelStatuses, fetchTunnels]);
+  }, [authLoading, user, fetchTunnelStatuses, fetchTunnels]);
 
   if (isLoading) {
     return (
